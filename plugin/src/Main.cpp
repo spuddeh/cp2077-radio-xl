@@ -55,6 +55,7 @@ const RED4ext::v1::Sdk* g_sdk = nullptr;
 RED4ext::v1::PluginHandle g_handle = nullptr;
 uint64_t g_lastTick = 0;
 std::unordered_map<uintptr_t, std::string> g_last;
+uint64_t g_walks = 0;
 bool g_failed = false;
 
 void Log(const std::string& aText)
@@ -189,7 +190,22 @@ void Walk(std::string& aReport)
             last = line;
             aReport += line + "\n";
         }
+
+        // The clock's value, every ten seconds, for the custom stations and one vanilla control
+        // (Body Heat). Whether it advances while nobody listens is what decides if it is the
+        // station's schedule time or the voice's own elapsed time.
+        const std::string name = NameOf(reinterpret_cast<void*>(station));
+        const bool custom = name.rfind("radio_station_0", 0) != 0 && name.rfind("radio_station_1", 0) != 0 &&
+                            name.rfind("radio_station_p", 0) != 0;
+        if (g_walks % 10 == 0 && (custom || name == "radio_station_05_pop"))
+        {
+            char clockBuf[96];
+            std::snprintf(clockBuf, sizeof(clockBuf), "%s clock=%.2f active=%u handles=%u", name.c_str(), clock,
+                          Read<uint8_t>(station + kStationActive), Read<uint32_t>(station + kStationHandleCount));
+            aReport += std::string(clockBuf) + "\n";
+        }
     }
+    ++g_walks;
 }
 
 // The walk reads engine memory by offset, so a wrong offset on another build would fault. SEH
