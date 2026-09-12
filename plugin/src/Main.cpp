@@ -314,6 +314,43 @@ RED4EXT_C_EXPORT uint32_t RED4EXT_CALL Supports()
     return RED4EXT_API_VERSION_1;
 }
 
+namespace
+{
+// **A native's code is reached through a handler table the game fills at runtime**, indexed by the
+// function's own index (`+0xAC`), so the address cannot be read from the file. Logged once after
+// RTTI registration as an RVA, for the disassembler.
+constexpr uint32_t kHashHandlerTable = 0x5A7D28A9;  // RED4ext's CBaseFunction_Handlers
+
+void LogNativeHandlers()
+{
+    const auto table = reinterpret_cast<void**>(ResolveByHash(kHashHandlerTable));
+    const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    auto* cls = RED4ext::CRTTISystem::Get()->GetClass("vehicleBaseObject");
+    if (!table || !cls)
+    {
+        Log("native handlers: no table or no vehicleBaseObject class");
+        return;
+    }
+    const char* names[] = {"ToggleRadioReceiver", "SetRadioReceiverStation", "NextRadioReceiverStation",
+                           "IsRadioReceiverActive", "GetRadioReceiverStationName", "ToggleRadioReceiverForced"};
+    for (const char* name : names)
+    {
+        auto* fn = cls->GetFunction(RED4ext::CName(name));
+        if (!fn)
+        {
+            Log(std::string("native handlers: vehicleBaseObject::") + name + " not found");
+            continue;
+        }
+        const auto index = *reinterpret_cast<const int32_t*>(reinterpret_cast<const uint8_t*>(fn) + 0xAC);
+        const auto handler = reinterpret_cast<uintptr_t>(table[index]);
+        char buf[160];
+        std::snprintf(buf, sizeof(buf), "native handlers: vehicleBaseObject::%s index %d -> rva %llx", name, index,
+                      static_cast<unsigned long long>(handler ? handler - base : 0));
+        Log(buf);
+    }
+}
+} // namespace
+
 RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
                                         RED4ext::v1::EMainReason aReason, const RED4ext::v1::Sdk* aSdk)
 {
@@ -321,6 +358,7 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
     {
         g_sdk = aSdk;
         g_handle = aHandle;
+        RED4ext::CRTTISystem::Get()->AddPostRegisterCallback(&LogNativeHandlers);
         static RED4ext::v1::GameState state{
             .OnEnter = nullptr,
             .OnUpdate = OnUpdate,
