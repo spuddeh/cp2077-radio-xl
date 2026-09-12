@@ -42,6 +42,17 @@ constexpr size_t kStationHandle = 0x158;         // the current voice's handle
 constexpr size_t kStationFlagA = 0x21a;
 constexpr size_t kStationActive = 0x21b;         // recomputed every frame from the listeners
 constexpr size_t kStationFlagD = 0x21d;
+constexpr size_t kStationManager = 0x118;        // the station's pointer back to the manager
+
+// The manager's inline list of station names that may be active: four 24-byte entries.
+constexpr size_t kManagerList = 0x168;
+constexpr size_t kManagerListCount = 0x60;       // relative to kManagerList
+constexpr size_t kManagerListStride = 0x18;
+
+// A listener's kind byte and the flag beside it, as the station update reads them: kind 4 is
+// skipped by the update, kind 2 is the only kind that keeps a station active in manager mode 1.
+constexpr size_t kListenerKind = 0x12c;
+constexpr size_t kListenerFlag = 0x12d;
 
 // Virtuals: +0x70 writes the object's CName into *out and returns out; +0x100 on a listener answers
 // whether it counts.
@@ -56,6 +67,7 @@ RED4ext::v1::PluginHandle g_handle = nullptr;
 uint64_t g_lastTick = 0;
 std::unordered_map<uintptr_t, std::string> g_last;
 uint64_t g_walks = 0;
+std::string g_lastList;
 bool g_failed = false;
 
 void Log(const std::string& aText)
@@ -174,7 +186,11 @@ void Walk(std::string& aReport)
                 const auto vtbl = Read<uintptr_t>(listener);
                 const auto active = Read<ListenerActiveFn>(vtbl + kVtblListenerActive);
                 line += NameOf(reinterpret_cast<void*>(listener));
-                line += active(reinterpret_cast<void*>(listener)) ? ":on " : ":off ";
+                line += active(reinterpret_cast<void*>(listener)) ? ":on" : ":off";
+                char kind[24];
+                std::snprintf(kind, sizeof(kind), "/k%u/f%u ", Read<uint8_t>(listener + kListenerKind),
+                              Read<uint8_t>(listener + kListenerFlag));
+                line += kind;
             }
         }
         line += "]";
@@ -203,6 +219,35 @@ void Walk(std::string& aReport)
             std::snprintf(clockBuf, sizeof(clockBuf), "%s clock=%.2f active=%u handles=%u", name.c_str(), clock,
                           Read<uint8_t>(station + kStationActive), Read<uint32_t>(station + kStationHandleCount));
             aReport += std::string(clockBuf) + "\n";
+        }
+    }
+    // **The manager keeps a four-slot inline list of station names (+0x168, count +0x1c8, 24-byte
+    // entries), and a station is active only while its name is in it.** The per-frame update asks
+    // `0xc0749c(manager, name)` for the first switched-on listener; a miss clears the active flag
+    // whatever the listener says. Logged whenever it changes, so a station that goes silent under a
+    // live listener shows its name leaving this list.
+    {
+        std::string list = "manager list:";
+        const auto count = Read<uint32_t>(manager + kManagerList + kManagerListCount);
+        for (uint32_t i = 0; i < count && i < 4; ++i)
+        {
+            const auto entry = manager + kManagerList + i * kManagerListStride;
+            const RED4ext::CName name(Read<uint64_t>(entry));
+            const char* text = name.ToString();
+            char buf[96];
+            std::snprintf(buf, sizeof(buf), " [%s %llx %llx]", text && *text ? text : "?",
+                          static_cast<unsigned long long>(Read<uint64_t>(entry + 8)),
+                          static_cast<unsigned long long>(Read<uint64_t>(entry + 16)));
+            list += buf;
+        }
+        if (count > 4)
+        {
+            list += " count=" + std::to_string(count) + " (over four - not this layout)";
+        }
+        if (g_lastList != list)
+        {
+            g_lastList = list;
+            aReport += list + "\n";
         }
     }
     ++g_walks;
