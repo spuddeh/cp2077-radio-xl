@@ -341,8 +341,8 @@ void LogNativeHandlers()
             Log(std::string("native handlers: vehicleBaseObject::") + name + " not found");
             continue;
         }
-        const auto index = *reinterpret_cast<const int32_t*>(reinterpret_cast<const uint8_t*>(fn) + 0xAC);
-        const auto handler = reinterpret_cast<uintptr_t>(table[index]);
+        const auto index = static_cast<int32_t>(fn->GetRegIndex());
+        const auto handler = (index >= 0 && index < 0x10000) ? reinterpret_cast<uintptr_t>(table[index]) : 0;
         char buf[160];
         std::snprintf(buf, sizeof(buf), "native handlers: vehicleBaseObject::%s index %d -> rva %llx", name, index,
                       static_cast<unsigned long long>(handler ? handler - base : 0));
