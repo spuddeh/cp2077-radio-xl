@@ -7,6 +7,8 @@
 - A station is one manifest per mod, plus its audio files and at most an icon archive. Any number of
   station mods coexist; nothing vanilla is replaced, and the framework's one archive holds only its
   own glyph.
+- A station's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) and ship no archive;
+  a record that does not exist falls back to the glyph (#21).
 - A station that names no icon shows the RadioXL glyph, shipped in the framework's archive; the
   record `UIIcon.RadioXL` exists for a RadioXL 0.1.0 station yaml that names it.
 - Resume: tuning back to a custom station picks the song up where the station has got to, the
@@ -61,6 +63,7 @@
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
 - A station naming no icon shows the RadioXL glyph on the selector, the dashboard and a world device.
+- A station naming `UIIcon.RadioHipHop` shows that icon on the selector, the dashboard and a world device (#21).
 
 ## Planned
 
@@ -74,6 +77,5 @@
   ceiling. The vehicle step already carries a 32-bit total.
 - Adopt RadioXL station definitions unchanged, starting with Outrun Waves 93.7.
 - Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
-- The two RadioExt features not covered by being a real station and not blocked upstream: an
-  optional shuffle at load (#22) and naming an existing `UIIcon` record as the icon (#21). The
-  audit is `concepts/radioext-parity-audit` in the vault (#20).
+- The RadioExt parity audit is `concepts/radioext-parity-audit` in the vault (#20); both gaps it
+  left, shuffle (#22) and an existing `UIIcon` record as the icon (#21), are implemented.

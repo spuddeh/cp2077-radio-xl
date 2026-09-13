@@ -20,6 +20,12 @@
   the plugin follows the enable routine's own `jne` to it and verifies the bytes there.
 
 ### Added
+- A manifest's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) with no `atlas`
+  (#21). `Manifest.hpp` accepts `UIIcon.<name>` without an atlas, warns and drops an `atlas`
+  beside one; `Dial.reds` points `RadioStation.RadioXL_<name>.icon` at the record and makes no
+  `UIIcon.RadioXL_<name>`. A record missing at `OnApply` is logged and the glyph is used; yaml
+  records import before any `OnApply`, so another mod's record is visible there. `Build` is split
+  into the station record and `BuildIcon`. Tests in `ManifestTests.cpp` (`TestIconRecord`).
 - Shuffle (#22): a four-way setting (Off, Every station, Vanilla only, Custom only), read by the
   plugin from RCF's own file at boot because RCF restores settings after the metadata has loaded;
   the script reorders vanilla `tracks` arrays as the base and EP1 metadata load, the plugin
