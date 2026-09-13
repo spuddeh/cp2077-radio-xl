@@ -36,13 +36,23 @@ constexpr size_t kStationListeners = 0x100;      // array of listener object poi
 constexpr size_t kStationListenerCount = 0x10c;
 constexpr size_t kStationHandles = 0x120;        // array of playing handles
 constexpr size_t kStationHandleCount = 0x12c;
-constexpr size_t kStationType = 0x148;           // 0 station, 5 playlist
+constexpr size_t kStationType = 0x148;           // state: 0 ready for a song, 5 while a blip plays
 constexpr size_t kStationClock = 0x14c;          // float, accumulates while active
 constexpr size_t kStationHandle = 0x158;         // the current voice's handle
 constexpr size_t kStationFlagA = 0x21a;
 constexpr size_t kStationActive = 0x21b;         // recomputed every frame from the listeners
 constexpr size_t kStationFlagD = 0x21d;
 constexpr size_t kStationManager = 0x118;        // the station's pointer back to the manager
+
+// The schedule, as the 2.31 picker (0x6bcdfc) and blip function (0x219a45c) read and write it.
+constexpr size_t kStationMetadata = 0x110;       // the station's audioRadioStationMetadata
+constexpr size_t kStationQueued = 0x150;         // a queued track, which a pick takes first
+constexpr size_t kStationRemaining = 0x160;      // the tracks not yet picked this cycle
+constexpr size_t kStationRemainingCount = 0x16c;
+constexpr size_t kStationPicks = 0x170;          // byte: picks since the last blip
+constexpr size_t kStationBlip = 0x178;           // the playing blip's name
+constexpr size_t kStationBlipCursor = 0x188;     // index into the blip order
+constexpr size_t kScheduleMs = 100;
 
 // The manager's inline list of station names that may be active: four 24-byte entries.
 constexpr size_t kManagerList = 0x168;
@@ -69,6 +79,10 @@ std::unordered_map<uintptr_t, std::string> g_last;
 uint64_t g_walks = 0;
 std::string g_lastList;
 bool g_failed = false;
+uint64_t g_lastSchedule = 0;
+bool g_scheduleFailed = false;
+size_t g_tracksOffset = 0;   // audioRadioStationMetadata.tracks, from RTTI
+size_t g_blipsOffset = 0;    // audioRadioStationMetadata.blips, from RTTI
 
 void Log(const std::string& aText)
 {
@@ -253,6 +267,204 @@ void Walk(std::string& aReport)
     ++g_walks;
 }
 
+// --- the schedule ------------------------------------------------------------------------------
+// One POD snapshot per station, read behind SEH; the text is built outside it.
+struct Sched
+{
+    uintptr_t station;
+    uint64_t name;
+    int32_t state;
+    uint8_t picks;
+    uint8_t active;
+    uint32_t remaining;
+    uint32_t blipCursor;
+    uint64_t current;
+    uint64_t blip;
+    uint64_t queued;
+    float clock;
+    uintptr_t metadata;
+};
+
+constexpr uint32_t kMaxStations = 128;
+Sched g_snap[kMaxStations];
+std::unordered_map<uintptr_t, std::string> g_lastSched;
+std::unordered_map<uintptr_t, bool> g_listed;
+
+uint32_t ReadSchedule()
+{
+    const auto rootSlot = ResolveByHash(kHashEngineRoot);
+    if (!rootSlot)
+    {
+        return 0;
+    }
+    const auto root = Read<uintptr_t>(rootSlot);
+    const auto audio = root ? Read<uintptr_t>(root + kRootAudioSystem) : 0;
+    const auto manager = audio ? Read<uintptr_t>(audio + kAudioRadioManager) : 0;
+    if (!manager)
+    {
+        return 0;
+    }
+    const auto stations = Read<uintptr_t>(manager + kManagerStations);
+    const auto count = Read<uint32_t>(manager + kManagerCount);
+    if (!stations || count > kMaxStations)
+    {
+        return 0;
+    }
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const auto station = Read<uintptr_t>(stations + i * 8);
+        if (!station)
+        {
+            continue;
+        }
+        Sched& s = g_snap[n++];
+        s.station = station;
+        const auto vtbl = Read<uintptr_t>(station);
+        uint64_t name = 0;
+        Read<GetNameFn>(vtbl + kVtblGetName)(reinterpret_cast<void*>(station), &name);
+        s.name = name;
+        s.state = Read<int32_t>(station + kStationType);
+        s.picks = Read<uint8_t>(station + kStationPicks);
+        s.active = Read<uint8_t>(station + kStationActive);
+        s.remaining = Read<uint32_t>(station + kStationRemainingCount);
+        s.blipCursor = Read<uint32_t>(station + kStationBlipCursor);
+        s.current = Read<uint64_t>(station + kStationHandle);
+        s.blip = Read<uint64_t>(station + kStationBlip);
+        s.queued = Read<uint64_t>(station + kStationQueued);
+        s.clock = Read<float>(station + kStationClock);
+        s.metadata = Read<uintptr_t>(station + kStationMetadata);
+    }
+    return n;
+}
+
+bool SafeReadSchedule(uint32_t* aCount)
+{
+    __try
+    {
+        *aCount = ReadSchedule();
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+// A CName as text when the pool knows it, as its hash otherwise.
+std::string Text(uint64_t aHash)
+{
+    if (aHash == 0)
+    {
+        return "-";
+    }
+    const char* text = RED4ext::CName(aHash).ToString();
+    if (text && *text)
+    {
+        return text;
+    }
+    char buf[24];
+    std::snprintf(buf, sizeof(buf), "%016llx", static_cast<unsigned long long>(aHash));
+    return buf;
+}
+
+// The metadata's tracks and blips arrays, read through the offsets RTTI gives. A DynArray is
+// { entries, capacity, size }; each entry here is one 8-byte CName.
+bool SafeReadList(uintptr_t aMetadata, size_t aOffset, uint64_t* aOut, uint32_t aMax, uint32_t* aSize)
+{
+    __try
+    {
+        const auto entries = Read<uintptr_t>(aMetadata + aOffset);
+        const auto size = Read<uint32_t>(aMetadata + aOffset + 0xc);
+        *aSize = size;
+        for (uint32_t i = 0; entries && i < size && i < aMax; ++i)
+        {
+            aOut[i] = Read<uint64_t>(entries + i * 8);
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+std::string ListNames(uintptr_t aMetadata, size_t aOffset)
+{
+    if (!aMetadata || !aOffset)
+    {
+        return "?";
+    }
+    uint64_t names[256] = {};
+    uint32_t size = 0;
+    if (!SafeReadList(aMetadata, aOffset, names, 256, &size))
+    {
+        return "(fault)";
+    }
+    std::string out = std::to_string(size) + ":";
+    for (uint32_t i = 0; i < size && i < 256; ++i)
+    {
+        out += " " + std::to_string(i) + "=" + Text(names[i]);
+    }
+    return out;
+}
+
+void Schedule()
+{
+    uint32_t count = 0;
+    if (!SafeReadSchedule(&count))
+    {
+        g_scheduleFailed = true;
+        Log("schedule: a read faulted - schedule logging stopped");
+        return;
+    }
+    if (!g_tracksOffset)
+    {
+        if (auto* cls = RED4ext::CRTTISystem::Get()->GetClass("audioRadioStationMetadata"))
+        {
+            if (auto* p = cls->GetProperty(RED4ext::CName("tracks")))
+            {
+                g_tracksOffset = p->valueOffset;
+            }
+            if (auto* p = cls->GetProperty(RED4ext::CName("blips")))
+            {
+                g_blipsOffset = p->valueOffset;
+            }
+            char buf[96];
+            std::snprintf(buf, sizeof(buf), "schedule: metadata tracks at +0x%zx, blips at +0x%zx", g_tracksOffset,
+                          g_blipsOffset);
+            Log(buf);
+        }
+    }
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        const Sched& s = g_snap[i];
+        const std::string name = Text(s.name);
+        if (!g_listed[s.station] && s.metadata && g_tracksOffset)
+        {
+            g_listed[s.station] = true;
+            Log("schedule: " + name + " tracks " + ListNames(s.metadata, g_tracksOffset));
+            Log("schedule: " + name + " blips " + ListNames(s.metadata, g_blipsOffset));
+        }
+        // Logged on every change of state, pick count, current track or blip; the clock rides along.
+        char key[160];
+        std::snprintf(key, sizeof(key), "%d|%u|%llx|%llx|%llx", s.state, s.picks,
+                      static_cast<unsigned long long>(s.current), static_cast<unsigned long long>(s.blip),
+                      static_cast<unsigned long long>(s.queued));
+        auto& last = g_lastSched[s.station];
+        if (last == key)
+        {
+            continue;
+        }
+        last = key;
+        char line[160];
+        std::snprintf(line, sizeof(line), " state=%d picks=%u active=%u remaining=%u blipCursor=%u clock=%.2f",
+                      s.state, s.picks, s.active, s.remaining, s.blipCursor, s.clock);
+        Log("sched " + name + line + " track=" + Text(s.current) + " blip=" + Text(s.blip) +
+            " queued=" + Text(s.queued));
+    }
+}
+
 // The walk reads engine memory by offset, so a wrong offset on another build would fault. SEH
 // keeps a bad read from taking the game down: the probe reports once and stops.
 bool SafeWalk(std::string& aReport)
@@ -275,6 +487,11 @@ bool OnUpdate(RED4ext::CGameApplication*)
         return false;
     }
     const uint64_t now = GetTickCount64();
+    if (!g_scheduleFailed && now - g_lastSchedule >= kScheduleMs)
+    {
+        g_lastSchedule = now;
+        Schedule();
+    }
     if (now - g_lastTick < 1000)
     {
         return false;
