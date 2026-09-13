@@ -179,7 +179,9 @@ def report(wav, log, settle, minimum):
         lufs = 10 * math.log10(energy / seconds) if energy > 0 else float("-inf")
         rows.append((station, seconds, lufs, peak))
     measured = [r[2] for r in rows if r[2] is not None and re.match(r"radio_station_(0\d|1[0-4])_", r[0])]
-    reference = sorted(measured)[len(measured) // 2] if measured else None
+    ordered = sorted(measured)
+    middle = len(ordered) // 2
+    reference = None if not ordered else ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
     print(f"{'station':40} {'seconds':>8} {'LUFS':>7} {'peak':>7} {'vs vanilla median':>18}")
     for station, seconds, lufs, peak in sorted(rows, key=lambda r: (r[2] is None, -(r[2] or 0))):
         if lufs is None:
