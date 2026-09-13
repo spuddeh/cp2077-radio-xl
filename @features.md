@@ -46,6 +46,8 @@
 
 ## Verified in game
 
+- A station naming an existing UIIcon record shows that icon; one naming a missing record shows the RadioXL glyph (#21).
+
 - Audio on all three receivers, three stations installed side by side, MP3, WAV, FLAC and OGG tracks.
 - Station name and icon on the Radioport, the vehicle selector, the dashboard and world devices.
 - No crackle at a world device: 0 wrap artefacts in 550 s of capture, true peak -1.4 dBFS, a custom
@@ -62,8 +64,6 @@
 ## Awaiting in-game verification
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
-- A station naming no icon shows the RadioXL glyph on the selector, the dashboard and a world device.
-- A station naming `UIIcon.RadioHipHop` shows that icon on the selector, the dashboard and a world device (#21).
 
 ## Planned
 
