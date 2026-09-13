@@ -188,6 +188,22 @@ void TestStream()
                 "Mod/station.json:3: a station with a \"url\" track plays that stream only");
 }
 
+void TestIdent()
+{
+    const Read r(R"json({
+  "name": "x",
+  "tracks": [ { "file": "a.mp3", "title": "A" }, { "file": "id.mp3", "ident": true } ]
+})json");
+    Check(r.ok, "an ident track reads", r.Joined());
+    Check(r.station.tracks.size() == 2 && !r.station.tracks[0].ident && r.station.tracks[1].ident, "ident flag read per track");
+    ExpectFault("every track an ident", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"file\": \"a\", \"ident\": true }\n  ]\n}",
+                "Mod/station.json:3: every track is an ident");
+    ExpectFault("a url ident", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"url\": \"http://h/s\", \"ident\": true }\n  ]\n}",
+                "Mod/station.json:4: an ident is a file");
+    ExpectFault("ident as a string", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"file\": \"a\", \"ident\": \"yes\" }\n  ]\n}",
+                "Mod/station.json:4: \"ident\" must be");
+}
+
 void TestSyntaxFaults()
 {
     ExpectFault("trailing comma in object", "{\n  \"name\": \"x\",\n  \"tracks\": [],\n}", "Mod/station.json:4:1: a trailing comma before '}'");
@@ -259,6 +275,7 @@ int main()
     TestTitleThatFooledTheScanner();
     TestIconRecord();
     TestStream();
+    TestIdent();
     TestSyntaxFaults();
     TestSchemaFaults();
     TestWarnings();

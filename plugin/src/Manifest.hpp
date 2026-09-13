@@ -33,6 +33,7 @@ struct Track
     std::string url;        // an http or https stream, in place of file
     std::string title;      // the song title as it is shown, plain text, may be empty
     float duration = 0.0f;  // seconds, from the file's headers - what the station schedules against
+    bool ident = false;     // a station ident: written to the station's blips, not its tracks
 };
 
 // The level trim every station gets unless its manifest says otherwise. **A station's level belongs
@@ -270,7 +271,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
                 fail(item.line, "each track must be an object, { \"file\": ... }, not " + std::string(JsonValue::KindName(item.kind)));
                 continue;
             }
-            unknownKeys(item, {"file", "url", "title"}, "track");
+            unknownKeys(item, {"file", "url", "title", "ident"}, "track");
             Track track;
             const bool hasUrl = item.Find("url") != nullptr;
             if (hasUrl && item.Find("file"))
@@ -301,12 +302,25 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
             {
                 track.title = title->string;
             }
+            if (const JsonValue* ident = expect(item, "ident", JsonValue::Kind::Bool, false))
+            {
+                track.ident = ident->boolean;
+                if (track.ident && hasUrl)
+                {
+                    fail(ident->line, "an ident is a file - a \"url\" track cannot be one");
+                }
+            }
             aOut.tracks.push_back(std::move(track));
         }
         const bool streams = std::any_of(aOut.tracks.begin(), aOut.tracks.end(), [](const Track& t) { return !t.url.empty(); });
         if (streams && aOut.tracks.size() > 1)
         {
             fail(tracks->line, "a station with a \"url\" track plays that stream only - it must be the one track");
+        }
+        const bool songs = std::any_of(aOut.tracks.begin(), aOut.tracks.end(), [](const Track& t) { return !t.ident; });
+        if (!aOut.tracks.empty() && !songs)
+        {
+            fail(tracks->line, "every track is an ident - a station needs at least one song");
         }
     }
 

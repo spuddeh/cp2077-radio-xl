@@ -68,6 +68,7 @@ public native func RadioXL_StationTrack(index: Int32, track: Int32) -> CName;
 public native func RadioXL_StationTrackKey(index: Int32, track: Int32) -> CName;
 public native func RadioXL_StationTrackFile(index: Int32, track: Int32) -> String;
 public native func RadioXL_StationTrackTitle(index: Int32, track: Int32) -> String;
+public native func RadioXL_StationTrackIsIdent(index: Int32, track: Int32) -> Bool;
 public native func RadioXL_StationTrackDuration(index: Int32, track: Int32) -> Float;
 public native func RadioXL_StationKeyHash(index: Int32) -> Uint64;
 public native func RadioXL_StationTrackKeyHash(index: Int32, track: Int32) -> Uint64;
@@ -519,13 +520,21 @@ public class RadioXLService extends ScriptableService {
     // every station, so a station mod that wants one asks for it by name in its manifest.
     station.speaker = RadioXLSpeaker(RadioXL_StationSpeaker(index));
 
+    // An ident goes into `blips`, which the engine schedules between songs itself: it takes no song
+    // slot, gets no title row, and a shuffle of the songs cannot move it.
     let tracks: Int32 = RadioXL_StationTrackCount(index);
     let t: Int32 = 0;
     while t < tracks {
       let event: CName = RadioXL_StationTrack(index, t);
       if IsNameValid(event) {
-        ArrayPush(station.tracks, event);
-        this.AddTitle(titles, index, t, event);
+        if RadioXL_StationTrackIsIdent(index, t) {
+          let blip: audioRadioBlip;
+          blip.blipEventName = event;
+          ArrayPush(station.blips, blip);
+        } else {
+          ArrayPush(station.tracks, event);
+          this.AddTitle(titles, index, t, event);
+        }
       }
       t += 1;
     }
@@ -540,7 +549,7 @@ public class RadioXLService extends ScriptableService {
       ArrayPush(map.radioStations, name);
     }
 
-    RadioXLLog(s"registered \(name) as the metadata loaded: \(ArraySize(station.tracks)) track(s), map now lists \(ArraySize(map.radioStations))");
+    RadioXLLog(s"registered \(name) as the metadata loaded: \(ArraySize(station.tracks)) track(s), \(ArraySize(station.blips)) ident(s), map now lists \(ArraySize(map.radioStations))");
   }
 
   // The row the dashboard and the radio wheel read the song title from. `localizationKey` is a key,

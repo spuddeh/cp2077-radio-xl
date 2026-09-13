@@ -1234,6 +1234,21 @@ void RadioXL_StationTrackKeyHash64(RED4ext::IScriptable*, RED4ext::CStackFrame* 
                 : 0;
 }
 
+// A station ident goes into the station's blips, which the engine schedules between songs itself.
+void RadioXL_StationTrackIsIdent(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    int32_t index = -1;
+    int32_t track = -1;
+    RED4ext::GetParameter(aFrame, &index);
+    RED4ext::GetParameter(aFrame, &track);
+    ++aFrame->code;
+    const Station* s = At(index);
+    if (aOut)
+    {
+        *aOut = s && track >= 0 && track < static_cast<int32_t>(s->tracks.size()) && s->tracks[track].ident;
+    }
+}
+
 void RadioXL_StationTrackTitle(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
 {
     int32_t index = -1;
@@ -1304,6 +1319,7 @@ void RegisterNatives()
     reg("RadioXL_StationTrackKey", &RadioXL_StationTrackKey, "CName", 2);
     reg("RadioXL_StationTrackFile", &RadioXL_StationTrackFile, "String", 2);
     reg("RadioXL_StationTrackTitle", &RadioXL_StationTrackTitle, "String", 2);
+    reg("RadioXL_StationTrackIsIdent", &RadioXL_StationTrackIsIdent, "Bool", 2);
     reg("RadioXL_StationTrackDuration", &RadioXL_StationTrackDuration, "Float", 2);
     reg("RadioXL_StationKeyHash", &RadioXL_StationKeyHash, "Uint64", 1);
     reg("RadioXL_StationTrackKeyHash", &RadioXL_StationTrackKeyHash, "Uint64", 2);

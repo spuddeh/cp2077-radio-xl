@@ -65,6 +65,8 @@ struct Watched
     std::vector<uint64_t> trackKeys;
     std::vector<std::string> rows;    // each track's event row, what AudioXL knows it as
     std::vector<float> durations;     // each track's length in seconds
+    std::vector<bool> idents;         // each track's ident flag; an ident is a blip, never a slot
+    std::vector<bool> identPlaying;   // each ident's last seen IsPlaying, to log when one starts
     int lastTrack = -1;               // the track last seen posted, for logging on change
     uint64_t lastUnmatched = 0;       // a returned key that matched no track, logged once
     bool refused = false;             // AudioXL last refused this station's offset
@@ -204,6 +206,30 @@ inline int CurrentTrack(Watched& aStation)
     return -1;
 }
 
+// Whether AudioXL has a live voice on a row. False when AudioXL or the native is missing.
+inline bool IsPlaying(const std::string& aRow)
+{
+    if (!g_state.audioXL)
+    {
+        return false;
+    }
+    auto* cls = RED4ext::CRTTISystem::Get()->GetClass("AudioXLNative");
+    auto* fn = cls ? cls->GetFunction(RED4ext::CName("IsPlaying")) : nullptr;
+    if (!fn)
+    {
+        return false;
+    }
+    bool playing = false;
+    RED4ext::CName row(aRow.c_str());
+    RED4ext::StackArgs_t args;
+    args.emplace_back(nullptr, &row);
+    if (!RED4ext::ExecuteFunction(static_cast<void*>(nullptr), fn, &playing, args))
+    {
+        return false;
+    }
+    return playing;
+}
+
 // Arms a row's next voice to start at `aSeconds`. AudioXL consumes the value on the next post, so it
 // is written every period while the station is on that row.
 inline bool Arm(const std::string& aRow, float aSeconds)
@@ -269,7 +295,31 @@ inline void Tick()
         {
             continue;  // no session, or the station is not constructed yet
         }
+        // Every change of track and every ident that starts is logged with the station clock, which
+        // is how the engine's placement of blips between songs is read from a play session.
+        for (size_t i = 0; i < station.rows.size(); ++i)
+        {
+            if (!station.idents[i])
+            {
+                continue;
+            }
+            const bool playing = IsPlaying(station.rows[i]);
+            if (playing && !station.identPlaying[i])
+            {
+                char buf[64];
+                std::snprintf(buf, sizeof(buf), " at clock %.2f s", clock);
+                Log(station.name + ": ident " + station.rows[i] + " started" + buf + " (on track " +
+                    std::to_string(station.lastTrack) + ")");
+            }
+            station.identPlaying[i] = playing;
+        }
         const int track = CurrentTrack(station);
+        if (track != station.lastTrack && track >= 0)
+        {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), " at clock %.2f s", clock);
+            Log(station.name + ": now on track " + std::to_string(track) + buf);
+        }
         station.lastTrack = track;
         if (track < 0)
         {
@@ -328,9 +378,12 @@ inline void Start(const RED4ext::v1::Sdk* aSdk, RED4ext::v1::PluginHandle aHandl
         w.nameHash = RED4ext::CName(s.name.c_str()).hash;
         for (size_t i = 0; i < s.tracks.size(); ++i)
         {
-            w.trackKeys.push_back(aKey(s, i));
+            // An ident has no title row, so the engine can never name it as the current track.
+            w.trackKeys.push_back(s.tracks[i].ident ? 0 : aKey(s, i));
             w.rows.push_back(aEvent(s, i));
             w.durations.push_back(s.tracks[i].duration);
+            w.idents.push_back(s.tracks[i].ident);
+            w.identPlaying.push_back(false);
         }
         g_state.stations.push_back(std::move(w));
     }
