@@ -24,9 +24,13 @@ namespace radioxl
 // A track is an audio FILE and a title. Nothing else is written by hand: the length is read from
 // the file's own headers at load, and AudioXL registers the file and supplies the Wwise id. A
 // manifest that carried a duration would be a second place for it to be wrong.
+//
+// A track can instead be a URL, a live MP3 stream AudioXL plays from the network. A stream has no
+// length, so a station with one plays that stream and nothing else.
 struct Track
 {
     std::string file;       // relative to the station's own manifest folder
+    std::string url;        // an http or https stream, in place of file
     std::string title;      // the song title as it is shown, plain text, may be empty
     float duration = 0.0f;  // seconds, from the file's headers - what the station schedules against
 };
@@ -68,6 +72,32 @@ inline std::string DepotPath(std::string aPath)
 // The five DJs the engine has, and None. The redscript half maps the word to the enum; a word it
 // does not know would fall to None silently, so the check is here where the line is known.
 constexpr std::string_view kSpeakers[] = {"None", "Stanley", "MaximumMike", "Ash", "Kurtz", "PoliceDispatch"};
+
+// The schedule length every stream track is given. A live stream has no end to schedule against;
+// when AudioXL ends the voice (the station stopped sending) the engine posts the same slot again,
+// which reconnects.
+constexpr float kStreamDuration = 3600.0f;
+
+inline bool IsStreamUrl(std::string_view aUrl)
+{
+    auto starts = [&](std::string_view aPrefix)
+    {
+        if (aUrl.size() <= aPrefix.size())
+        {
+            return false;
+        }
+        for (size_t i = 0; i < aPrefix.size(); ++i)
+        {
+            const char c = aUrl[i];
+            if ((c >= 'A' && c <= 'Z' ? static_cast<char>(c - 'A' + 'a') : c) != aPrefix[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+    return starts("http://") || starts("https://");
+}
 
 // A TweakDB UIIcon record by name, `UIIcon.RadioHipHop`, rather than a part in an atlas.
 inline bool IsIconRecord(std::string_view aIcon)
@@ -240,9 +270,26 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
                 fail(item.line, "each track must be an object, { \"file\": ... }, not " + std::string(JsonValue::KindName(item.kind)));
                 continue;
             }
-            unknownKeys(item, {"file", "title"}, "track");
+            unknownKeys(item, {"file", "url", "title"}, "track");
             Track track;
-            if (const JsonValue* file = expect(item, "file", JsonValue::Kind::String, true))
+            const bool hasUrl = item.Find("url") != nullptr;
+            if (hasUrl && item.Find("file"))
+            {
+                fail(item.line, "a track has \"file\" or \"url\", not both");
+            }
+            if (hasUrl)
+            {
+                if (const JsonValue* url = expect(item, "url", JsonValue::Kind::String, true))
+                {
+                    if (!IsStreamUrl(url->string))
+                    {
+                        fail(url->line, "\"url\" must start with http:// or https://: \"" + url->string + "\"");
+                    }
+                    track.url = url->string;
+                    track.duration = kStreamDuration;
+                }
+            }
+            else if (const JsonValue* file = expect(item, "file", JsonValue::Kind::String, true))
             {
                 if (file->string.empty())
                 {
@@ -255,6 +302,11 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
                 track.title = title->string;
             }
             aOut.tracks.push_back(std::move(track));
+        }
+        const bool streams = std::any_of(aOut.tracks.begin(), aOut.tracks.end(), [](const Track& t) { return !t.url.empty(); });
+        if (streams && aOut.tracks.size() > 1)
+        {
+            fail(tracks->line, "a station with a \"url\" track plays that stream only - it must be the one track");
         }
     }
 

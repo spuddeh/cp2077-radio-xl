@@ -419,6 +419,14 @@ void LoadManifests()
         double total = 0.0;
         for (auto it = station.tracks.begin(); it != station.tracks.end();)
         {
+            if (!it->url.empty())
+            {
+                Log(station.source + ": '" + station.name + "' streams " + it->url +
+                    " - AudioXL plays it only when AudioXL.ini allows http and that host");
+                total += it->duration;
+                ++it;
+                continue;
+            }
             it->duration = radioxl::AudioDuration(std::filesystem::u8path(station.folder) / std::filesystem::u8path(it->file));
             if (it->duration <= 0.0f)
             {
@@ -1123,7 +1131,8 @@ void RadioXL_StationTrackKey(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame
 }
 
 // An absolute path, because AudioXL's RegisterSound takes one and the station mod's folder is the
-// only place the file is known to be.
+// only place the file is known to be. A stream track answers its URL, which AudioXL takes in place of
+// a path.
 void RadioXL_StationTrackFile(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
 {
     int32_t index = -1;
@@ -1134,6 +1143,11 @@ void RadioXL_StationTrackFile(RED4ext::IScriptable*, RED4ext::CStackFrame* aFram
     const Station* s = At(index);
     if (s && track >= 0 && track < static_cast<int32_t>(s->tracks.size()))
     {
+        if (!s->tracks[track].url.empty())
+        {
+            OutString(aOut, s->tracks[track].url);
+            return;
+        }
         const auto full = std::filesystem::u8path(s->folder) / std::filesystem::u8path(s->tracks[track].file);
         OutString(aOut, Utf8(full));
         return;

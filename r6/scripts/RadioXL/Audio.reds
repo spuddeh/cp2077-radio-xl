@@ -68,6 +68,45 @@ public class RadioXLAudio {
     return false;
   }
 
+  // A stream track's file is its URL. AudioXL accepts the row at once and probes the stream on a
+  // worker thread, so the row appears a moment later and SetGain waits for it.
+  public final static func IsStream(file: String) -> Bool {
+    let lower: String = StrLower(file);
+    return StrBeginsWith(lower, "http://") || StrBeginsWith(lower, "https://");
+  }
+
+  @if(ModuleExists("AudioXL"))
+  public final static func RegisterStream(event: CName, url: String, type: CName) -> Bool {
+    return AudioXLNative.RegisterSound(event, type, url, 1.0, 0.0, 30.0);
+  }
+
+  @if(!ModuleExists("AudioXL"))
+  public final static func RegisterStream(event: CName, url: String, type: CName) -> Bool {
+    return false;
+  }
+
+  // False means every URL row is refused: AudioXL.ini, which only the player edits, turns http on
+  // and lists the hosts allowed.
+  @if(ModuleExists("AudioXL"))
+  public final static func HttpAllowed() -> Bool {
+    return AudioXLNative.HttpAllowed();
+  }
+
+  @if(!ModuleExists("AudioXL"))
+  public final static func HttpAllowed() -> Bool {
+    return false;
+  }
+
+  @if(ModuleExists("AudioXL"))
+  public final static func HttpStatus() -> String {
+    return AudioXLNative.HttpStatus();
+  }
+
+  @if(!ModuleExists("AudioXL"))
+  public final static func HttpStatus() -> String {
+    return "AudioXL is not installed";
+  }
+
   @if(ModuleExists("AudioXL"))
   public final static func Has(event: CName) -> Bool {
     return AudioXLNative.Has(event);

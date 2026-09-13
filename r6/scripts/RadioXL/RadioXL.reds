@@ -230,8 +230,13 @@ public class RadioXLService extends ScriptableService {
       while t < tracks {
         let event: CName = RadioXL_StationTrack(station, t);
         let file: String = RadioXL_StationTrackFile(station, t);
-        if IsNameValid(event) && StrLen(file) > 0 && !RadioXLAudio.Has(event) {
-          if RadioXLAudio.Register(event, file, type) {
+        let stream: Bool = RadioXLAudio.IsStream(file);
+        if stream && !RadioXLAudio.HttpAllowed() {
+          RadioXLLog(s"\(event) streams \(file), and AudioXL.ini does not allow http: \(RadioXLAudio.HttpStatus())");
+        } else if IsNameValid(event) && StrLen(file) > 0 && !RadioXLAudio.Has(event) {
+          let accepted: Bool = stream ? RadioXLAudio.RegisterStream(event, file, type)
+                                      : RadioXLAudio.Register(event, file, type);
+          if accepted {
             registered += 1;
             if !RadioXLAudio.SetGain(event, gain) {
               this.m_gainPending = true;
@@ -278,8 +283,9 @@ public class RadioXLService extends ScriptableService {
       RadioXLLog("level trim applied to every track");
       return;
     }
+    // A stream row appears only once AudioXL has connected to the station, which can take seconds.
     this.m_gainPolls += 1;
-    if this.m_gainPolls > 20 {
+    if this.m_gainPolls > 60 {
       RadioXLLog(s"\(failed) track(s) never got a row in AudioXL, so their level trim was not applied");
       this.m_gainPending = false;
       return;

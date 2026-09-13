@@ -317,6 +317,12 @@ inline void Start(const RED4ext::v1::Sdk* aSdk, RED4ext::v1::PluginHandle aHandl
     g_state.handle = aHandle;
     for (const auto& s : aStations)
     {
+        // A stream has no position to resume: AudioXL refuses PlayFrom on a URL row, and a
+        // reconnect joins the station wherever it is.
+        if (!s.tracks.empty() && !s.tracks.front().url.empty())
+        {
+            continue;
+        }
         Watched w;
         w.name = s.name;
         w.nameHash = RED4ext::CName(s.name.c_str()).hash;

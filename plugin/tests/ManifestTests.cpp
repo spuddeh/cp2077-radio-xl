@@ -169,6 +169,25 @@ void TestIconRecord()
                 "Mod/station.json:3: \"icon\" names an atlas part");
 }
 
+void TestStream()
+{
+    const Read r(R"json({
+  "name": "x",
+  "tracks": [ { "url": "HTTPS://ice1.somafm.com/groovesalad-128-mp3", "title": "Groove Salad" } ]
+})json");
+    Check(r.ok, "a url track reads", r.Joined());
+    Check(r.station.tracks.size() == 1 && r.station.tracks[0].url == "HTTPS://ice1.somafm.com/groovesalad-128-mp3",
+          "url kept as written");
+    Check(r.station.tracks[0].file.empty(), "a url track has no file");
+    Check(r.station.tracks[0].duration == radioxl::kStreamDuration, "a url track takes the stream duration");
+    ExpectFault("url and file together", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"file\": \"a\", \"url\": \"http://h/s\" }\n  ]\n}",
+                "Mod/station.json:4: a track has \"file\" or \"url\", not both");
+    ExpectFault("url not http", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"url\": \"ftp://h/s\" }\n  ]\n}",
+                "Mod/station.json:4: \"url\" must start with http:// or https://");
+    ExpectFault("url beside other tracks", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"url\": \"http://h/s\" },\n    { \"file\": \"a\" }\n  ]\n}",
+                "Mod/station.json:3: a station with a \"url\" track plays that stream only");
+}
+
 void TestSyntaxFaults()
 {
     ExpectFault("trailing comma in object", "{\n  \"name\": \"x\",\n  \"tracks\": [],\n}", "Mod/station.json:4:1: a trailing comma before '}'");
@@ -239,6 +258,7 @@ int main()
     TestTolerated();
     TestTitleThatFooledTheScanner();
     TestIconRecord();
+    TestStream();
     TestSyntaxFaults();
     TestSchemaFaults();
     TestWarnings();
