@@ -262,6 +262,7 @@ public class RadioXLService extends ScriptableService {
   // A row AudioXL queued has no gain to set at registration time. Walk every track again until each
   // SetGain lands, bounded, so a row that never appears costs a few seconds rather than a timer.
   public func ApplyGains() -> Void {
+    RadioXLAudio.PollStreams();
     let failed: Int32 = 0;
     let station: Int32 = 0;
     let count: Int32 = RadioXL_StationCount();

@@ -85,6 +85,21 @@ public class RadioXLAudio {
     return false;
   }
 
+  // **A URL row finishes registering only when a script calls into AudioXL's remote natives.**
+  // Measured: with nothing calling them the row never appeared and the station stayed silent; the
+  // first call completed it and the stream started within the second. Poll is the call for it;
+  // the answer is how many URL rows are still waiting on their station.
+  @if(ModuleExists("AudioXL"))
+  public final static func PollStreams() -> Int32 {
+    AudioXLNative.Poll();
+    return AudioXLNative.PendingRemote();
+  }
+
+  @if(!ModuleExists("AudioXL"))
+  public final static func PollStreams() -> Int32 {
+    return 0;
+  }
+
   // False means every URL row is refused: AudioXL.ini, which only the player edits, turns http on
   // and lists the hosts allowed.
   @if(ModuleExists("AudioXL"))
