@@ -9,6 +9,8 @@
   own glyph.
 - A station's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) and ship no archive;
   a record that does not exist falls back to the glyph (#21).
+- A station's track can be a live MP3 stream URL, as its only track; it joins the stream live on
+  tune-in and reconnects on its own (#23).
 - A station that names no icon shows the RadioXL glyph, shipped in the framework's archive; the
   record `UIIcon.RadioXL` exists for a RadioXL 0.1.0 station yaml that names it.
 - Resume: tuning back to a custom station picks the song up where the station has got to, the
@@ -46,6 +48,8 @@
 
 ## Verified in game
 
+- A stream station plays on the Radioport, a car and a world device, reconnects on tune-back, and at
+  gain 1 sits inside the vanilla loudness range (#23).
 - A station naming an existing UIIcon record shows that icon; one naming a missing record shows the RadioXL glyph (#21).
 - Audio on all three receivers, three stations installed side by side, MP3, WAV, FLAC and OGG tracks.
 - Station name and icon on the Radioport, the vehicle selector, the dashboard and world devices.

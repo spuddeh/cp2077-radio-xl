@@ -66,8 +66,13 @@ its trim constants, and rebuild.
 
 ## 4. AudioXL
 
-The framework depends on AudioXL for every sound, and on three of its natives in particular:
-`RegisterSoundEx`, `SetGain` and `LoadBank`.
+The framework depends on AudioXL 0.4.0 or later for every sound, and on these natives in particular:
+`RegisterSoundEx`, `SetGain` and `LoadBank` for every station; `RegisterSound`, `Poll`,
+`PendingRemote`, `HttpAllowed` and `HttpStatus` for a stream station; `PlayFrom`, reached by the
+plugin through RTTI, for resume.
+
+- **A stream row appears only once something calls `Poll`.** If an AudioXL update removes `Poll`,
+  the scripts stop compiling, so the change cannot pass unnoticed.
 
 - **`LoadBank` returns 1 both for a load and for a bank queued** because the engine's audio system is
   not up yet. A 1 at boot is a promise, not a fact; only a later failure is reported.

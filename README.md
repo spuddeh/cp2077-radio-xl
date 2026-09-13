@@ -42,7 +42,9 @@ archive/pc/mod/<YourMod>.archive          (optional - the station icon)
 }
 ```
 
-No durations, event names, Wwise ids, indices, TweakDB records, yaml or redscript. The framework
+A track can also be a `url`, a live MP3 stream, as a station's only track; the player allows its
+host in AudioXL's `AudioXL.ini`. No durations, event names, Wwise ids, indices, TweakDB records,
+yaml or redscript. The framework
 derives or reads all of it. The full field reference is
 [stations/README.md](red4ext/plugins/RadioXL/stations/README.md), which ships with the
 framework so the `stations/` folder survives packaging.
@@ -52,8 +54,9 @@ framework so the `stations/` folder survives packaging.
 - [RED4ext](https://www.nexusmods.com/cyberpunk2077/mods/2380)
 - [redscript](https://www.nexusmods.com/cyberpunk2077/mods/1511)
 - [Codeware](https://www.nexusmods.com/cyberpunk2077/mods/7780) - resource callbacks and localization
-- [AudioXL](https://www.nexusmods.com/cyberpunk2077/mods/33442) 0.3.0 or later - plays the audio
-  files, streams long tracks from disk, and carries the per-row start offset a resume needs
+- [AudioXL](https://www.nexusmods.com/cyberpunk2077/mods/33442) 0.4.0 or later - plays the audio
+  files, streams long tracks from disk, plays a stream URL, and carries the per-row start offset a
+  resume needs
 - [TweakXL](https://www.nexusmods.com/cyberpunk2077/mods/4197) - the station's records for the dial
 
 Optional: [Redscript Configuration Framework](https://www.nexusmods.com/cyberpunk2077/mods/30726)

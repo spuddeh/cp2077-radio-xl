@@ -17,7 +17,7 @@ RadioXL is a framework. Install it, then install stations built on it, or build 
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/1511]redscript[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/4197]TweakXL[/url][/*]
-[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.3.0 or later[/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.4.0 or later[/*]
 [*]Game version 2.31.[/*]
 [/list]
 Optional:
@@ -55,12 +55,25 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
 [*][b]displayName[/b] starts with the frequency. The dial is sorted by it, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
-[*][b]tracks[/b] play in order, on the station's own clock, the way a vanilla station plays. WAV, MP3, OGG and FLAC.[/*]
+[*][b]tracks[/b] play in order, on the station's own clock, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]speaker[/b] is optional and names a DJ: Stanley, MaximumMike, Ash, Kurtz or PoliceDispatch.[/*]
 [*][b]shuffle[/b] is optional. true: this station plays its tracks in a new random order each time the game starts, whatever the player's Shuffle setting. false: it is never shuffled, even when that setting says every station. Left out: the player's setting decides.[/*]
 [/list]
 
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
+
+
+[color=#e06666][size=6][b]- Stations that stream -[/b][/size][/color]
+
+A station can play a live internet radio stream instead of music files. AudioXL fetches nothing from the internet until you allow it, in [b]red4ext\plugins\AudioXL\AudioXL.ini[/b]:
+[quote][code][Network]
+allowHttpConnections = true
+allowedHost = ice1.somafm.com[/code][/quote]
+Use the host the station's own page names; one [b]allowedHost[/b] line per host. A station that stays silent usually needs one more host: AudioXL's log names the one it refused.
+
+[b]Updating AudioXL replaces AudioXL.ini.[/b] After an update, add the lines again, or every stream station is silent.
+
+A stream station joins the broadcast live when you tune in, after a second or two of buffering, and shows the station's own title rather than the song playing.
 
 
 [color=#e06666][size=6][b]- Settings -[/b][/size][/color]

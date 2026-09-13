@@ -173,6 +173,24 @@ From its source, all `[M]`:
    forces streaming. Before 0.3.0 every MP3, OGG and FLAC was resident PCM, eleven album tracks about
    750 MB.
 6. **Banks load from memory** through the engine's `LoadBankMemoryCopy`.
+7. **A row can be an http or https MP3 stream** from AudioXL 0.4.0, registered with `RegisterSound`
+   and the URL as its path, and fetched only when the player's `AudioXL.ini` allows http and the host.
+   A URL row plays forward only: no `PlayFrom`, and `Duration` is 0.
+
+## A stream row
+
+`[M]` **A URL row finishes registering only when a script calls AudioXL's remote natives.**
+`RegisterSound` returns true at once and the stream is probed on a worker thread, but with nothing
+calling in, `Has` stayed false for a whole session and the station was silent. `Audio.reds` calls
+`AudioXLNative.Poll()` from the level-trim retry, and that alone makes the row appear.
+
+`[M]` **Tune-back reconnects.** `Position` read 15.9 s before a 60 s tune-away and 5.9 s after: a new
+voice on a new connection, not the frozen voice a file row keeps
+([#26](https://github.com/spuddeh/cp2077-radio-xl/issues/26)).
+
+`[M]` **A stream needs no special gain on the framework's type.** Measured on the Radioport with
+`tools/measure-loudness.py`: vanilla stations -16.3 to -19.6 LUFS, a future funk stream at gain 1
+-17.8, an ambient one -22.6. AudioXL's own advice of 0.2 to 0.4 is for its `axl_*` types.
 
 ## The symptoms, mapped
 

@@ -24,9 +24,10 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | `name` | the station's `CName`, letters, digits and underscores only, because it is also an event-name prefix and a TweakDB record id. Unique across every installed station mod; first found wins, the log names the loser |
 | `displayName` | plain text. **The frequency at the front**, because the game has no field for it: the number decides the station's place on the dial, in the vehicle list and in every receiver's next/previous order. A name with no number at the front puts the station after every station that has one |
 | `speaker` | optional DJ: `Stanley`, `MaximumMike`, `Ash`, `Kurtz`, `PoliceDispatch`. Default `None`, which plays |
-| `gain` | optional level trim on the samples, 0 to 1, clamped. Default 0.56 (-5 dB), which lands the custom sound's two Broadcast Sends inside the vanilla per-station range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
+| `gain` | optional level trim on the samples, 0 to 1, clamped. Default 1: the framework's `radioxl_radio` type cites a vanilla station's Broadcast Sends, so the level stages are vanilla's. Only when the routing bank fails to load and a station falls back to `mod_sfx_radio` is it multiplied by 0.56 (-5 dB), which keeps that type's hotter sends inside the vanilla range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
 | `icon` / `atlas` | optional inkatlas part and the atlas holding it, or `icon` alone naming an existing `UIIcon.` record (no atlas, no record of the station's own; a record that does not exist falls back to the glyph). Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
+| `tracks[].url` | in place of `file`, an `http://` or `https://` MP3 stream. Its schedule length is a fixed 3600 s (`kStreamDuration`), because a live stream has none to read; when AudioXL ends the voice the engine posts the same slot again, which reconnects. A station with a `url` track has that track only, so it has no schedule to shuffle or resume |
 | `tracks[].title` | optional plain text, shown as written |
 
 Manifests live at `red4ext/plugins/RadioXL/stations/<Mod>/station.json`, one folder
@@ -48,6 +49,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | --- | --- |
 | `name` missing, not a string, or holding a character outside `[A-Za-z0-9_]` | a key the framework does not know, at top level or in a track |
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 1, clamped |
+| a track with both `file` and `url`; a `url` not starting `http://` or `https://`; a `url` track beside any other track | |
 | `speaker` not one of the six the game has | `atlas` with no `icon` |
 | `gain` not a number; `icon` part name with no `atlas` | `atlas` beside an `icon` that is a record |
 

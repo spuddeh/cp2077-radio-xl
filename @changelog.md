@@ -9,7 +9,7 @@
   localization keys `...-RadioXL-<name>`, custom-sound type `radioxl_radio` in `radioxl_routing.bnk`
   (rebuilt; ids are FNV of the new strings), station manifests under
   `red4ext/plugins/RadioXL/stations/`. GitHub repo `spuddeh/cp2077-radio-xl`.
-- AudioXL 0.3.0 is the minimum. It streams compressed tracks of 45 s or more from disk, which
+- AudioXL 0.4.0 is the minimum, for stream stations; 0.3.0 streams compressed tracks of 45 s or more from disk, which
   removes the resident-PCM cost that made WAV the recommendation (#4), and adds `PlayFrom`,
   `Position`, `IsPlaying` and `Pause`.
 
@@ -20,6 +20,18 @@
   the plugin follows the enable routine's own `jne` to it and verifies the bytes there.
 
 ### Added
+- Web streams (#23): a track may be `{ "url": "http(s)://...", "title": ... }` in place of `file`,
+  as its station's only track. `Manifest.hpp` refuses `file` and `url` together, a non-http URL and
+  a URL beside other tracks, and gives the track `kStreamDuration` (3600 s); `Main.cpp` skips the
+  header read for it and hands the URL through `RadioXL_StationTrackFile`; `Clock.hpp` leaves the
+  station out, since a URL row refuses `PlayFrom`. `Audio.reds` registers it with `RegisterSound`,
+  logs `HttpStatus` when `HttpAllowed` is false, and calls `Poll` from the level-trim retry, without
+  which a URL row never appears (measured). The retry bound is 60 polls. Verified on the Radioport,
+  a car and a world device; tune-back reconnects (`Position` 15.9 before a 60 s tune-away, 5.9
+  after). Loudness measured with the new `tools/measure-loudness.py`: vanilla -16.3 to -19.6 LUFS,
+  a loud stream at gain 1 -17.8, so streams take the default gain.
+- `tools/measure-loudness.py`: records the game's loopback channel and splits it by the station
+  probe's log into per-station integrated loudness and true peak.
 - A manifest's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) with no `atlas`
   (#21). `Manifest.hpp` accepts `UIIcon.<name>` without an atlas, warns and drops an `atlas`
   beside one; `Dial.reds` points `RadioStation.RadioXL_<name>.icon` at the record and makes no
