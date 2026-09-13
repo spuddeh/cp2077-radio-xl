@@ -181,8 +181,10 @@ From its source, all `[M]`:
 
 `[M]` **A URL row finishes registering only when a script calls AudioXL's remote natives.**
 `RegisterSound` returns true at once and the stream is probed on a worker thread, but with nothing
-calling in, `Has` stayed false for a whole session and the station was silent. `Audio.reds` calls
-`AudioXLNative.Poll()` from the level-trim retry, and that alone makes the row appear.
+calling in, `Has` stayed false for a whole session and the station was silent. A console call of
+`Has`, `PendingRemote` and `HttpStatus` together completed it, and `Audio.reds` calling `Poll` then
+`PendingRemote` from the level-trim retry does too. Which of those does the work is not isolated;
+`Poll` is the likeliest by name.
 
 `[M]` **Tune-back reconnects.** `Position` read 15.9 s before a 60 s tune-away and 5.9 s after: a new
 voice on a new connection, not the frozen voice a file row keeps

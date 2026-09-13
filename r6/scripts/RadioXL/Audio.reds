@@ -85,8 +85,9 @@ public class RadioXLAudio {
     return false;
   }
 
-  // **A URL row finishes registering only when a script calls Poll.** Until then Has is false and
-  // the station is silent. The answer is how many URL rows are still waiting on their station.
+  // **A URL row finishes registering only when a script calls into AudioXL's remote natives**, Poll
+  // or PendingRemote; both are called. Until then Has is false and the station is silent. The answer
+  // is how many URL rows are still waiting on their station.
   @if(ModuleExists("AudioXL"))
   public final static func PollStreams() -> Int32 {
     AudioXLNative.Poll();
