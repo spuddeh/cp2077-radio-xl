@@ -71,9 +71,9 @@ The framework depends on AudioXL 0.4.0 or later for every sound, and on these na
 `PendingRemote`, `HttpAllowed` and `HttpStatus` for a stream station; `PlayFrom`, reached by the
 plugin through RTTI, for resume.
 
-- **A stream row appears only once a script calls into AudioXL's remote natives.** `Audio.reds` calls
-  `Poll` and `PendingRemote`; one of the two is what completes the row. If an AudioXL update removes
-  either, the scripts stop compiling, so the change cannot pass unnoticed.
+- **A stream row can take from seconds to minutes to appear.** `Audio.reds` calls `Poll` and
+  `PendingRemote` while it waits; neither is shown to be needed. If an AudioXL update removes either,
+  the scripts stop compiling, so the change cannot pass unnoticed.
 
 - **`LoadBank` returns 1 both for a load and for a bank queued** because the engine's audio system is
   not up yet. A 1 at boot is a promise, not a fact; only a later failure is reported.

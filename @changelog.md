@@ -26,8 +26,8 @@
   header read for it and hands the URL through `RadioXL_StationTrackFile`; `Clock.hpp` leaves the
   station out, since a URL row refuses `PlayFrom`. `Audio.reds` registers it with `RegisterSound`,
   logs `HttpStatus` when `HttpAllowed` is false, and calls `Poll` and `PendingRemote` from the
-  level-trim retry, without which a URL row never appears (measured; which of the two does it is
-  not isolated). The retry bound is 60 polls. Verified on the Radioport,
+  level-trim retry. A URL row appears seconds to minutes after registration; a diagnostic build
+  calling neither saw both stream rows 13 s after boot, so the calls are not a requirement. The retry bound is 60 polls. Verified on the Radioport,
   a car and a world device; tune-back reconnects (`Position` 15.9 before a 60 s tune-away, 5.9
   after). Loudness measured with the new `tools/measure-loudness.py`: vanilla -16.3 to -19.6 LUFS,
   a loud stream at gain 1 -17.8, so streams take the default gain.
