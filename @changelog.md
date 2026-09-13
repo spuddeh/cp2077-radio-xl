@@ -20,6 +20,13 @@
   the plugin follows the enable routine's own `jne` to it and verifies the bytes there.
 
 ### Added
+- Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
+  (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
+  event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses
+  a non-bool `ident`, an ident `url` track, and a station of idents only. `Clock.hpp` gives an ident
+  track key 0, logs every song change and every ident start with the station clock. Measured on a
+  test station (three 45 s tones, idents of 5.0 and 6.1 s): 2 idents in 7 song changes, each between
+  two songs, song-to-song gaps 45.2 / 49.5 / 45.0 / 45.3 / 50.5 / 45.2 s, no title shown.
 - Web streams (#23): a track may be `{ "url": "http(s)://...", "title": ... }` in place of `file`,
   as its station's only track. `Manifest.hpp` refuses `file` and `url` together, a non-http URL and
   a URL beside other tracks, and gives the track `kStreamDuration` (3600 s); `Main.cpp` skips the

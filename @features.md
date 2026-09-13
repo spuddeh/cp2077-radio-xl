@@ -9,6 +9,7 @@
   own glyph.
 - A station's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) and ship no archive;
   a record that does not exist falls back to the glyph (#21).
+- A track marked `ident` plays between songs as a station ident, with no title and no song slot (#29).
 - A station's track can be a live MP3 stream URL, as its only track; it joins the stream live on
   tune-in and reconnects on its own (#23).
 - A station that names no icon shows the RadioXL glyph, shipped in the framework's archive; the
@@ -48,6 +49,7 @@
 
 ## Verified in game
 
+- Idents play between songs, show no title, and leave song slots alone (#29).
 - A stream station plays on the Radioport, a car and a world device, reconnects on tune-back, and at
   gain 1 sits inside the vanilla loudness range (#23).
 - A station naming an existing UIIcon record shows that icon; one naming a missing record shows the RadioXL glyph (#21).
@@ -70,9 +72,6 @@
 
 ## Planned
 
-- A `blips` array per station, the engine's own field for a spoken station ident between songs. A
-  custom station currently has no way to name itself, and an ident placed in `tracks` is shown as a
-  song title and takes a rotation slot.
 - Station idents and ads aside, the only vanilla DJ a custom station could reuse is Stanley, whose
   227 lines name no station. His announcements target a selector the engine resolves, and declaring
   `speaker: Stanley` does not reach it (#16).

@@ -29,6 +29,7 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
 | `tracks[].url` | in place of `file`, an `http://` or `https://` MP3 stream. Its schedule length is a fixed 3600 s (`kStreamDuration`), because a live stream has none to read; when AudioXL ends the voice the engine posts the same slot again, which reconnects. A station with a `url` track has that track only, so it has no schedule to shuffle or resume |
 | `tracks[].title` | optional plain text, shown as written |
+| `tracks[].ident` | optional `true`: the track's event goes into the station entry's `blips` instead of `tracks`, with no `audioRadioTrack` row. It still gets an event row with its duration and an AudioXL row. Measured: the engine plays a blip between two songs, adding its length to the gap, never in a song slot; neither a custom nor a vanilla blip shows a title |
 
 Manifests live at `red4ext/plugins/RadioXL/stations/<Mod>/station.json`, one folder
 per mod so nothing is shared. Mod managers discard empty directories, so `stations/` ships a
@@ -50,6 +51,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | `name` missing, not a string, or holding a character outside `[A-Za-z0-9_]` | a key the framework does not know, at top level or in a track |
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 1, clamped |
 | a track with both `file` and `url`; a `url` not starting `http://` or `https://`; a `url` track beside any other track | |
+| `ident` not a boolean; an `ident` on a `url` track; every track an ident | |
 | `speaker` not one of the six the game has | `atlas` with no `icon` |
 | `gain` not a number; `icon` part name with no `atlas` | `atlas` beside an `icon` that is a record |
 

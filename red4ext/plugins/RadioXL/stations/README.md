@@ -37,6 +37,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
 | `tracks[].title` | Optional. The song title, shown as written. |
+| `tracks[].ident` | Optional. `true` marks a station ident, jingle or ad: it plays between songs and never shows a title. See [Idents](#idents). |
 
 `speaker` names one of `Stanley`, `MaximumMike`, `Ash`, `Kurtz` or `PoliceDispatch`. Every vanilla
 station names one; a station without one plays.
@@ -99,6 +100,23 @@ anything.
 
 A track whose file AudioXL will not take is dropped, and the log names it. A station with no
 playable tracks is skipped rather than registered empty.
+
+## Idents
+
+A track with `"ident": true` is a station ident, a jingle or an ad rather than a song:
+
+```json
+{ "file": "audio/station-id.mp3", "ident": true }
+```
+
+- **It plays between two songs**, when the game chooses to play one, and adds its own length to the
+  gap. It does not take a song's place in the rotation.
+- **It shows no title**, the way the game's own station idents show none, so `title` is not needed.
+- **Shuffle never moves it**, because it is not in the song order.
+- A station needs at least one song; a manifest where every track is an ident is refused. A stream
+  track cannot be an ident.
+
+How often the game plays one is its own choice, the same as for its own stations.
 
 ## A stream station
 
