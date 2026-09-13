@@ -43,9 +43,9 @@ constexpr size_t kAudioRadioManager = 0xe0;
 constexpr size_t kManagerStations = 0x0;
 constexpr size_t kManagerCount = 0xc;
 
-// A station object: its type (0 is a station, 5 a playlist), its clock, and the virtual that
+// A station object: its state (0 ready for a song, 5 while a blip plays), its clock, and the virtual that
 // writes its CName.
-constexpr size_t kStationType = 0x148;
+constexpr size_t kStationType = 0x148;  // the state; 5 during a blip, when the clock is skipped
 constexpr size_t kStationClock = 0x14c;
 constexpr size_t kVtblGetName = 0x70;
 

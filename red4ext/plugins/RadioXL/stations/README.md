@@ -109,14 +109,13 @@ A track with `"ident": true` is a station ident, a jingle or an ad rather than a
 { "file": "audio/station-id.mp3", "ident": true }
 ```
 
-- **It plays between two songs**, when the game chooses to play one, and adds its own length to the
-  gap. It does not take a song's place in the rotation.
+- **One plays after every third song**, between two songs, and adds its own length to the gap. It
+  does not take a song's place in the rotation. With several idents, the game cycles through them in
+  an order it picks at random when the station starts.
 - **It shows no title**, the way the game's own station idents show none, so `title` is not needed.
 - **Shuffle never moves it**, because it is not in the song order.
 - A station needs at least one song; a manifest where every track is an ident is refused. A stream
   track cannot be an ident.
-
-How often the game plays one is its own choice, the same as for its own stations.
 
 ## A stream station
 
