@@ -140,10 +140,44 @@ public class RadioXLRecords extends ScriptableTweak {
 
   private func Build(slot: Int32) -> Void {
     let iconName: String = RadioXLDial.IconName(slot);
-    let iconId: TweakDBID = TDBID.Create(iconName);
-
     let part: String = RadioXL_StationIcon(slot);
     let atlas: String = RadioXL_StationAtlas(slot);
+
+    // An `icon` naming a UIIcon record is used as it is, and no record of the station's own is made.
+    // Yaml records are imported before any OnApply runs, so a record another mod ships is visible here.
+    let usesRecord: Bool = false;
+    if StrBeginsWith(part, "UIIcon.") {
+      if IsDefined(TweakDBInterface.GetUIIconRecord(TDBID.Create(part))) {
+        iconName = part;
+        usesRecord = true;
+      } else {
+        RadioXLLog(s"\(RadioXLDial.RecordName(slot)): icon record \(part) does not exist - the RadioXL glyph is used");
+        part = "";
+      }
+    }
+    if !usesRecord {
+      this.BuildIcon(iconName, part, atlas);
+    }
+
+    // The display name is plain text. The engine's name table holds the station's localization KEY
+    // and the popup compares the two resolved strings, so both sides have to land on the same text.
+    let recordName: String = RadioXLDial.RecordName(slot);
+    let recordId: TweakDBID = TDBID.Create(recordName);
+    let madeStation: Bool = TweakDBManager.CreateRecord(StringToName(recordName), n"gamedataRadioStation_Record");
+    TweakDBManager.SetFlat(TDBID.Create(recordName + ".displayName"),
+                           ToVariant(RadioXL_StationDisplayName(slot)));
+    TweakDBManager.SetFlat(TDBID.Create(recordName + ".icon"), ToVariant(TDBID.Create(iconName)));
+    let position: Int32 = RadioXL_DialPosition(14 + slot);
+    TweakDBManager.SetFlat(TDBID.Create(recordName + ".index"), ToVariant(position));
+    TweakDBManager.UpdateRecord(recordId);
+
+    RadioXLLog(s"\(recordName): record \(madeStation), icon \(iconName), dial position \(position)");
+  }
+
+  // The station's own UIIcon record: its atlas part, or the RadioXL glyph when it names none.
+  private func BuildIcon(iconName: String, stationPart: String, stationAtlas: String) -> Void {
+    let part: String = stationPart;
+    let atlas: String = stationAtlas;
     if StrLen(part) == 0 {
       part = RadioXLIcons.FallbackPart();
       atlas = RadioXLIcons.FallbackAtlas();
@@ -161,24 +195,11 @@ public class RadioXLRecords extends ScriptableTweak {
                                                ToVariant(StringToName(part)));
     let setAtlas: Bool = TweakDBManager.SetFlat(TDBID.Create(iconName + ".atlasResourcePath"),
                                                 ToVariant(ResRef.FromName(StringToName(atlas))));
-    TweakDBManager.UpdateRecord(iconId);
+    TweakDBManager.UpdateRecord(TDBID.Create(iconName));
     if !setPart || !setAtlas {
       RadioXLLog(s"\(iconName): part \(setPart) atlas \(setAtlas) - the icon record is incomplete");
     }
-
-    // The display name is plain text. The engine's name table holds the station's localization KEY
-    // and the popup compares the two resolved strings, so both sides have to land on the same text.
-    let recordName: String = RadioXLDial.RecordName(slot);
-    let recordId: TweakDBID = TDBID.Create(recordName);
-    let madeStation: Bool = TweakDBManager.CreateRecord(StringToName(recordName), n"gamedataRadioStation_Record");
-    TweakDBManager.SetFlat(TDBID.Create(recordName + ".displayName"),
-                           ToVariant(RadioXL_StationDisplayName(slot)));
-    TweakDBManager.SetFlat(TDBID.Create(recordName + ".icon"), ToVariant(iconId));
-    let position: Int32 = RadioXL_DialPosition(14 + slot);
-    TweakDBManager.SetFlat(TDBID.Create(recordName + ".index"), ToVariant(position));
-    TweakDBManager.UpdateRecord(recordId);
-
-    RadioXLLog(s"\(recordName): record \(madeStation), icon \(madeIcon) (\(part) in \(atlas)), dial position \(position)");
+    RadioXLLog(s"\(iconName): record \(madeIcon) (\(part) in \(atlas))");
   }
 }
 

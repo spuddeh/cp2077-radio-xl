@@ -25,7 +25,7 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | `displayName` | plain text. **The frequency at the front**, because the game has no field for it: the number decides the station's place on the dial, in the vehicle list and in every receiver's next/previous order. A name with no number at the front puts the station after every station that has one |
 | `speaker` | optional DJ: `Stanley`, `MaximumMike`, `Ash`, `Kurtz`, `PoliceDispatch`. Default `None`, which plays |
 | `gain` | optional level trim on the samples, 0 to 1, clamped. Default 0.56 (-5 dB), which lands the custom sound's two Broadcast Sends inside the vanilla per-station range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
-| `icon` / `atlas` | optional inkatlas part and the atlas holding it. Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
+| `icon` / `atlas` | optional inkatlas part and the atlas holding it, or `icon` alone naming an existing `UIIcon.` record (no atlas, no record of the station's own; a record that does not exist falls back to the glyph). Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
 | `tracks[].title` | optional plain text, shown as written |
 
@@ -49,7 +49,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | `name` missing, not a string, or holding a character outside `[A-Za-z0-9_]` | a key the framework does not know, at top level or in a track |
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 1, clamped |
 | `speaker` not one of the six the game has | `atlas` with no `icon` |
-| `gain` not a number; `icon` with no `atlas` | |
+| `gain` not a number; `icon` part name with no `atlas` | `atlas` beside an `icon` that is a record |
 
 `plugin/tests/ManifestTests.cpp` holds one case per row and runs under `ctest`.
 
@@ -67,7 +67,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | title key | `Gameplay-Devices-Radio_tracks-RadioXL-<name>-NN` | `audioRadioTrack` holds a key, in the same namespace as vanilla track keys |
 | both hashes of each key | FNV1a32 keeping the key text, FNV1a64 with it cleared | how `onscreens` rows are found; see [localization](localization-keys.md) |
 | `RadioStation` record | `RadioStation.RadioXL_<name>` with `displayName`, `icon`, `index` = dial position | `index` is a UI index, not the enum: the popup hands `record.Index()` to `SendRadioEvent`, which converts it through `GetRadioStationByUIIndex`. Vanilla carries 0 for 88.9 to 13 for 107.5 as fixed numbers, so **the fourteen vanilla records are rewritten to their new positions** whenever a custom station is installed; otherwise two records share an index, both light up, and either plays the station now at that position |
-| `UIIcon` record | `UIIcon.RadioXL_<name>` with `atlasPartName`, `atlasResourcePath` | the wheel and the device logo load atlas and part from it |
+| `UIIcon` record | `UIIcon.RadioXL_<name>` with `atlasPartName`, `atlasResourcePath`, unless `icon` names a record | the selector and the device logo load atlas and part from it |
 
 `[M]` TweakDB records must be created from `ScriptableTweak.OnApply`, never from a
 `ScriptableService`. Records written earlier do not survive TweakDB load, and the station then plays

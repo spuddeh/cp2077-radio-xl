@@ -32,8 +32,8 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `speaker` | Optional. The station's DJ. Defaults to `None`. |
 | `gain` | Optional. A level trim on every track, `0` to `1`. Defaults to `0.56`, which is -5 dB. |
 | `shuffle` | Optional. `true`: this station plays its tracks in a new random order each time the game starts, whatever the player's Shuffle setting. `false`: this station is never shuffled, even when the player's setting says every station. Left out: the player's setting decides. |
-| `icon` | Optional. An inkatlas part name. Defaults to the RadioXL glyph. |
-| `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is set. |
+| `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
+| `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].title` | Optional. The song title, shown as written. |
 
@@ -56,7 +56,7 @@ path written twice (`"mymod\\gui\\icons.inkatlas"`), or once as a forward slash.
 
 **Every fault is logged with the file and the line, and the station is skipped whole.** A missing
 `name`, a `tracks` that is not an array, a `speaker` the game does not have, a `gain` written as a
-string, an `icon` with no `atlas` - each names its line in the RED4ext log:
+string, an `icon` part name with no `atlas` - each names its line in the RED4ext log:
 
 ```text
 [RadioXL] YourMod/station.json:7: "speaker" must be one of None, Stanley, MaximumMike, Ash, Kurtz, PoliceDispatch: "Stanly"

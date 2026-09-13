@@ -145,6 +145,30 @@ void TestTitleThatFooledTheScanner()
     Check(r.station.name == "x", "station name found after the tracks array");
 }
 
+void TestIconRecord()
+{
+    const Read r(R"json({
+  "name": "x",
+  "icon": "UIIcon.RadioHipHop",
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(r.ok, "an icon record needs no atlas", r.Joined());
+    Check(r.station.icon == "UIIcon.RadioHipHop", "icon record kept as written", r.station.icon);
+    Check(r.station.atlas.empty(), "no atlas");
+    const Read both(R"json({
+  "name": "x",
+  "icon": "UIIcon.RadioHipHop",
+  "atlas": "m/a.inkatlas",
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(both.ok, "an icon record with an atlas still reads", both.Joined());
+    Check(both.station.atlas.empty(), "the atlas beside a record is dropped", both.station.atlas);
+    Check(both.Logged("Mod/station.json:4: \"icon\" names a UIIcon record, which carries its own atlas - \"atlas\" ignored"),
+          "the ignored atlas is named", both.Joined());
+    ExpectFault("bare UIIcon prefix is a part name", "{\n  \"name\": \"x\",\n  \"icon\": \"UIIcon.\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}",
+                "Mod/station.json:3: \"icon\" names an atlas part");
+}
+
 void TestSyntaxFaults()
 {
     ExpectFault("trailing comma in object", "{\n  \"name\": \"x\",\n  \"tracks\": [],\n}", "Mod/station.json:4:1: a trailing comma before '}'");
@@ -214,6 +238,7 @@ int main()
     TestShuffle();
     TestTolerated();
     TestTitleThatFooledTheScanner();
+    TestIconRecord();
     TestSyntaxFaults();
     TestSchemaFaults();
     TestWarnings();

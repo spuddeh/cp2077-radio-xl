@@ -42,7 +42,7 @@ struct Station
 {
     std::string name;          // the station CName, e.g. radio_station_20_tool
     std::string displayName;   // the label the UI shows, plain text
-    std::string icon;          // an inkatlas part name, or empty for the framework's own glyph
+    std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
     std::string speaker;       // audioRadioSpeakerType - the station's DJ
     float gain = kDefaultGain; // level trim applied to every track's samples, 0..1; see RadioXL_StationGain
@@ -68,6 +68,13 @@ inline std::string DepotPath(std::string aPath)
 // The five DJs the engine has, and None. The redscript half maps the word to the enum; a word it
 // does not know would fall to None silently, so the check is here where the line is known.
 constexpr std::string_view kSpeakers[] = {"None", "Stanley", "MaximumMike", "Ash", "Kurtz", "PoliceDispatch"};
+
+// A TweakDB UIIcon record by name, `UIIcon.RadioHipHop`, rather than a part in an atlas.
+inline bool IsIconRecord(std::string_view aIcon)
+{
+    constexpr std::string_view kPrefix = "UIIcon.";
+    return aIcon.size() > kPrefix.size() && aIcon.substr(0, kPrefix.size()) == kPrefix;
+}
 
 // A station name becomes a CName, an event-name prefix and a TweakDB record id, and the last of
 // those splits on '.', so the name is held to what every one of them accepts.
@@ -167,9 +174,17 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
 
     const JsonValue* icon = expect(root, "icon", JsonValue::Kind::String, false);
     const JsonValue* atlas = expect(root, "atlas", JsonValue::Kind::String, false);
-    if (icon && !icon->string.empty() && (!atlas || atlas->string.empty()))
+    // An `icon` is either an existing UIIcon record, used as it is, or a part name in `atlas`.
+    const bool iconIsRecord = icon && IsIconRecord(icon->string);
+    if (iconIsRecord && atlas && !atlas->string.empty())
     {
-        fail(icon->line, "\"icon\" names an atlas part, so \"atlas\" must name the inkatlas holding it");
+        at(atlas->line, "\"icon\" names a UIIcon record, which carries its own atlas - \"atlas\" ignored");
+        atlas = nullptr;
+    }
+    if (icon && !iconIsRecord && !icon->string.empty() && (!atlas || atlas->string.empty()))
+    {
+        fail(icon->line, "\"icon\" names an atlas part, so \"atlas\" must name the inkatlas holding it "
+                         "(or name a record, \"UIIcon.RadioHipHop\")");
     }
     if (atlas && !atlas->string.empty() && (!icon || icon->string.empty()))
     {
