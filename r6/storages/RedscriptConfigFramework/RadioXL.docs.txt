@@ -55,10 +55,9 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
 [*][b]displayName[/b] starts with the frequency. The dial is sorted by it, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
-[*][b]tracks[/b] play in order, on the station's own clock, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
-[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, shows no title, and is never shuffled into the songs.[/*]
+[*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
+[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, and shows no title.[/*]
 [*][b]speaker[/b] is optional and names a DJ: Stanley, MaximumMike, Ash, Kurtz or PoliceDispatch.[/*]
-[*][b]shuffle[/b] is optional. true: this station plays its tracks in a new random order each time the game starts, whatever the player's Shuffle setting. false: it is never shuffled, even when that setting says every station. Left out: the player's setting decides.[/*]
 [/list]
 
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
@@ -79,10 +78,7 @@ A stream station joins the broadcast live when you tune in, after a second or tw
 
 [color=#e06666][size=6][b]- Settings -[/b][/size][/color]
 
-Two tabs in the Redscript Configuration Framework panel.
-
-[b]Playback[/b]
-[b]Shuffle[/b], Off by default. Off, a station plays its tracks in the order they were written, which is what the game does. Every station, Vanilla only, or Custom only: the chosen stations play their tracks in a new random order each time the game starts. It takes effect on the next launch. A station mod can set its own station to always or never shuffle in its manifest, and that wins for that station.
+One tab in the Redscript Configuration Framework panel.
 
 [b]Mute radio when...[/b]
 Twelve switches, all on by default, and they apply to every station on the Radioport, the game's own included. A switch stands for a situation: turning off the holo call switch also lifts the locks a call brings with it, and the same for a scene and a vehicle scene. Each is a situation in which the game silences the radio: a scene, a phone call, a club, fast travel and so on. On, a RadioXL station goes quiet there exactly as a vanilla station does. Off, a RadioXL station keeps playing through it. The game's own stations are never affected either way.

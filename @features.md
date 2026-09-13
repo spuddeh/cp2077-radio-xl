@@ -25,8 +25,6 @@
   A switch is a situation: off also lifts the companions its situation raises (a call, a vehicle
   scene and a scene are measured). Verified in game: a call and a Delamain ride play through with
   their switch off. RCF is optional.
-- Shuffle: a four-way setting (Off, Every station, Vanilla only, Custom only), next launch, and a
-  manifest's `shuffle: true` / `false` for one station. Verified in game.
 - `RadioXLAPI.RegisterStation(name)`: a RadioXL 0.1.0 station's script compiles and is logged; the
   station is not created (#10).
 - Each track's length is read from its file at load, so a station runs on the world clock like a
@@ -79,5 +77,6 @@
   ceiling. The vehicle step already carries a 32-bit total.
 - Adopt RadioXL station definitions unchanged, starting with Outrun Waves 93.7.
 - Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
-- The RadioExt parity audit is `concepts/radioext-parity-audit` in the vault (#20); both gaps it
-  left, shuffle (#22) and an existing `UIIcon` record as the icon (#21), are implemented.
+- The RadioExt parity audit is `concepts/radioext-parity-audit` in the vault (#20). Its two gaps are
+  closed: an existing `UIIcon` record as the icon (#21), and shuffle (#22), which the engine already
+  does for every station.

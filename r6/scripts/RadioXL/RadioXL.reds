@@ -53,7 +53,6 @@ public func RadioXLFallbackTrim() -> Float {
 // Supplied by the plugin, which reads the station manifests. The list is declared once, in the
 // manifest, and read from here - never restated in script.
 public native func RadioXL_StationCount() -> Int32;
-public native func RadioXL_ShuffleVanilla() -> Bool;
 public native func RadioXL_DialPosition(index: Int32) -> Int32;
 public native func RadioXL_DialStation(index: Int32) -> Int32;
 public native func RadioXL_StationName(index: Int32) -> CName;
@@ -140,7 +139,6 @@ public class RadioXLService extends ScriptableService {
   private let m_gainPending: Bool;
   private let m_gainPolls: Int32;
   private let m_ownType: Bool;
-  private let m_ep1Done: Bool;
 
   private cb func OnLoad() {
     let cb = GameInstance.GetCallbackSystem();
@@ -149,8 +147,6 @@ public class RadioXLService extends ScriptableService {
       .AddTarget(ResourceTarget.Path(r"base\\sound\\metadata\\cooked_metadata.audio_metadata"));
     cb.RegisterCallback(n"Resource/Load", this, n"OnEventsMetadata")
       .AddTarget(ResourceTarget.Path(r"base\\sound\\event\\eventsmetadata.json"));
-    cb.RegisterCallback(n"Resource/Load", this, n"OnEp1Metadata")
-      .AddTarget(ResourceTarget.Path(r"ep1\\sound\\metadata\\cooked_metadata.audio_metadata"));
     cb.RegisterCallback(n"Resource/Load", this, n"OnOnScreens")
       .AddTarget(ResourceTarget.Path(r"base\\localization\\en-us\\onscreens\\onscreens.json"));
 
@@ -163,7 +159,6 @@ public class RadioXLService extends ScriptableService {
     let depot = GameInstance.GetResourceDepot();
     this.Watch(depot, r"base\\sound\\metadata\\cooked_metadata.audio_metadata", n"OnCookedReady");
     this.Watch(depot, r"base\\sound\\event\\eventsmetadata.json", n"OnEventsReady");
-    this.Watch(depot, r"ep1\\sound\\metadata\\cooked_metadata.audio_metadata", n"OnEp1Ready");
     this.Watch(depot, r"base\\localization\\en-us\\onscreens\\onscreens.json", n"OnOnScreensReady");
 
     this.Poll();
@@ -439,14 +434,6 @@ public class RadioXLService extends ScriptableService {
     }
     this.m_cookedDone = true;
 
-    // With the Shuffle setting on "Every station" or "The game's own stations only", the
-    // fourteen's lists are reordered here, in the same moment the engine reads them. The custom
-    // stations are shuffled by the plugin as their manifests are read, so nothing below touches
-    // an order twice.
-    if RadioXL_ShuffleVanilla() {
-      this.ShuffleVanilla(cooked);
-    }
-
     let map: ref<audioRadioStationMetadataMap>;
     let titles: ref<audioRadioTracksMetadata>;
     for entry in cooked.entries {
@@ -464,42 +451,6 @@ public class RadioXLService extends ScriptableService {
     while i < count {
       this.RegisterStation(cooked, map, titles, i);
       i += 1;
-    }
-  }
-
-  // Every station entry in this resource gets its track list reordered in place, Fisher-Yates
-  // on the game's own random source. The Phantom Liberty stations live in the expansion's own
-  // metadata resource, which arrives through OnEp1Metadata and is shuffled the same way.
-  private func ShuffleVanilla(cooked: ref<audioCookedMetadataResource>) -> Void {
-    let stations: Int32 = 0;
-    for entry in cooked.entries {
-      let station = entry as audioRadioStationMetadata;
-      if IsDefined(station) && ArraySize(station.tracks) > 1 {
-        let i: Int32 = ArraySize(station.tracks) - 1;
-        while i > 0 {
-          let j: Int32 = RandRange(0, i + 1);
-          let held: CName = station.tracks[i];
-          station.tracks[i] = station.tracks[j];
-          station.tracks[j] = held;
-          i -= 1;
-        }
-        stations += 1;
-      }
-    }
-    RadioXLLog(s"shuffled \(stations) station(s) in this metadata resource for this session");
-  }
-
-  private cb func OnEp1Metadata(event: ref<ResourceEvent>) {
-    if RadioXL_ShuffleVanilla() && !this.m_ep1Done {
-      this.m_ep1Done = true;
-      this.ShuffleVanilla(event.GetResource() as audioCookedMetadataResource);
-    }
-  }
-
-  private cb func OnEp1Ready(token: ref<ResourceToken>) {
-    if RadioXL_ShuffleVanilla() && !this.m_ep1Done {
-      this.m_ep1Done = true;
-      this.ShuffleVanilla(token.GetResource() as audioCookedMetadataResource);
     }
   }
 
@@ -521,7 +472,7 @@ public class RadioXLService extends ScriptableService {
     station.speaker = RadioXLSpeaker(RadioXL_StationSpeaker(index));
 
     // An ident goes into `blips`, which the engine schedules between songs itself: it takes no song
-    // slot, gets no title row, and a shuffle of the songs cannot move it.
+    // slot and gets no title row.
     let tracks: Int32 = RadioXL_StationTrackCount(index);
     let t: Int32 = 0;
     while t < tracks {

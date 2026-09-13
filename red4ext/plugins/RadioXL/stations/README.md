@@ -31,7 +31,6 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `displayName` | The label the game shows. Put the frequency at the front. |
 | `speaker` | Optional. The station's DJ. Defaults to `None`. |
 | `gain` | Optional. A level trim on every track, `0` to `1`. Defaults to `1`, the audio as recorded. |
-| `shuffle` | Optional. `true`: this station plays its tracks in a new random order each time the game starts, whatever the player's Shuffle setting. `false`: this station is never shuffled, even when the player's setting says every station. Left out: the player's setting decides. |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
@@ -101,6 +100,12 @@ anything.
 A track whose file AudioXL will not take is dropped, and the log names it. A station with no
 playable tracks is skipped rather than registered empty.
 
+## The order songs play in
+
+The game picks a station's next song at random from the songs it has not played yet, and starts
+over once every song has played. The order of `tracks` does not decide it, the same as for the
+game's own stations.
+
 ## Idents
 
 A track with `"ident": true` is a station ident, a jingle or an ad rather than a song:
@@ -113,7 +118,6 @@ A track with `"ident": true` is a station ident, a jingle or an ad rather than a
   does not take a song's place in the rotation. With several idents, the game cycles through them in
   an order it picks at random when the station starts.
 - **It shows no title**, the way the game's own station idents show none, so `title` is not needed.
-- **Shuffle never moves it**, because it is not in the song order.
 - A station needs at least one song; a manifest where every track is an ident is refused. A stream
   track cannot be an ident.
 

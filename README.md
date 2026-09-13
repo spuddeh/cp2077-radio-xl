@@ -14,7 +14,7 @@ the page carry over, the audio side stays DigitalVixen's in AudioXL, and a stati
 
 **Status: beta.** Stations play on every receiver with their own names, icons and song titles;
 tuning back in lands mid-song on the station's own clock; a vehicle radio survives being switched
-off and on; twelve "Mute radio when" switches and a Shuffle setting are in. What is still open is
+off and on; twelve "Mute radio when" switches are in. What is still open is
 in the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), with what has been measured on
 each. Not on Nexus yet.
 

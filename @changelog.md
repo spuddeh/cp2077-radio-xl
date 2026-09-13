@@ -19,6 +19,15 @@
   bound is raised to the station total with the other three. The block has no RED4ext hash, so
   the plugin follows the enable routine's own `jne` to it and verifies the bytes there.
 
+### Removed
+- Shuffle (#22): the setting, the manifest `shuffle` field, the plugin's read of RCF's file at boot
+  (`ReadShuffleMode`), the `RadioXL_ShuffleVanilla` native, and the script's reorder of vanilla
+  `tracks` with its EP1 metadata callbacks. The engine draws songs at random itself: the picker
+  (`0x6bcdfc`, 2.31) rolls from a remaining-tracks list and refills it when empty, and the station
+  probe logged Body Heat and PHONKWAVE picks out of stored order with RadioXL not reordering
+  anything. A `shuffle` key in a manifest is now logged as unknown and ignored. Tool FM's manifest
+  drops it.
+
 ### Added
 - Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
   (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
