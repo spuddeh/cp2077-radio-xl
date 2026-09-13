@@ -7,7 +7,8 @@ usage:
 
 record   captures a WASAPI loopback device to a 16-bit WAV. The file's start time is written beside it
          (<out.wav>.start), because the report lines the audio up against the probe's timestamps.
-         Stop early with Ctrl+C; the WAV is closed cleanly either way.
+         Stop early with Ctrl+C. A recording killed outright is still readable: the report rebuilds
+         its header from the file size.
 report   splits the recording into the stretches where one station was on the Radioport or a vehicle
          radio, drops the first --settle seconds of each (tune-in, buffering), and measures every
          station's integrated loudness (EBU R128, LUFS) and true peak with ffmpeg's ebur128 filter.
@@ -132,7 +133,23 @@ def measure(wav, offset, length):
     return (float(lufs.group(1)) if lufs else float("nan"), float(peak.group(1)) if peak else float("nan"))
 
 
+def repair_header(wav):
+    """A recording killed before it closed has zero lengths in its header; they are rebuilt from the file size."""
+    import struct
+    size = os.path.getsize(wav)
+    with open(wav, "r+b") as f:
+        head = f.read(64)
+        data = head.find(b"data")
+        if data < 0:
+            return
+        f.seek(4)
+        f.write(struct.pack("<I", size - 8))
+        f.seek(data + 4)
+        f.write(struct.pack("<I", size - data - 8))
+
+
 def report(wav, log, settle, minimum):
+    repair_header(wav)
     start = float(open(wav + ".start").read())
     with wave.open(wav) as w:
         duration = w.getnframes() / w.getframerate()
