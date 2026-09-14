@@ -563,10 +563,15 @@ public class RadioXLService extends ScriptableService {
       let tracks: Int32 = RadioXL_StationTrackCount(station);
       let t: Int32 = 0;
       while t < tracks {
+        // An untitled song still has a row and a key, and a key with no text leaves the radio
+        // popup showing its placeholder, so it gets a single space and the field reads blank.
+        let title: String = RadioXL_StationTrackTitle(station, t);
+        if StrLen(title) == 0 && !RadioXL_StationTrackIsIdent(station, t) {
+          title = " ";
+        }
         added += this.AddText(screens, RadioXL_StationTrackKey(station, t),
                               RadioXL_StationTrackKeyHash(station, t),
-                              RadioXL_StationTrackKeyHash64(station, t),
-                              RadioXL_StationTrackTitle(station, t));
+                              RadioXL_StationTrackKeyHash64(station, t), title);
         t += 1;
       }
       station += 1;
