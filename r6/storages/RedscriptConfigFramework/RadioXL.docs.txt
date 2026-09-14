@@ -58,7 +58,7 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]title[/b] is optional on a track. It is the song name in the Radioport's radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
 [*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, and shows no title.[/*]
-[*][b]news[/b] is optional. true lets Stanley's news bulletins and greetings reach the station, the same way they reach the game's own stations.[/*]
+[*][b]news[/b] is optional. true lets the news reach the station - Stanley's bulletins and greetings, and N54 News - the same way it reaches the game's own stations.[/*]
 [/list]
 
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
@@ -98,7 +98,7 @@ If a station appears but sorts oddly against another one, check the frequency at
 
 [list]
 [*]Tuning away from a station and back picks the song up where the station has got to, the way a vanilla station does.[/*]
-[*]On a news station, Stanley's greetings reach the station you are listening to. His news goes to one station at a time, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
+[*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
 [*]Up to 127 stations.[/*]
 [*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
 [/list]
