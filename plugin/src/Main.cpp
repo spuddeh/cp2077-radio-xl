@@ -53,6 +53,16 @@ constexpr size_t kStationPicks = 0x170;          // byte: picks since the last b
 constexpr size_t kStationBlip = 0x178;           // the playing blip's name
 constexpr size_t kStationBlipCursor = 0x188;     // index into the blip order
 constexpr size_t kStationRng = 0x210;            // PCG32 state, seeded once at construction (0x6bc134)
+
+// An announcement, as the quest handler 0xb43c20 and the request writer 0xb43d98 leave it on a
+// station. A queued one waits at +0x1a0/+0x1a8 until the station has no active sound; a request
+// then carries its mode at +0x1e0 and the scene being played at +0x1f8/+0x200.
+constexpr size_t kStationQueuedScene = 0x1a0;    // raRef<scnSceneResource>: a resource path hash
+constexpr size_t kStationQueuedInput = 0x1a8;    // sceneInput CName
+constexpr size_t kStationRequestMode = 0x1e0;    // byte: 1 once a request is written
+constexpr size_t kStationPlayingScene = 0x1f8;
+constexpr size_t kStationPlayingInput = 0x200;
+constexpr size_t kStationRequestFlags = 0x208;   // bytes +0x208, +0x209, +0x20a
 constexpr size_t kScheduleMs = 100;
 
 // The DJ selector table the token lookup 0x4fe680 reads: one 24-byte entry per speaker, in
@@ -301,12 +311,19 @@ struct Sched
     float clock;
     uintptr_t metadata;
     uint64_t rng;
+    uint64_t queuedScene;
+    uint64_t queuedInput;
+    uint8_t requestMode;
+    uint64_t playingScene;
+    uint64_t playingInput;
+    uint8_t flags[3];
 };
 
 constexpr uint32_t kMaxStations = 128;
 Sched g_snap[kMaxStations];
 std::unordered_map<uintptr_t, std::string> g_lastSched;
 std::unordered_map<uintptr_t, bool> g_listed;
+std::unordered_map<uintptr_t, std::string> g_lastAnnounce;
 
 struct DjEntry
 {
@@ -374,6 +391,15 @@ uint32_t ReadSchedule()
         s.clock = Read<float>(station + kStationClock);
         s.metadata = Read<uintptr_t>(station + kStationMetadata);
         s.rng = Read<uint64_t>(station + kStationRng);
+        s.queuedScene = Read<uint64_t>(station + kStationQueuedScene);
+        s.queuedInput = Read<uint64_t>(station + kStationQueuedInput);
+        s.requestMode = Read<uint8_t>(station + kStationRequestMode);
+        s.playingScene = Read<uint64_t>(station + kStationPlayingScene);
+        s.playingInput = Read<uint64_t>(station + kStationPlayingInput);
+        for (int f = 0; f < 3; ++f)
+        {
+            s.flags[f] = Read<uint8_t>(station + kStationRequestFlags + f);
+        }
     }
     for (uint32_t d = 0; d < 6; ++d)
     {
@@ -522,6 +548,28 @@ void Schedule()
             Log("schedule: " + name + " tracks " + ListNames(s.metadata, g_tracksOffset));
             Log("schedule: " + name + " blips " + ListNames(s.metadata, g_blipsOffset));
         }
+        // An announcement: logged on every change of the queued or playing scene, the request mode or
+        // its flags. The scene is a resource path hash, resolved offline.
+        {
+            char ann[256];
+            std::snprintf(ann, sizeof(ann), "queued=%016llx/%s mode=%u playing=%016llx/%s flags=%u%u%u",
+                          static_cast<unsigned long long>(s.queuedScene), Text(s.queuedInput).c_str(), s.requestMode,
+                          static_cast<unsigned long long>(s.playingScene), Text(s.playingInput).c_str(), s.flags[0],
+                          s.flags[1], s.flags[2]);
+            auto& lastAnn = g_lastAnnounce[s.station];
+            if (lastAnn != ann)
+            {
+                const bool first = lastAnn.empty();
+                lastAnn = ann;
+                if (!first || s.queuedScene || s.playingScene)
+                {
+                    char clk[48];
+                    std::snprintf(clk, sizeof(clk), " state=%d clock=%.2f ", s.state, s.clock);
+                    Log("announce " + name + clk + ann);
+                }
+            }
+        }
+
         // Logged on every change of state, pick count, current track or blip; the clock rides along.
         char key[160];
         std::snprintf(key, sizeof(key), "%d|%u|%llx|%llx|%llx", s.state, s.picks,
