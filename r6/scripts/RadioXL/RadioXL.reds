@@ -503,11 +503,15 @@ public class RadioXLService extends ScriptableService {
     RadioXLLog(s"registered \(name) as the metadata loaded: \(ArraySize(station.tracks)) track(s), \(ArraySize(station.blips)) ident(s), map now lists \(ArraySize(map.radioStations))");
   }
 
-  // The row the dashboard and the radio wheel read the song title from. `localizationKey` is a key,
+  // The row the dashboard and the radio popup read the song title from. `localizationKey` is a key,
   // and RegisterText is what makes it resolve.
+  //
+  // **Every song gets a row, titled or not.** Without one a track is not streaming friendly, and the
+  // engine refuses it at a world radio and in Streamer Mode, so the station is silent there (#33).
+  // The row's key is also what the engine names as the current track, which the clock matches on.
   private func AddTitle(titles: ref<audioRadioTracksMetadata>, station: Int32, track: Int32,
                         event: CName) -> Void {
-    if !IsDefined(titles) || StrLen(RadioXL_StationTrackTitle(station, track)) == 0 { return; }
+    if !IsDefined(titles) { return; }
     let i: Int32 = 0;
     while i < ArraySize(titles.radioTracks) {
       if Equals(titles.radioTracks[i].trackEventName, event) { return; }
