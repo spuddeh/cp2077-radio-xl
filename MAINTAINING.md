@@ -66,10 +66,12 @@ its trim constants, and rebuild.
 
 ## 4. AudioXL
 
-The framework depends on AudioXL 0.4.0 or later for every sound, and on these natives in particular:
+The framework depends on AudioXL 0.4.3 or later for every sound, and on these natives in particular:
 `RegisterSoundEx`, `SetGain` and `LoadBank` for every station; `RegisterSound`, `Poll`,
-`PendingRemote`, `HttpAllowed` and `HttpStatus` for a stream station; `PlayFrom`, reached by the
-plugin through RTTI, for resume.
+`PendingRemote`, `HttpAllowed` and `HttpStatus` for a stream station; `IsResourceRequested` for
+reading the audio metadata at load; `PlayFrom`, reached by the plugin through RTTI, for resume.
+`Audio.reds` imports AudioXL unguarded, so a missing or older AudioXL fails redscript compilation
+before the game starts.
 
 - **A stream row can take from seconds to minutes to appear.** `Audio.reds` calls `Poll` and
   `PendingRemote` while it waits; neither is shown to be needed. If an AudioXL update removes either,
