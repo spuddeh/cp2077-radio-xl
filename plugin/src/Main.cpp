@@ -52,7 +52,24 @@ constexpr size_t kStationRemainingCount = 0x16c;
 constexpr size_t kStationPicks = 0x170;          // byte: picks since the last blip
 constexpr size_t kStationBlip = 0x178;           // the playing blip's name
 constexpr size_t kStationBlipCursor = 0x188;     // index into the blip order
+constexpr size_t kStationRng = 0x210;            // PCG32 state, seeded once at construction (0x6bc134)
 constexpr size_t kScheduleMs = 100;
+
+// The DJ selector table the token lookup 0x4fe680 reads: one 24-byte entry per speaker, in
+// audioRadioSpeakerType order, rebuilt every 0.2 s by 0x9da83c as { station name, listener value,
+// distance squared }.
+constexpr size_t kManagerDjTable = 0x1d0;
+constexpr size_t kDjEntryStride = 0x18;
+constexpr const char* kDjSpeakers[] = {"Stanley", "MaximumMike", "PoliceDispatch", "Kurtz", "spk4", "spk5"};
+
+// The engine's custom-sound voice slots, as AudioXL reads them (2.31 RVAs): a count, and per slot
+// the registry row, the Wwise playing id and a position. Row names are the registry's name array.
+constexpr uintptr_t kRvaSlotCount = 0x349AE74;   // uint16
+constexpr uintptr_t kRvaSlotRow = 0x349CE80;     // uint16[]
+constexpr uintptr_t kRvaSlotPlayingId = 0x349DE80; // uint32[]
+constexpr uintptr_t kRvaSlotPos = 0x349FE80;     // uint32[]
+constexpr uintptr_t kRvaRowNames = 0x48EE910;    // CName[] by row
+constexpr uint16_t kMaxSlots = 256;
 
 // The manager's inline list of station names that may be active: four 24-byte entries.
 constexpr size_t kManagerList = 0x168;
@@ -283,12 +300,34 @@ struct Sched
     uint64_t queued;
     float clock;
     uintptr_t metadata;
+    uint64_t rng;
 };
 
 constexpr uint32_t kMaxStations = 128;
 Sched g_snap[kMaxStations];
 std::unordered_map<uintptr_t, std::string> g_lastSched;
 std::unordered_map<uintptr_t, bool> g_listed;
+
+struct DjEntry
+{
+    uint64_t name;
+    uint64_t value;
+    float distSq;
+};
+DjEntry g_dj[6];
+std::string g_lastDj;
+std::string g_lastOrder;
+
+struct Slot
+{
+    uint16_t row;
+    uint32_t playingId;
+    uint32_t pos;
+    uint64_t name;
+};
+Slot g_slots[kMaxSlots];
+std::string g_lastSlots;
+bool g_slotsFailed = false;
 
 uint32_t ReadSchedule()
 {
@@ -334,8 +373,45 @@ uint32_t ReadSchedule()
         s.queued = Read<uint64_t>(station + kStationQueued);
         s.clock = Read<float>(station + kStationClock);
         s.metadata = Read<uintptr_t>(station + kStationMetadata);
+        s.rng = Read<uint64_t>(station + kStationRng);
+    }
+    for (uint32_t d = 0; d < 6; ++d)
+    {
+        const auto entry = manager + kManagerDjTable + d * kDjEntryStride;
+        g_dj[d].name = Read<uint64_t>(entry);
+        g_dj[d].value = Read<uint64_t>(entry + 8);
+        g_dj[d].distSq = Read<float>(entry + 16);
     }
     return n;
+}
+
+// The slot table lives in the game module, not behind the manager.
+uint16_t ReadSlots()
+{
+    const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    const auto count = Read<uint16_t>(base + kRvaSlotCount);
+    const uint16_t n = count < kMaxSlots ? count : kMaxSlots;
+    for (uint16_t i = 0; i < n; ++i)
+    {
+        g_slots[i].row = Read<uint16_t>(base + kRvaSlotRow + i * 2);
+        g_slots[i].playingId = Read<uint32_t>(base + kRvaSlotPlayingId + i * 4);
+        g_slots[i].pos = Read<uint32_t>(base + kRvaSlotPos + i * 4);
+        g_slots[i].name = g_slots[i].row != 0xFFFF ? Read<uint64_t>(base + kRvaRowNames + g_slots[i].row * 8) : 0;
+    }
+    return count;
+}
+
+bool SafeReadSlots(uint16_t* aCount)
+{
+    __try
+    {
+        *aCount = ReadSlots();
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
 }
 
 bool SafeReadSchedule(uint32_t* aCount)
@@ -457,11 +533,74 @@ void Schedule()
             continue;
         }
         last = key;
-        char line[160];
-        std::snprintf(line, sizeof(line), " state=%d picks=%u active=%u remaining=%u blipCursor=%u clock=%.2f",
-                      s.state, s.picks, s.active, s.remaining, s.blipCursor, s.clock);
+        char line[200];
+        std::snprintf(line, sizeof(line), " state=%d picks=%u active=%u remaining=%u blipCursor=%u clock=%.2f rng=%016llx",
+                      s.state, s.picks, s.active, s.remaining, s.blipCursor, s.clock,
+                      static_cast<unsigned long long>(s.rng));
         Log("sched " + name + line + " track=" + Text(s.current) + " blip=" + Text(s.blip) +
             " queued=" + Text(s.queued));
+    }
+
+    // Array order decides which station wins a DJ token (the last qualifying one).
+    std::string order = "stations order:";
+    for (uint32_t i = 0; i < count; ++i)
+    {
+        order += " " + std::to_string(i) + "=" + Text(g_snap[i].name);
+    }
+    if (order != g_lastOrder)
+    {
+        g_lastOrder = order;
+        Log(order);
+    }
+
+    // The DJ table, on every change of a station or listener value; the distance rides along.
+    std::string djKey;
+    std::string dj = "dj table:";
+    for (uint32_t d = 0; d < 6; ++d)
+    {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "%llx|%llx;", static_cast<unsigned long long>(g_dj[d].name),
+                      static_cast<unsigned long long>(g_dj[d].value));
+        djKey += buf;
+        char entry[96];
+        std::snprintf(entry, sizeof(entry), " v=%llx d2=%.1f]", static_cast<unsigned long long>(g_dj[d].value),
+                      g_dj[d].distSq);
+        dj += std::string(" [") + kDjSpeakers[d] + " " + Text(g_dj[d].name) + entry;
+    }
+    if (djKey != g_lastDj)
+    {
+        g_lastDj = djKey;
+        Log(dj);
+    }
+
+    // The custom-sound slot table: whether a stopped station's playing id leaves it is what decides
+    // where AudioXL can retire a voice the renderer is no longer called for.
+    if (!g_slotsFailed)
+    {
+        uint16_t slotCount = 0;
+        if (!SafeReadSlots(&slotCount))
+        {
+            g_slotsFailed = true;
+            Log("slots: a read faulted - slot logging stopped");
+            return;
+        }
+        std::string key = std::to_string(slotCount) + ":";
+        std::string text = "slots count=" + std::to_string(slotCount) + ":";
+        for (uint16_t i = 0; i < slotCount && i < kMaxSlots; ++i)
+        {
+            const Slot& sl = g_slots[i];
+            char buf[48];
+            std::snprintf(buf, sizeof(buf), "%u/%u;", sl.row, sl.playingId);
+            key += buf;
+            char pos[64];
+            std::snprintf(pos, sizeof(pos), " pid=%u row=%u pos=%u]", sl.playingId, sl.row, sl.pos);
+            text += " [" + std::to_string(i) + " " + Text(sl.name) + pos;
+        }
+        if (key != g_lastSlots)
+        {
+            g_lastSlots = key;
+            Log(text);
+        }
     }
 }
 
