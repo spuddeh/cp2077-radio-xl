@@ -14,7 +14,7 @@ report   splits the recording into the stretches where one station was on the Ra
          station's integrated loudness (EBU R128, LUFS) and true peak with ffmpeg's ebur128 filter.
          Stations with less than --min seconds in total are listed but not measured.
 
-The probe (MyMods/RadioStationProbe) logs a station line with a timestamp whenever its state changes.
+The probe (MyMods/RadioXL/probe) logs a station line with a timestamp whenever its state changes.
 The station whose listeners include `pocket_radio_emitter:on` or `vehicle_radio_emitter:on` is the one
 the player hears. A world device (`radio:on`) is not counted: its level depends on distance.
 

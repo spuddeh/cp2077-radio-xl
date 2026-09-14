@@ -145,6 +145,21 @@ Copy-Item plugin\build\Release\RadioXL.dll red4ext\plugins\RadioXL\
 
 The SDK's exports are version-qualified (`RED4ext::v1::PluginInfo`, `RED4EXT_V1_SEMVER`).
 
+## The probe
+
+`probe/` holds `RadioStationProbe`, a read-only RED4ext plugin that reads the engine's radio station
+objects and logs what changes. It writes nothing into the game. It logs:
+
+- each station's listeners, active flag and voice handles
+- each station's schedule: state, current song, picks since the last ident, the RNG state
+- the station array order, and the DJ table the engine picks announcement stations from
+- a station's queued and playing announcement
+- the engine's custom-sound voice slots
+
+The log is RED4ext's plugin log, `red4ext/logs/radiostationprobe-*.log`. It is a development tool, not
+for players, and works on game 2.31 only. It is never part of a RadioXL download. Build it the same way
+from `probe/plugin`.
+
 ## Design rules
 
 - **Extend what the engine already stores. Never mimic it.** If a label is wrong, find the table the
@@ -169,6 +184,7 @@ plugin/src/Json.hpp          a strict JSON reader, every fault by line and colum
 plugin/src/Manifest.hpp      the manifest checks, every fault by file and line
 plugin/src/Duration.hpp      a track's length from its file headers
 plugin/tests/                the manifest reader's tests, run by ctest
+probe/                       RadioStationProbe, a development tool, never shipped
 r6/scripts/RadioXL/
   RadioXL.reds  the three resource patches
   Audio.reds                 the AudioXL bridge
