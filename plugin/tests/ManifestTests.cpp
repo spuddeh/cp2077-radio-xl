@@ -75,7 +75,7 @@ const char* kGood = R"json({
   "displayName": "104.9 Tool FM",
   "icon": "tool_fm",
   "atlas": "toolfm\\gui\\tool_fm.inkatlas",
-  "speaker": "Stanley",
+  "news": true,
   "tracks": [
     {
       "file": "audio/Tool - Vicarious.mp3",
@@ -94,7 +94,7 @@ void TestGood()
     Check(r.station.displayName == "104.9 Tool FM", "displayName");
     Check(r.station.icon == "tool_fm", "icon");
     Check(r.station.atlas == "toolfm\\gui\\tool_fm.inkatlas", "atlas keeps its backslashes", r.station.atlas);
-    Check(r.station.speaker == "Stanley", "speaker");
+    Check(r.station.news, "news");
     Check(r.station.gain == radioxl::kDefaultGain, "gain defaults");
     Check(r.station.tracks.size() == 2, "two tracks");
     Check(r.station.tracks[1].title == "Tool - 10,000 Days (Wings Pt. 2)", "second title");
@@ -104,7 +104,7 @@ void TestShuffleIsNotAField()
 {
     // The engine draws songs at random, so a manifest has no shuffle field: the key is reported like
     // any other unknown key and does not refuse the station.
-    const std::string text = std::string(kGood).replace(std::string(kGood).find("\"speaker\""), 0, "\"shuffle\": true,\n  ");
+    const std::string text = std::string(kGood).replace(std::string(kGood).find("\"news\""), 0, "\"shuffle\": true,\n  ");
     const Read r(text);
     Check(r.ok, "a manifest with shuffle still reads", r.Joined());
     Check(r.Logged("Mod/station.json:6: unknown manifest key \"shuffle\" - ignored"), "shuffle named as unknown", r.Joined());
@@ -228,7 +228,7 @@ void TestSchemaFaults()
     ExpectFault("track not an object", "{\n  \"name\": \"x\",\n  \"tracks\": [ \"a.mp3\" ]\n}", "Mod/station.json:3: each track must be an object");
     ExpectFault("track without file", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"title\": \"t\" }\n  ]\n}", "Mod/station.json:4: \"file\" is missing");
     ExpectFault("track file empty", "{\n  \"name\": \"x\",\n  \"tracks\": [\n    { \"file\": \"\" }\n  ]\n}", "Mod/station.json:4: \"file\" is empty");
-    ExpectFault("speaker unknown", "{\n  \"name\": \"x\",\n  \"speaker\": \"Stanly\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}", "Mod/station.json:3: \"speaker\" must be one of None, Stanley, MaximumMike, Ash, Kurtz, PoliceDispatch: \"Stanly\"");
+    ExpectFault("news as a string", "{\n  \"name\": \"x\",\n  \"news\": \"yes\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}", "Mod/station.json:3: \"news\" must be true/false, not a string");
     ExpectFault("gain as a string", "{\n  \"name\": \"x\",\n  \"gain\": \"0.5\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}", "Mod/station.json:3: \"gain\" must be a number, not a string");
     ExpectFault("icon without atlas", "{\n  \"name\": \"x\",\n  \"icon\": \"p\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}", "Mod/station.json:3: \"icon\" names an atlas part");
 }
@@ -240,7 +240,8 @@ void TestWarnings()
   "dispalyName": "typo",
   "gain": 1.5,
   "atlas": "m\\a.inkatlas",
-  "tracks": [ { "file": "a", "titel": "typo" } ]
+  "tracks": [ { "file": "a", "titel": "typo" } ],
+  "speaker": "Stanley"
 })json";
     const Read r(text);
     Check(r.ok, "warnings do not refuse the manifest", r.Joined());
@@ -249,13 +250,15 @@ void TestWarnings()
     Check(r.station.gain == 1.0f, "gain clamped");
     Check(r.Logged("Mod/station.json:5: \"atlas\" without \"icon\" does nothing - ignored"), "atlas without icon named", r.Joined());
     Check(r.Logged("Mod/station.json:6: unknown track key \"titel\" - ignored"), "unknown track key named", r.Joined());
-    Check(r.log.size() == 4, "exactly four warnings", r.Joined());
+    Check(r.Logged("Mod/station.json:7: \"speaker\" is replaced by \"news\": true - ignored"), "speaker points at news", r.Joined());
+    Check(!r.station.news, "speaker does not set news");
+    Check(r.log.size() == 5, "exactly five warnings", r.Joined());
 }
 
 void TestEveryFaultIsReported()
 {
     // Two faults on two lines: both are named, so the author fixes the file once.
-    const Read r("{\n  \"name\": \"bad name\",\n  \"speaker\": \"DJ\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}");
+    const Read r("{\n  \"name\": \"bad name\",\n  \"news\": \"DJ\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}");
     Check(!r.ok, "two faults refuse");
     Check(r.log.size() == 2, "both faults logged", r.Joined());
     Check(r.Logged("Mod/station.json:2:"), "first at line 2", r.Joined());

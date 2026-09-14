@@ -979,13 +979,16 @@ void RadioXL_StationAtlas(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, R
     OutString(aOut, s ? s->atlas : std::string());
 }
 
-void RadioXL_StationSpeaker(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+void RadioXL_StationNews(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
 {
     int32_t index = -1;
     RED4ext::GetParameter(aFrame, &index);
     ++aFrame->code;
     const Station* s = At(index);
-    OutString(aOut, s ? s->speaker : std::string());
+    if (aOut)
+    {
+        *aOut = s && s->news;
+    }
 }
 
 // The level trim for every track of a station, applied through AudioXL's SetGain once the row
@@ -1228,7 +1231,7 @@ void RegisterNatives()
     reg("RadioXL_StationDisplayName", &RadioXL_StationDisplayName, "String", 1);
     reg("RadioXL_StationIcon", &RadioXL_StationIcon, "String", 1);
     reg("RadioXL_StationAtlas", &RadioXL_StationAtlas, "String", 1);
-    reg("RadioXL_StationSpeaker", &RadioXL_StationSpeaker, "String", 1);
+    reg("RadioXL_StationNews", &RadioXL_StationNews, "Bool", 1);
     reg("RadioXL_StationGain", &RadioXL_StationGain, "Float", 1);
     reg("RadioXL_StationTrackCount", &RadioXL_StationTrackCount, "Int32", 1);
     reg("RadioXL_StationTrack", &RadioXL_StationTrack, "CName", 2);

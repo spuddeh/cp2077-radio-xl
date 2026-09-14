@@ -34,7 +34,8 @@
   name reads blank in the radio popup (#33). Verified in game.
 - The station appears on the vehicle radio wheel, sorted by frequency, with its own name and icon.
 - A vehicle radio switched off and on stays on the custom station it was on. Verified in game.
-- An optional DJ per station (`speaker`), defaulting to none.
+- `news: true` lets Stanley's news and greetings reach a station, under the same engine rules as
+  vanilla stations (#16). A greeting reaching a custom station is verified in game.
 - A station's level is a send trim, the way every vanilla station's is: the framework loads its own
   bank, defining the `radioxl_radio` custom-sound type carrying copies of a vanilla station's two
   Broadcast Sends. No game file is replaced, and the game's own `mod_sfx_radio` type remains the
@@ -72,9 +73,9 @@
 
 ## Planned
 
-- Station idents and ads aside, the only vanilla DJ a custom station could reuse is Stanley, whose
-  227 lines name no station. His announcements target a selector the engine resolves, and declaring
-  `speaker: Stanley` does not reach it (#16).
+- Hear a queued Stanley news line (not a greeting) on a custom station, to finish #16. News goes to
+  the last Stanley station in hash order with any listener nearby, so the test is away from other
+  radios.
 - Replace the two roster readers rather than patching their bounds, which lifts the 127-station
   ceiling. The vehicle step already carries a 32-bit total.
 - Adopt RadioXL station definitions unchanged, starting with Outrun Waves 93.7.

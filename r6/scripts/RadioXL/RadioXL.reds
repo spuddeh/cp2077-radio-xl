@@ -60,7 +60,7 @@ public native func RadioXL_StationKey(index: Int32) -> CName;
 public native func RadioXL_StationDisplayName(index: Int32) -> String;
 public native func RadioXL_StationIcon(index: Int32) -> String;
 public native func RadioXL_StationAtlas(index: Int32) -> String;
-public native func RadioXL_StationSpeaker(index: Int32) -> String;
+public native func RadioXL_StationNews(index: Int32) -> Bool;
 public native func RadioXL_StationGain(index: Int32) -> Float;
 public native func RadioXL_StationTrackCount(index: Int32) -> Int32;
 public native func RadioXL_StationTrack(index: Int32, track: Int32) -> CName;
@@ -95,16 +95,6 @@ public native func RadioXL_StationTrackKeyHash64(index: Int32, track: Int32) -> 
 // patches holds one, and so does every audioRadioTrack. A station's key is minted here and the text
 // registered against it, so the UI resolves a custom station exactly as it resolves a vanilla one.
 // Raw text in those slots is what makes a label vanish and the station selector match nothing.
-public func RadioXLSpeaker(name: String) -> audioRadioSpeakerType {
-  switch name {
-    case "MaximumMike": return audioRadioSpeakerType.MaximumMike;
-    case "PoliceDispatch": return audioRadioSpeakerType.PoliceDispatch;
-    case "Kurtz": return audioRadioSpeakerType.Kurtz;
-    case "Ash": return audioRadioSpeakerType.Ash;
-    case "Stanley": return audioRadioSpeakerType.Stanley;
-  }
-  return audioRadioSpeakerType.None;
-}
 
 // AudioXL takes a registration only once the engine's audio system exists. This carries the retry.
 public class RadioXLPoll extends DelayCallback {
@@ -467,9 +457,9 @@ public class RadioXLService extends ScriptableService {
 
     let station = new audioRadioStationMetadata();
     station.name = name;
-    // The DJ, and `None` is the default - a station with no speaker plays. Vanilla names one on
-    // every station, so a station mod that wants one asks for it by name in its manifest.
-    station.speaker = RadioXLSpeaker(RadioXL_StationSpeaker(index));
+    // Stanley's news and greetings go to Stanley stations, under the engine's own rules for which one.
+    // `None` keeps every announcement off the station.
+    station.speaker = RadioXL_StationNews(index) ? audioRadioSpeakerType.Stanley : audioRadioSpeakerType.None;
 
     // An ident goes into `blips`, which the engine schedules between songs itself: it takes no song
     // slot and gets no title row.

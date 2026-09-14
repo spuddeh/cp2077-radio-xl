@@ -72,7 +72,6 @@ def main():
     manifest = {
         "name": cname,
         "displayName": meta.get("displayName", cname),
-        "speaker": "None",
         "tracks": tracks,
     }
     icon = meta.get("customIcon") or {}

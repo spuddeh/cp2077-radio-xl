@@ -116,7 +116,7 @@ seconds later still plays; a station that appears seconds later never exists.
 
 - `speaker` is `audioRadioSpeakerType`: Stanley 0, MaximumMike 1, PoliceDispatch 2, Kurtz 3, Ash 4,
   None 5. Twelve vanilla stations are Stanley. **`None` plays** - a station ran without a DJ for the
-  whole of development.
+  whole of development. The manifest's `news` chooses between `Stanley` and `None`.
 - `radio_station` and `radio_port_station` are **not Wwise switch groups**. Neither appears in
   `init.bnk`'s `STMG` chunk and no object in the radio banks references their ids. Both are handled by
   the game's own audio layer, and one handler at `0x9d9c6c` serves both, calling the roster resolver

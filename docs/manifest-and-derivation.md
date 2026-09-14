@@ -12,7 +12,7 @@ computes a value the game already knows, and nothing in a manifest can disagree 
   "displayName": "104.9 Tool FM",
   "icon": "tool_fm",
   "atlas": "toolfm\\gui\\tool_fm.inkatlas",
-  "speaker": "Ash",
+  "news": true,
   "tracks": [
     { "file": "audio/Tool - Vicarious.mp3", "title": "Tool - Vicarious" }
   ]
@@ -23,7 +23,7 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | --- | --- |
 | `name` | the station's `CName`, letters, digits and underscores only, because it is also an event-name prefix and a TweakDB record id. Unique across every installed station mod; first found wins, the log names the loser |
 | `displayName` | plain text. **The frequency at the front**, because the game has no field for it: the number decides the station's place on the dial, in the vehicle list and in every receiver's next/previous order. A name with no number at the front puts the station after every station that has one |
-| `speaker` | optional DJ: `Stanley`, `MaximumMike`, `Ash`, `Kurtz`, `PoliceDispatch`. Default `None`, which plays |
+| `news` | optional, default `false`. `true` writes the station's `speaker` as `Stanley`, so Stanley's news and greetings can reach it under the engine's own rules; `false` writes `None`, which receives no announcement. No other speaker is offered: Mike's lines name Morro Rock and Ash is bound to Growl FM by name. A `speaker` key is logged as replaced by `news` and ignored |
 | `gain` | optional level trim on the samples, 0 to 1, clamped. Default 1: the framework's `radioxl_radio` type cites a vanilla station's Broadcast Sends, so the level stages are vanilla's. Only when the routing bank fails to load and a station falls back to `mod_sfx_radio` is it multiplied by 0.56 (-5 dB), which keeps that type's hotter sends inside the vanilla range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
 | `icon` / `atlas` | optional inkatlas part and the atlas holding it, or `icon` alone naming an existing `UIIcon.` record (no atlas, no record of the station's own; a record that does not exist falls back to the glyph). Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
@@ -52,7 +52,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 1, clamped |
 | a track with both `file` and `url`; a `url` not starting `http://` or `https://`; a `url` track beside any other track | |
 | `ident` not a boolean; an `ident` on a `url` track; every track an ident | |
-| `speaker` not one of the six the game has | `atlas` with no `icon` |
+| `news` not a boolean | `atlas` with no `icon`; a `speaker` key |
 | `gain` not a number; `icon` part name with no `atlas` | `atlas` beside an `icon` that is a record |
 
 `plugin/tests/ManifestTests.cpp` holds one case per row and runs under `ctest`.

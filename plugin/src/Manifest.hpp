@@ -49,7 +49,7 @@ struct Station
     std::string displayName;   // the label the UI shows, plain text
     std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
-    std::string speaker;       // audioRadioSpeakerType - the station's DJ
+    bool news = false;         // Stanley's news and greetings may reach the station
     float gain = kDefaultGain; // level trim applied to every track's samples, 0..1; see RadioXL_StationGain
     std::vector<Track> tracks;
     std::string source;        // which manifest it came from, for logging
@@ -68,10 +68,6 @@ inline std::string DepotPath(std::string aPath)
     }
     return aPath;
 }
-
-// The five DJs the engine has, and None. The redscript half maps the word to the enum; a word it
-// does not know would fall to None silently, so the check is here where the line is known.
-constexpr std::string_view kSpeakers[] = {"None", "Stanley", "MaximumMike", "Ash", "Kurtz", "PoliceDispatch"};
 
 // The schedule length every stream track is given. A live stream has no end to schedule against;
 // when AudioXL ends the voice (the station stopped sending) the engine posts the same slot again,
@@ -186,7 +182,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     };
 
-    unknownKeys(root, {"name", "displayName", "icon", "atlas", "speaker", "gain", "tracks"}, "manifest");
+    unknownKeys(root, {"name", "displayName", "icon", "atlas", "news", "speaker", "gain", "tracks"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -229,18 +225,15 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         aOut.atlas = DepotPath(atlas->string);
     }
 
-    if (const JsonValue* speaker = expect(root, "speaker", JsonValue::Kind::String, false))
+    // `news: true` makes the station a Stanley station. The other DJs' lines name their own station,
+    // so no other speaker is offered.
+    if (const JsonValue* news = expect(root, "news", JsonValue::Kind::Bool, false))
     {
-        if (std::find(std::begin(kSpeakers), std::end(kSpeakers), speaker->string) == std::end(kSpeakers))
-        {
-            std::string list;
-            for (const auto s : kSpeakers)
-            {
-                list += (list.empty() ? "" : ", ") + std::string(s);
-            }
-            fail(speaker->line, "\"speaker\" must be one of " + list + ": \"" + speaker->string + "\"");
-        }
-        aOut.speaker = speaker->string;
+        aOut.news = news->boolean;
+    }
+    if (const JsonValue* speaker = root.Find("speaker"))
+    {
+        at(speaker->line, "\"speaker\" is replaced by \"news\": true - ignored");
     }
 
     if (const JsonValue* gain = expect(root, "gain", JsonValue::Kind::Number, false))

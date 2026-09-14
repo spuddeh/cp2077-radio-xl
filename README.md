@@ -34,7 +34,7 @@ archive/pc/mod/<YourMod>.archive          (optional - the station icon)
   "displayName": "104.9 Tool FM",
   "icon": "tool_fm",
   "atlas": "toolfm\\gui\\tool_fm.inkatlas",
-  "speaker": "Ash",
+  "news": true,
   "tracks": [
     { "file": "audio/Tool - Vicarious.mp3", "title": "Tool - Vicarious" },
     { "file": "audio/Tool - Jambi.mp3",     "title": "Tool - Jambi" }
