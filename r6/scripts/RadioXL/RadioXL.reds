@@ -146,9 +146,16 @@ public class RadioXLService extends ScriptableService {
 
     // Resource/Load only fires while a resource is loading, so it never arrives for one another
     // mod has already pulled in. Ask the depot as well, and make the work safe to run twice.
+    // The audio metadata is asked for only when a token for it already exists. A token taken from
+    // OnLoad otherwise starts the load inside Codeware's OnLoad loop, and every service after this
+    // one misses the event, other mods' metadata patchers among them.
     let depot = GameInstance.GetResourceDepot();
-    this.Watch(depot, r"base\\sound\\metadata\\cooked_metadata.audio_metadata", n"OnCookedReady");
-    this.Watch(depot, r"base\\sound\\event\\eventsmetadata.json", n"OnEventsReady");
+    if RadioXLAudio.IsResourceRequested(r"base\\sound\\metadata\\cooked_metadata.audio_metadata") {
+      this.Watch(depot, r"base\\sound\\metadata\\cooked_metadata.audio_metadata", n"OnCookedReady");
+    }
+    if RadioXLAudio.IsResourceRequested(r"base\\sound\\event\\eventsmetadata.json") {
+      this.Watch(depot, r"base\\sound\\event\\eventsmetadata.json", n"OnEventsReady");
+    }
     this.Watch(depot, r"base\\localization\\en-us\\onscreens\\onscreens.json", n"OnOnScreensReady");
 
     this.Poll();

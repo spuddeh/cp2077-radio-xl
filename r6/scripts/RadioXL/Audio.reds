@@ -51,6 +51,17 @@ public class RadioXLAudio {
     return 0;
   }
 
+  // True when a token for the resource already exists, so taking another starts no new load.
+  @if(ModuleExists("AudioXL"))
+  public final static func IsResourceRequested(path: ResRef) -> Bool {
+    return AudioXLNative.IsResourceRequested(path);
+  }
+
+  @if(!ModuleExists("AudioXL"))
+  public final static func IsResourceRequested(path: ResRef) -> Bool {
+    return false;
+  }
+
   // The level trim on a row's samples. False when the row does not exist yet: AudioXL queues a
   // registration made before the engine's audio system is up, and a queued row has no gain to set.
   @if(ModuleExists("AudioXL"))
