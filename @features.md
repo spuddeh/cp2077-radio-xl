@@ -30,6 +30,8 @@
 - Each track's length is read from its file at load, so a station runs on the world clock like a
   vanilla one. No durations, event names, Wwise ids or records in a manifest.
 - Station name and song titles are real localization entries, resolved wherever a vanilla one is.
+- A song's title is optional: an untitled song plays at world radios and in Streamer Mode, and its
+  name reads blank in the radio popup (#33). Verified in game.
 - The station appears on the vehicle radio wheel, sorted by frequency, with its own name and icon.
 - A vehicle radio switched off and on stays on the custom station it was on. Verified in game.
 - An optional DJ per station (`speaker`), defaulting to none.

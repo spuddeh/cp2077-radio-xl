@@ -56,6 +56,7 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]displayName[/b] starts with the frequency. The dial is sorted by it, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
+[*][b]title[/b] is optional on a track. It is the song name in the Radioport's radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
 [*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, and shows no title.[/*]
 [*][b]speaker[/b] is optional and names a DJ: Stanley, MaximumMike, Ash, Kurtz or PoliceDispatch.[/*]
 [/list]

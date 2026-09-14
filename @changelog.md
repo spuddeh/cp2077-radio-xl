@@ -14,6 +14,11 @@
   `Position`, `IsPlaying` and `Pause`.
 
 ### Fixed
+- A song with no `title` was silent at world radios and with Streamer Mode on (#33). `AddTitle`
+  skipped the `audioRadioTrack` row for an untitled song, so it had no `isStreamingFriendly`, and the
+  engine refuses such a track when no player receiver listens or Streamer Mode is on. Every song now
+  gets a row; an untitled one registers a single space as its text, so the radio popup reads blank
+  instead of the widget's `TRACK NAME` placeholder. Verified in game on a three-song untitled station.
 - Toggling a vehicle radio off and on while on a custom station landed on a random vanilla one
   (#27). The receiver's turn-on block treats a stored station at or past 14 as none chosen; the
   bound is raised to the station total with the other three. The block has no RED4ext hash, so
