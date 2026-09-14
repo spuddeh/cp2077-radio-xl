@@ -17,7 +17,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 {
   "name": "radio_station_20_yourstation",
   "displayName": "104.9 Your Station",
-  "speaker": "Ash",
+  "news": true,
   "tracks": [
     { "file": "audio/first.mp3",  "title": "Artist - First Song" },
     { "file": "audio/second.flac", "title": "Artist - Second Song" }
@@ -29,17 +29,30 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | --- | --- |
 | `name` | The station's own CName: letters, digits and underscores only. It must be unique across every installed station mod. |
 | `displayName` | The label the game shows. Put the frequency at the front. |
-| `speaker` | Optional. The station's DJ. Defaults to `None`. |
+| `news` | Optional. `true` lets the news reach the station: Stanley's bulletins and greetings, and N54 News. Defaults to `false`. See [News](#news). |
 | `gain` | Optional. A level trim on every track, `0` to `1`. Defaults to `1`, the audio as recorded. |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
-| `tracks[].title` | Optional. The song title, shown as written. |
+| `tracks[].title` | Optional. The song title, shown as written in the Radioport's radio popup. An untitled song plays everywhere a titled one does, and its title reads blank. |
 | `tracks[].ident` | Optional. `true` marks a station ident, jingle or ad: it plays between songs and never shows a title. See [Idents](#idents). |
 
-`speaker` names one of `Stanley`, `MaximumMike`, `Ash`, `Kurtz` or `PoliceDispatch`. Every vanilla
-station names one; a station without one plays.
+## News
+
+A station with `"news": true` gets the game's news the same way its own stations do, and follows the
+same rules:
+
+- **A greeting** (Stanley's time-of-day lines) goes to the nearest news station, so the station you
+  are listening to gets it. It starts straight away, stopping the current song.
+- **A news bulletin** goes to one news station at a time: the last one, in the game's internal order,
+  that has any radio nearby, switched on or not. It plays at that station's next song change. In the
+  city a nearby station of the game's often takes it, so news on any station is hit and miss there,
+  and dependable only away from other radios. The internal order comes from each station's `name`,
+  not its frequency.
+
+Leave `news` out and the station gets no DJ lines of any kind. Other DJs are not offered: Maximum
+Mike's lines name Morro Rock and Ash's name Growl FM.
 
 `gain` is the station's level trim. RadioXL routes a station through the same level stages as the
 game's own stations, so audio mastered like commercial music plays among them at `1`: measured on
@@ -58,11 +71,11 @@ number goes after every station that has one.
 path written twice (`"mymod\\gui\\icons.inkatlas"`), or once as a forward slash.
 
 **Every fault is logged with the file and the line, and the station is skipped whole.** A missing
-`name`, a `tracks` that is not an array, a `speaker` the game does not have, a `gain` written as a
+`name`, a `tracks` that is not an array, `news` that is not `true` or `false`, a `gain` written as a
 string, an `icon` part name with no `atlas` - each names its line in the RED4ext log:
 
 ```text
-[RadioXL] YourMod/station.json:7: "speaker" must be one of None, Stanley, MaximumMike, Ash, Kurtz, PoliceDispatch: "Stanly"
+[RadioXL] YourMod/station.json:7: "gain" must be a number, not a string
 [RadioXL] YourMod/station.json: skipped
 ```
 
