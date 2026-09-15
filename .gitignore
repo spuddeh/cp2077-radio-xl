@@ -15,3 +15,4 @@ audio-tests/
 
 # WolvenKit build output of the icon project under tools/; the shipped archive is DV's copy
 tools/wolvenkit/
+__pycache__/
