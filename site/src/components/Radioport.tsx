@@ -7,7 +7,13 @@ const ROWS = 7
  * The Radioport's station popup (vehicles_radio.inkwidget), laid out from its widget tree,
  * showing where the station lands on the dial.
  */
-export function Radioport(props: { frequency: string; name: string; nowPlaying: string; logo?: string }) {
+export function Radioport(props: {
+  frequency: string
+  name: string
+  nowPlaying: string
+  logo?: string
+  animate: boolean
+}) {
   const freq = Number.parseFloat(props.frequency)
   const own = {
     freq: Number.isFinite(freq) ? freq : Infinity,
@@ -24,11 +30,11 @@ export function Radioport(props: { frequency: string; name: string; nowPlaying: 
 
   return (
     <div className="radioport-wrap">
-      <figure className="radioport" aria-label="In-game preview">
-        <span className="rp-fluff rp-fluff-top" aria-hidden>
+      <figure className={props.animate ? 'radioport rp-animate' : 'radioport'} aria-label="In-game preview">
+        <span className="rp-fluff rp-fluff-top rp-flicker" aria-hidden>
           TRN_TCLAS_800095
         </span>
-        <div className="rp-bar">
+        <div className="rp-bar rp-top-holder">
           <span className="rp-bracket" aria-hidden />
           <div className="rp-top ink-frame">
             <span className="rp-title">Radioport</span>
@@ -37,21 +43,22 @@ export function Radioport(props: { frequency: string; name: string; nowPlaying: 
 
         <div className="rp-now">
           <div className="rp-bar">
-            <span className="rp-bracket" aria-hidden />
-            <div className="rp-image ink-frame">
+            <span className="rp-bracket rp-grow-down" aria-hidden />
+            {/* Keyed on the station, so a change replays the switch animation. */}
+            <div key={`${props.logo ?? ''}|${props.frequency}|${props.name}`} className="rp-image ink-frame">
               <span
                 className="rp-icon"
                 style={{ maskImage: `url(${props.logo ?? glyph})` }}
                 role="img"
                 aria-label={props.logo ? 'Station icon' : 'RadioXL glyph'}
               />
-              <pre className="rp-kernel" aria-hidden>
+              <pre className="rp-kernel rp-flicker" aria-hidden>
                 {'IMAGE NAME:   SILVERBIRCH-3.10.10\nIMAGE TYPE:   ROOT AV92 KERNEL IMAGE\n(LZO COMPRESSED)\nLOAD ADDRESS: 00008000'}
               </pre>
             </div>
           </div>
           <div className="rp-details">
-            <span className="rp-fluff">Now playing</span>
+            <span className="rp-fluff rp-now-label">Now playing</span>
             <span className="rp-track">{props.nowPlaying || 'No track'}</span>
             <div className="rp-volume">
               <span>Volume</span>
@@ -88,7 +95,7 @@ export function Radioport(props: { frequency: string; name: string; nowPlaying: 
         </div>
 
         <div className="rp-foot">
-          <span className="rp-fluff rp-fluff-legal" aria-hidden>
+          <span className="rp-fluff rp-fluff-legal rp-flicker" aria-hidden>
             Only CCSR certified and drive 5th class officers are allowed to manipulate, access or disable this
             device.
           </span>

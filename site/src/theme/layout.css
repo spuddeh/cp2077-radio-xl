@@ -173,13 +173,20 @@
 
 .rp-bar { display: flex; gap: 3px; align-items: stretch; }
 
-/* notification_bracket: a tab down the left edge, notched at mid-height */
+/*
+ * atlas_shapes_sync notification_bracket (20x65 at 4K): a tab with a step down at the top, a cut
+ * at the bottom left, and a shallow notch in its right edge at mid-height.
+ */
 .rp-bracket {
   flex: none;
-  width: 8px;
+  width: 10px;
   background: var(--red);
   opacity: 0.6;
-  clip-path: polygon(0 0, 100% 0, 100% 38%, 55% 45%, 55% 55%, 100% 62%, 100% 100%, 0 100%);
+  clip-path: polygon(
+    0 1.5px, 75% 1.5px, 88% 0, 100% 0,
+    100% calc(50% - 7px), 80% calc(50% - 4.5px), 80% calc(50% + 4.5px), 100% calc(50% + 7px),
+    100% 100%, 32% 100%, 0 calc(100% - 3px)
+  );
 }
 
 /* bg_topBar + frame_topBar */
@@ -330,6 +337,50 @@
   color: var(--neutral);
   opacity: 0.6;
 }
+
+/* --- Radioport animations: vehicles_radio_animations.inkanim ----------------------------- */
+
+/*
+ * fadeIn plays as the popup opens (and again when the station changes, as the image remounts)
+ * and equlizer loops on the playing row (LoopAnimationLogicController). Times, values and easings are the sequences' own;
+ * translations are halved with the rest of the layout.
+ */
+.rp-animate { animation: rp-drop 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-top-holder,
+.rp-animate .rp-fluff-top { animation: rp-top-in 0.333s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-title { animation: rp-fade 0.25s 0.167s linear both; }
+.rp-animate .rp-image { animation: rp-grow 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-icon { animation: rp-fade 0.167s 0.2s linear both; }
+.rp-animate .rp-grow-down,
+.rp-animate .rp-details { animation: rp-grow-down 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-track { animation: rp-fade 0.1s 0.2s linear both; }
+.rp-animate .rp-now-label { animation: rp-slide-in 0.233s 0.233s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rp-animate .rp-volume { animation: rp-fade 0.1s 0.4s linear both; }
+.rp-animate .rp-listwrap,
+.rp-animate .rp-foot { animation: rp-rise 0.367s 0.2s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-fluff-top.rp-flicker,
+.rp-animate .rp-kernel { animation: rp-flicker 0.366s 0.3s steps(1, end) both; }
+.rp-animate .rp-fluff-legal { animation: rp-flicker 0.366s 0.4s steps(1, end) both; }
+.rp-animate .rp-eq i { transform-origin: bottom; animation: 1.6s linear infinite both; }
+.rp-animate .rp-eq i:nth-child(1) { animation-name: rp-eq-0; }
+.rp-animate .rp-eq i:nth-child(2) { animation-name: rp-eq-1; }
+.rp-animate .rp-eq i:nth-child(3) { animation-name: rp-eq-2; }
+.rp-animate .rp-eq i:nth-child(4) { animation-name: rp-eq-3; }
+
+@keyframes rp-drop { from { transform: translateY(-100px); } to { transform: none; } }
+@keyframes rp-top-in { from { transform: translateY(-50px); opacity: 0; } 75% { opacity: 1; } to { transform: none; } }
+@keyframes rp-fade { from { opacity: 0; } }
+@keyframes rp-grow { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
+@keyframes rp-grow-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -20px 0); } }
+@keyframes rp-slide-in { from { transform: translateX(100px); opacity: 0; } 43% { opacity: 0.45; } }
+@keyframes rp-rise { from { transform: translateY(100px); opacity: 0; } 27% { opacity: 1; } to { transform: none; } }
+/* Stepped on and off at 0.067 s, the way fadeIn toggles the fluff text before it settles. */
+@keyframes rp-flicker { 0% { opacity: 0; } 18% { opacity: 0.45; } 36% { opacity: 0; } 55% { opacity: 0.45; } 73% { opacity: 0; } 91% { opacity: 0.45; } }
+
+@keyframes rp-eq-0 { 0% { transform: scaleY(0.1) } 12.5% { transform: scaleY(0.5) } 25% { transform: scaleY(1) } 37.5% { transform: scaleY(0.5) } 50% { transform: scaleY(0.1) } 62.5% { transform: scaleY(0.5) } 75% { transform: scaleY(1) } 87.5% { transform: scaleY(0.5) } 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-1 { 0%, 12.5% { transform: scaleY(0.1) } 25% { transform: scaleY(0.5) } 37.5% { transform: scaleY(1) } 50% { transform: scaleY(0.5) } 62.5%, 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-2 { 0%, 25% { transform: scaleY(0.1) } 37.5% { transform: scaleY(0.5) } 50% { transform: scaleY(1) } 62.5% { transform: scaleY(0.5) } 75%, 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-3 { 0%, 37.5% { transform: scaleY(0.1) } 50% { transform: scaleY(0.5) } 62.5% { transform: scaleY(1) } 75% { transform: scaleY(0.5) } 87.5%, 100% { transform: scaleY(0.1) } }
 
 /* --- preview switch and world radios ---------------------------------------------------- */
 

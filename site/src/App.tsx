@@ -173,13 +173,17 @@ export function App() {
               </button>
             ))}
           </nav>
-          {preview !== 'radioport' && (
-            <button type="button" className="ink-frame animate-toggle" aria-pressed={animate} onClick={toggleAnimate}>
-              Animation {animate ? 'on' : 'off'}
-            </button>
-          )}
+          <button type="button" className="ink-frame animate-toggle" aria-pressed={animate} onClick={toggleAnimate}>
+            Animation {animate ? 'on' : 'off'}
+          </button>
           {preview === 'radioport' ? (
-            <Radioport frequency={s.frequency.trim()} name={s.stationName.trim()} nowPlaying={firstSong?.title ?? ''} logo={logo} />
+            <Radioport
+              frequency={s.frequency.trim()}
+              name={s.stationName.trim()}
+              nowPlaying={firstSong?.title ?? ''}
+              logo={logo}
+              animate={animate}
+            />
           ) : (
             <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} animate={animate} />
           )}
