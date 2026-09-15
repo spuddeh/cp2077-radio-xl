@@ -3,7 +3,7 @@ import { useStation, type IconMode, type Source } from './store'
 import { buildManifest, checkManifest, displayName } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
-import { WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
+import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
 import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
 import { About } from './components/About'
@@ -258,7 +258,22 @@ export function App() {
                   </Row>
                   <Row
                     label="Preview image"
-                    note="Shows your icon in the previews, tinted the way the game tints it. The zip does not include it: the icon still goes in your own archive."
+                    note={
+                      <>
+                        Shows your icon in the previews, tinted the way the game tints it. The zip does not include it:
+                        the icon still goes in your own archive.
+                        {s.iconImageSize && (
+                          <>
+                            {' '}
+                            This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at
+                            its texture&apos;s size, and the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide
+                            {s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h
+                              ? `, so the preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}; size the texture to match.`
+                              : '.'}
+                          </>
+                        )}
+                      </>
+                    }
                   >
                     <label className="file-pick">
                       <span>{s.iconImage ? 'Change image' : 'Choose a PNG'}</span>
@@ -270,7 +285,11 @@ export function App() {
                           const f = e.target.files?.[0]
                           if (!f) return
                           if (s.iconImage) URL.revokeObjectURL(s.iconImage)
-                          s.set({ iconImage: URL.createObjectURL(f) })
+                          const url = URL.createObjectURL(f)
+                          s.set({ iconImage: url, iconImageSize: null })
+                          const img = new Image()
+                          img.onload = () => s.set({ iconImageSize: [img.naturalWidth, img.naturalHeight] })
+                          img.src = url
                           e.target.value = ''
                         }}
                       />
@@ -281,7 +300,7 @@ export function App() {
                         className="link file-clear"
                         onClick={() => {
                           URL.revokeObjectURL(s.iconImage!)
-                          s.set({ iconImage: null })
+                          s.set({ iconImage: null, iconImageSize: null })
                         }}
                       >
                         Remove

@@ -66,6 +66,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
   opacity: var(--fill-opacity);
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut) + 0.59px), calc(100% - var(--cut) + 0.59px) 100%, 0 100%);
 }
+/* The same frame cut at the bottom left instead (atlas_shapes_sync color_flip). */
+.ink-frame.cut-bl::before {
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 0,
+    1px 1px, 1px calc(100% - var(--cut) - 0.41px), calc(var(--cut) + 0.41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 1px, 1px 1px);
+}
+.ink-frame.cut-bl::after {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, calc(var(--cut) - 0.59px) 100%, 0 calc(100% - var(--cut) + 0.59px));
+}
+
 /* --- settings row: settings_main.inkwidget settingsSelector* ---------------------------- */
 
 .row {

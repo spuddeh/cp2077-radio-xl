@@ -535,7 +535,7 @@
   inset: 0;
   z-index: 40;
   pointer-events: none;
-  background: color-mix(in srgb, var(--fs-primary-background-darkest) 85%, transparent);
+  background: rgb(3 3 7 / 0.92);
 }
 .feedback-fade.animate { animation: feedback-fade-in 0.2s linear both; }
 @keyframes feedback-fade-in { from { opacity: 0; } }
@@ -607,13 +607,13 @@
   pointer-events: none;
 }
 .tooltip.open { display: flex; }
-.tooltip-tab { /* color_flip_bg / _fg: MainColors.FaintRed under a MildRed frame */
+.tooltip-tab { /* color_flip_bg / _fg: MainColors.FaintRed under a MildRed frame, cut at the bottom left */
+  --edge: var(--mild-red);
+  --fill: var(--faint-red);
+  --cut: 7px;
   flex: none;
   width: 10px;
   margin-right: 2px;
-  background: var(--faint-red);
-  box-shadow: inset 0 0 0 1px var(--mild-red);
-  clip-path: polygon(0 5px, 5px 0, 100% 0, 100% 100%, 0 100%);
 }
 .tooltip-body { /* cell_bg / cell_fg: Tooltip.backgroundColor under Tooltip.frameColor */
   --edge: var(--mild-red);
