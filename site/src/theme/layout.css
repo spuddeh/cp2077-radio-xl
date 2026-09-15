@@ -350,6 +350,22 @@
 .preview-tabs .sub { font-size: var(--font-readable-x-small); }
 
 .world-radio-frame { width: 100%; }
+.animate-toggle {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.4;
+  display: block;
+  margin: 0 0 12px auto;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-readable-x-small);
+  text-transform: uppercase;
+  color: var(--red);
+}
+.animate-toggle:hover { --edge-opacity: 1; }
+.animate-toggle[aria-pressed='true'] { --edge: var(--blue); --edge-opacity: 1; --fill: var(--blue); --fill-opacity: 0.15; color: var(--blue); }
 .world-radio {
   position: relative;
   overflow: hidden;
@@ -364,6 +380,7 @@
 .wr-eq { overflow: hidden; }
 .wr-image { display: block; mask-size: 100% 100%; mask-repeat: no-repeat; }
 .wr-text { overflow: hidden; white-space: nowrap; line-height: 1; font-family: var(--font-ui); }
+.wr-text-inner { display: inline-block; }
 .wr-text.fit { overflow: visible; white-space: pre; line-height: 1.2; }
 
 .json { margin-top: 22px; }

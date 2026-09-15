@@ -13,6 +13,7 @@
     "y": 263.0,
     "w": 398.0,
     "h": 179.0,
+    "restY": 293.0,
     "color": "var(--blue)",
     "kind": "image",
     "part": "frame"
@@ -23,6 +24,7 @@
     "y": -30.0,
     "w": 800,
     "h": 600,
+    "restY": -0.0,
     "kind": "canvas",
     "children": [
      {
@@ -31,6 +33,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -39,6 +42,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -61,6 +65,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -69,6 +74,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -91,6 +97,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -99,6 +106,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -121,6 +129,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -129,6 +138,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -151,6 +161,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -159,6 +170,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -181,6 +193,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -189,6 +202,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -211,6 +225,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -219,6 +234,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -241,6 +257,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -249,6 +266,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -271,6 +289,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -279,6 +298,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -301,6 +321,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -309,6 +330,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -331,6 +353,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -339,6 +362,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -371,6 +395,7 @@
       "y": 120,
       "w": 420,
       "h": 70,
+      "restY": 180,
       "color": "var(--blue)",
       "kind": "text",
       "text": "NOW PLAYING",
@@ -396,6 +421,7 @@
       "y": 150,
       "w": 315,
       "h": 70,
+      "restY": 180,
       "color": "var(--blue)",
       "kind": "text",
       "text": "[Radio station]",
@@ -404,7 +430,11 @@
       "upper": true,
       "align": "Left",
       "fit": false,
-      "role": "name"
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
      },
      {
       "name": "radioLogo",
@@ -464,6 +494,7 @@
     "y": 68.0,
     "w": 398.0,
     "h": 179.0,
+    "restY": 98.0,
     "scale": [
      0.8,
      0.8
@@ -478,6 +509,7 @@
     "y": -211.0,
     "w": 800,
     "h": 600,
+    "restY": -181.0,
     "scale": [
      0.8,
      0.8
@@ -490,6 +522,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -498,6 +531,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -520,6 +554,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -528,6 +563,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -550,6 +586,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -558,6 +595,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -580,6 +618,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -588,6 +627,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -610,6 +650,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -618,6 +659,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -640,6 +682,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -648,6 +691,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -670,6 +714,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -678,6 +723,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -700,6 +746,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -708,6 +755,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -730,6 +778,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -738,6 +787,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -760,6 +810,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -768,6 +819,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -790,6 +842,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -798,6 +851,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -822,6 +876,7 @@
     "y": -88.0,
     "w": 550,
     "h": 400,
+    "restY": -133.0,
     "scale": [
      0.8,
      0.8
@@ -834,6 +889,7 @@
       "y": 230,
       "w": 420,
       "h": 70,
+      "restY": 290,
       "color": "var(--blue)",
       "kind": "text",
       "text": "NOW PLAYING",
@@ -863,6 +919,7 @@
       "y": 361.25,
       "w": 450,
       "h": 70,
+      "restY": 281.25,
       "color": "var(--blue)",
       "kind": "text",
       "text": "[Radio station]",
@@ -871,7 +928,11 @@
       "upper": true,
       "align": "Right",
       "fit": false,
-      "role": "name"
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
      },
      {
       "name": "radioLogo",
@@ -895,6 +956,7 @@
     "y": 78.0,
     "w": 234.0,
     "h": 33.0,
+    "restY": 108.0,
     "scale": [
      0.8,
      0.8
@@ -920,6 +982,7 @@
     "y": 60.0,
     "w": 398.0,
     "h": 179.0,
+    "restY": 90.0,
     "scale": [
      0.6,
      0.6
@@ -935,6 +998,7 @@
     "y": -260.0,
     "w": 800,
     "h": 600,
+    "restY": -100.0,
     "scale": [
      0.6,
      0.6
@@ -948,6 +1012,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -956,6 +1021,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -978,6 +1044,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -986,6 +1053,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1008,6 +1076,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1016,6 +1085,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1038,6 +1108,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1046,6 +1117,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1068,6 +1140,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1076,6 +1149,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1098,6 +1172,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1106,6 +1181,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1128,6 +1204,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1136,6 +1213,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1158,6 +1236,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1166,6 +1245,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1188,6 +1268,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1196,6 +1277,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1218,6 +1300,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1226,6 +1309,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1248,6 +1332,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1256,6 +1341,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1280,6 +1366,7 @@
     "y": -99.0,
     "w": 550,
     "h": 400,
+    "restY": -144.0,
     "scale": [
      0.7,
      0.7
@@ -1293,6 +1380,7 @@
       "y": -213.14,
       "w": 420,
       "h": 70,
+      "restY": -153.14,
       "color": "var(--blue)",
       "kind": "text",
       "text": "NOW PLAYING",
@@ -1322,6 +1410,7 @@
       "y": 368.14,
       "w": 315,
       "h": 70,
+      "restY": 323.14,
       "rotation": -90,
       "color": "var(--blue)",
       "kind": "text",
@@ -1331,7 +1420,11 @@
       "upper": true,
       "align": "Right",
       "fit": false,
-      "role": "name"
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
      },
      {
       "name": "radioLogo",
@@ -1402,6 +1495,7 @@
     "y": 159.0,
     "w": 398.0,
     "h": 179.0,
+    "restY": 189.0,
     "color": "var(--blue)",
     "kind": "image",
     "part": "frame"
@@ -1412,6 +1506,7 @@
     "y": -139.0,
     "w": 800,
     "h": 600,
+    "restY": -109.0,
     "kind": "canvas",
     "children": [
      {
@@ -1420,6 +1515,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1428,6 +1524,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1450,6 +1547,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1458,6 +1556,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1480,6 +1579,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1488,6 +1588,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1510,6 +1611,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1518,6 +1620,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1540,6 +1643,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1548,6 +1652,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1570,6 +1675,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1578,6 +1684,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1600,6 +1707,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1608,6 +1716,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1630,6 +1739,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1638,6 +1748,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1660,6 +1771,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1668,6 +1780,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1690,6 +1803,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1698,6 +1812,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1720,6 +1835,7 @@
       "y": 286.0,
       "w": 33,
       "h": 172,
+      "restY": 214.0,
       "kind": "canvas",
       "children": [
        {
@@ -1728,6 +1844,7 @@
         "y": 202.0,
         "w": 31.0,
         "h": 168.0,
+        "restY": 2.0,
         "color": "#5ef6ff",
         "kind": "image",
         "part": "eq_bar"
@@ -1752,6 +1869,7 @@
     "y": -25.0,
     "w": 550,
     "h": 400,
+    "restY": -70.0,
     "kind": "canvas",
     "children": [
      {
@@ -1760,6 +1878,7 @@
       "y": 268,
       "w": 420,
       "h": 70,
+      "restY": 328,
       "color": "var(--blue)",
       "kind": "text",
       "text": "NOW PLAYING",
@@ -1785,6 +1904,7 @@
       "y": 225,
       "w": 400,
       "h": 70,
+      "restY": 180,
       "color": "var(--blue)",
       "kind": "text",
       "text": "[Radio station]",
@@ -1793,7 +1913,11 @@
       "upper": true,
       "align": "Right",
       "fit": false,
-      "role": "name"
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
      },
      {
       "name": "radioLogo",
@@ -1838,5 +1962,277 @@
     "fit": true
    }
   ]
- }
+ },
+ "equaliser": [
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     79
+    ],
+    [
+     0.747,
+     47
+    ],
+    [
+     0.8866,
+     47
+    ],
+    [
+     1.0,
+     79
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     47
+    ],
+    [
+     0.6587,
+     32
+    ],
+    [
+     0.8324,
+     32
+    ],
+    [
+     1.0,
+     47
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.3986,
+     0
+    ],
+    [
+     0.9027,
+     0
+    ],
+    [
+     0.9958,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop7",
+   "period": 0.6927,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.4745,
+     0
+    ],
+    [
+     0.7206,
+     0
+    ],
+    [
+     0.7901,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.3271,
+     0
+    ],
+    [
+     0.7537,
+     0
+    ],
+    [
+     0.9937,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     32
+    ],
+    [
+     0.331,
+     16
+    ],
+    [
+     0.9035,
+     16
+    ],
+    [
+     0.9954,
+     32
+    ],
+    [
+     1,
+     32
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     47
+    ],
+    [
+     0.5952,
+     32
+    ],
+    [
+     0.7191,
+     32
+    ],
+    [
+     0.9898,
+     47
+    ],
+    [
+     1,
+     47
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop7",
+   "period": 0.6927,
+   "frames": [
+    [
+     0.0,
+     79
+    ],
+    [
+     0.5737,
+     47
+    ],
+    [
+     0.7275,
+     47
+    ],
+    [
+     1.0,
+     79
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     126
+    ],
+    [
+     0.737,
+     74
+    ],
+    [
+     0.8978,
+     74
+    ],
+    [
+     0.9962,
+     126
+    ],
+    [
+     1,
+     126
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     142
+    ],
+    [
+     0.6512,
+     74
+    ],
+    [
+     0.8411,
+     74
+    ],
+    [
+     0.9921,
+     142
+    ],
+    [
+     1,
+     142
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     157
+    ],
+    [
+     0.5937,
+     47
+    ],
+    [
+     0.7293,
+     47
+    ],
+    [
+     1.0,
+     157
+    ]
+   ]
+  }
+ ]
 }

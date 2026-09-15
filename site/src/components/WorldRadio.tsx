@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import layouts from '../world/layouts.json'
 import glyph from '../assets/radioxl-glyph.png'
 
-export type WorldLayout = keyof typeof layouts
+export type WorldLayout = Exclude<keyof typeof layouts, 'equaliser'>
 
 export const WORLD_LAYOUTS: { value: WorldLayout; label: string }[] = [
   { value: 'square', label: 'Square' },
@@ -30,14 +30,21 @@ interface InkNode {
   upper?: boolean
   align?: string
   fit?: boolean
+  restY?: number
+  scroll?: { speed: number; delay: number }
   children?: InkNode[]
 }
 
 const PARTS = import.meta.glob<string>('../assets/world/*.png', { eager: true, import: 'default' })
 const partUrl = (part: string) => PARTS[`../assets/world/${part.replace(/ /g, '_')}.png`]
 
-/** Bar heights for the eleven equaliser columns, as a fraction of the column. */
-const EQ = [0.55, 0.72, 0.86, 0.9, 0.82, 0.78, 0.66, 0.5, 0.36, 0.44, 0.3]
+/** Each column's loop from radio_ui_animations.inkanim: a period and its bar's Y keyframes. */
+const EQUALISER = layouts.equaliser as { sequence: string; period: number; frames: number[][] }[]
+
+const EQ_KEYFRAMES = EQUALISER.map(
+  (c, i) =>
+    `@keyframes wr-eq-${i} {${c.frames.map(([t, y]) => `${(t * 100).toFixed(2)}% { transform: translateY(${y}px) }`).join(' ')}}`,
+).join(' ')
 
 const WEIGHTS: Record<string, number> = { Regular: 400, Medium: 500, 'Semi-Bold': 600, Bold: 700 }
 
@@ -50,7 +57,7 @@ const MAX_HEIGHT = 520
  * A world radio's screen, drawn from the widget tree of its radio_ui inkwidget. Positions are
  * computed at build time by scripts/world-radios.py; this only draws them.
  */
-export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: string }) {
+export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: string; animate: boolean }) {
   const frame = useRef<HTMLDivElement>(null)
   const width = useWidth(frame)
   const root = layouts[props.layout] as InkNode
@@ -96,9 +103,12 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
       )
     }
     if (n.kind === 'image' && n.part) {
-      if (eqIndex !== undefined) {
-        // The bar rests below its column and the animation raises it; drawn part-way up.
-        style.top = n.h * (1 - EQ[eqIndex % EQ.length]) + 4
+      if (eqIndex !== undefined && n.restY !== undefined) {
+        // The bar is authored out of sight below its column; the loop moves it up into view.
+        const loop = EQUALISER[eqIndex]
+        style.top = n.restY
+        style.transform = `translateY(${loop.frames[0][1]}px)`
+        if (props.animate) style.animation = `wr-eq-${eqIndex} ${loop.period}s linear infinite`
       }
       return (
         <span
@@ -111,8 +121,9 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
     if (n.kind === 'text') {
       const text = n.role === 'name' ? props.name : (n.text ?? '')
       return (
-        <span
+        <ScrollText
           key={n.name + n.x + n.y}
+          scroll={props.animate ? n.scroll : undefined}
           className={n.fit ? 'wr-node wr-text fit' : 'wr-node wr-text'}
           style={{
             ...style,
@@ -123,9 +134,8 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
             textTransform: n.upper ? 'uppercase' : undefined,
             textAlign: (n.align ?? 'Left').toLowerCase() as CSSProperties['textAlign'],
           }}
-        >
-          {text}
-        </span>
+          text={text}
+        />
       )
     }
     return null
@@ -133,6 +143,7 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
 
   return (
     <div ref={frame} className="world-radio-frame">
+    <style>{EQ_KEYFRAMES}</style>
     <div className="world-radio" style={{ width: boxW * scale, height: boxH * scale }}>
       <div
         className="wr-screen"
@@ -148,6 +159,50 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
       </div>
     </div>
     </div>
+  )
+}
+
+/**
+ * A text widget with textOverflowPolicy AutoScroll: when the text is wider than its box it moves
+ * across and back. The engine's scrollTextSpeed and scrollDelay are read as pixels per frame and
+ * frames at 60 fps; the units are not documented, so the pace is an approximation.
+ */
+function ScrollText(props: {
+  text: string
+  className: string
+  style: CSSProperties
+  scroll?: { speed: number; delay: number }
+}) {
+  const box = useRef<HTMLSpanElement>(null)
+  const inner = useRef<HTMLSpanElement>(null)
+  const [overflow, setOverflow] = useState(0)
+  useEffect(() => {
+    if (box.current && inner.current) setOverflow(Math.max(0, inner.current.offsetWidth - box.current.clientWidth))
+  }, [props.text, props.style.width])
+
+  let animation: CSSProperties = {}
+  if (props.scroll && overflow > 0) {
+    const pause = props.scroll.delay / 60
+    const travel = overflow / (props.scroll.speed * 60)
+    const total = 2 * (pause + travel)
+    const pct = (s: number) => `${((s / total) * 100).toFixed(2)}%`
+    const name = `wr-scroll-${Math.round(overflow)}-${Math.round(total * 100)}`
+    animation = { animation: `${name} ${total}s linear infinite` }
+    return (
+      <span ref={box} className={props.className} style={props.style}>
+        <style>{`@keyframes ${name} { 0%, ${pct(pause)} { transform: translateX(0) } ${pct(pause + travel)}, ${pct(2 * pause + travel)} { transform: translateX(-${overflow}px) } 100% { transform: translateX(0) } }`}</style>
+        <span ref={inner} className="wr-text-inner" style={animation}>
+          {props.text}
+        </span>
+      </span>
+    )
+  }
+  return (
+    <span ref={box} className={props.className} style={props.style}>
+      <span ref={inner} className="wr-text-inner">
+        {props.text}
+      </span>
+    </span>
   )
 }
 

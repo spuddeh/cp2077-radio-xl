@@ -28,6 +28,9 @@ LAYOUTS = {
     "boombox": RADIO + "radio_ui_short-hori.inkwidget",
 }
 STYLE = RADIO + "radio_ui.inkstyle"
+ANIMATIONS = RADIO + "radio_ui_animations.inkanim"
+# The sequences RadioInkGameController plays while a radio is on.
+PLAYED = ("eqLoop2", "eqLoop3", "eqLoop5", "eqLoop7")
 MAIN_COLORS = "base" + B + "gameplay" + B + "gui" + B + "common" + B + "main_colors.inkstyle"
 ATLASES = {
     RADIO + "radio_ui.inkatlas": 1,
@@ -143,6 +146,8 @@ def main():
             "name": name, "x": round(x + translation["X"], 2), "y": round(y + translation["Y"], 2),
             "w": round(w, 2), "h": round(h, 2),
         }
+        if translation["Y"]:
+            out["restY"] = round(y, 2)  # where an animated translation is measured from
         if scale["X"] != 1 or scale["Y"] != 1:
             out["scale"] = [round(scale["X"], 3), round(scale["Y"], 3)]
         if transform.get("rotation"):
@@ -180,6 +185,8 @@ def main():
                        align=d.get("textHorizontalAlignment", "Left"), fit=bool(d.get("fitToContent", 0)))
             if name == "radioName":
                 out["role"] = "name"
+            if d.get("textOverflowPolicy") == "AutoScroll":
+                out["scroll"] = {"speed": d.get("scrollTextSpeed"), "delay": d.get("scrollDelay")}
         else:
             out["kind"] = "canvas"
             kids = []
@@ -197,6 +204,8 @@ def main():
         layouts[key] = tree
         print(key, tree["w"], "x", tree["h"])
 
+    layouts["equaliser"] = equaliser(ink)
+
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(layouts, indent=1), encoding="utf-8")
     OUT_PARTS.mkdir(parents=True, exist_ok=True)
@@ -210,6 +219,47 @@ def main():
         mask.putalpha(alpha)
         mask.save(OUT_PARTS / (part.replace(" ", "_") + ".png"), optimize=True)
         print("part", part, box)
+
+
+def equaliser(ink):
+    """Each equaliser column's loop: its period and the Y translation keyframes of its bar.
+
+    A sequence targets EQ (root child 3), column N, bar (child 0). Every definition is a rise and a
+    fall; the whole sequence restarts once its last interpolator ends (loopType Cycle).
+    """
+    fid = ink.q("SELECT fid FROM files WHERE path = ?", ANIMATIONS)[0][0]
+    chunks = {cid: json.loads(data) for cid, data in ink.q("SELECT chunk_id, data FROM chunks WHERE fid = ?", fid)}
+
+    def expand(value):
+        if isinstance(value, dict):
+            if set(value) == {"$ref"}:
+                return expand(chunks[value["$ref"]])
+            return {k: expand(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [expand(v) for v in value]
+        return value
+
+    columns = {}
+    for data in chunks.values():
+        if data.get("$type") != "inkanimSequence" or data.get("name") not in PLAYED:
+            continue
+        seq = expand(data)
+        steps = [[(i["startDelay"], i["duration"], i["startValue"]["Y"], i["endValue"]["Y"])
+                  for i in definition["interpolators"]] for definition in seq["definitions"]]
+        period = max(delay + duration for s in steps for delay, duration, _, _ in s)
+        for target, definition in zip(seq["targets"], steps):
+            path = target["path"]
+            assert path[0] == 3 and path[2] == 0, path
+            frames = []
+            for delay, duration, start, end in sorted(definition):
+                frames.append([round(delay / period, 4), start])
+                frames.append([round((delay + duration) / period, 4), end])
+            if frames[0][0] > 0:
+                frames.insert(0, [0, frames[0][1]])
+            if frames[-1][0] < 1:
+                frames.append([1, frames[-1][1]])
+            columns[path[1]] = {"sequence": seq["name"], "period": round(period, 4), "frames": frames}
+    return [columns[i] for i in sorted(columns)]
 
 
 if __name__ == "__main__":

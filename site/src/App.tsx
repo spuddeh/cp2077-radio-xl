@@ -44,6 +44,19 @@ function ownIconNote(first: string) {
   )
 }
 
+const ANIMATE_KEY = 'radioxl-builder-animate'
+
+/** Previews animate unless the viewer turned it off here or asks the OS for reduced motion. */
+function initialAnimate(): boolean {
+  try {
+    const saved = localStorage.getItem(ANIMATE_KEY)
+    if (saved) return saved === 'on'
+  } catch {
+    // storage unavailable
+  }
+  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function App() {
   const s = useStation()
   const faults = useMemo(() => checkManifest(s), [s])
@@ -51,6 +64,15 @@ export function App() {
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
   const [preview, setPreview] = useState<'radioport' | WorldLayout>('radioport')
+  const [animate, setAnimate] = useState(initialAnimate)
+  const toggleAnimate = () => {
+    setAnimate(!animate)
+    try {
+      localStorage.setItem(ANIMATE_KEY, animate ? 'off' : 'on')
+    } catch {
+      // storage unavailable: the choice lasts for this visit only
+    }
+  }
   const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
 
@@ -151,10 +173,15 @@ export function App() {
               </button>
             ))}
           </nav>
+          {preview !== 'radioport' && (
+            <button type="button" className="ink-frame animate-toggle" aria-pressed={animate} onClick={toggleAnimate}>
+              Animation {animate ? 'on' : 'off'}
+            </button>
+          )}
           {preview === 'radioport' ? (
             <Radioport frequency={s.frequency.trim()} name={s.stationName.trim()} nowPlaying={firstSong?.title ?? ''} logo={logo} />
           ) : (
-            <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} />
+            <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} animate={animate} />
           )}
           <details className="json">
             <summary>station.json</summary>
