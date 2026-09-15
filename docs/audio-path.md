@@ -40,7 +40,7 @@ world device plays or stays silent by its own state, switching stations stops th
 | insert effects | **Wwise Time Stretch** `758059012`, CPR Voice Broadcast Send `772871769` (mono), CPR Voice Broadcast Send `385769109` (stereo) | its own pair of Broadcast Send sharesets, one mono and one stereo (26 pairs in `radio.bnk`, one per playlist) |
 | positioning | 3D, attenuation enabled, no attenuation object of its own | same bits |
 | bus | `918052088` -> `1151059771` (Parametric EQ) -> `2996874604` -> `1836253337` -> Master | `666212655` (Parametric EQ) -> `music` -> Master |
-| sliders | RTPC `volume_music` on the sound | the music bus |
+| sliders | RTPC `volume_music` on the sound: the Music slider, which is the game's own score and touches no radio | the `music` bus in the bank; in the settings menu a station follows Vehicle Radio in a car, Radioport on foot and SFX through a world device, never Music. `radioxl_radio` measures the same `[M]` |
 | base props | Volume -96 dB, GameAuxSendVolume -96 dB | none |
 
 ### The vanilla rule: the dry path is muted and the send is the station
