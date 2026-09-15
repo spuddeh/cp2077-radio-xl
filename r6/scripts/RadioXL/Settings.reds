@@ -165,22 +165,22 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       b.Group("RadioXL.grpModifiers");
       this.AddModifiers(b, controls, RadioXLBindSet.Main);
     }
-    b.Section("RadioXL.secOnScreen");
-    b.Toggle(RadioXL_KeyNotifyRadioport(), "RadioXL.optNotifyRadioport");
-    b.Tip("RadioXL.tipNotifyRadioport");
-    b.Toggle(RadioXL_KeyNotifyOnscreen(), "RadioXL.optNotifyOnscreen");
-    b.Tip("RadioXL.tipNotifyOnscreen");
-    b.Section("RadioXL.secRadioport");
+    b.Group("RadioXL.grpRadioport");
     b.Label("RadioXL.labRadioport");
     b.Toggle(RadioXL_KeySeparateRadioport(), "RadioXL.optSeparateRadioport").Rebuilds();
     b.Tip("RadioXL.tipSeparateRadioport");
     if IsDefined(controls) && controls.separateRadioportKeys {
       this.AddKeys(b, controls, RadioXLBindSet.Radioport);
       if controls.useModifiers {
-        b.Group("RadioXL.grpModifiers");
+        b.Group("RadioXL.grpRadioportModifiers");
         this.AddModifiers(b, controls, RadioXLBindSet.Radioport);
       }
     }
+    b.Section("RadioXL.secOnScreen");
+    b.Toggle(RadioXL_KeyNotifyRadioport(), "RadioXL.optNotifyRadioport");
+    b.Tip("RadioXL.tipNotifyRadioport");
+    b.Toggle(RadioXL_KeyNotifyOnscreen(), "RadioXL.optNotifyOnscreen");
+    b.Tip("RadioXL.tipNotifyOnscreen");
 
     // --- My station ---
     b.Tab("RadioXL.tabMyStation");

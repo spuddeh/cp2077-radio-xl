@@ -28,7 +28,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.secMyStation", "My station");
     this.Text("RadioXL.secTalk", "Station talk");
     this.Text("RadioXL.secMuteWhen", "Mute the radio when...");
-    this.Text("RadioXL.secRadioport", "Radioport keys");
+    this.Text("RadioXL.grpRadioportModifiers", "Radioport modifiers");
     this.Text("RadioXL.grpRadioport", "Radioport keys");
     this.Text("RadioXL.grpModifiers", "Modifiers");
 
