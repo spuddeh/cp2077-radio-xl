@@ -1,5 +1,6 @@
 import { VANILLA_STATIONS } from '../vanilla'
 import glyph from '../assets/radioxl-glyph.png'
+import { tintedIcon } from './tint'
 
 const ROWS = 7
 
@@ -48,7 +49,7 @@ export function Radioport(props: {
             <div key={`${props.logo ?? ''}|${props.frequency}|${props.name}`} className="rp-image ink-frame">
               <span
                 className="rp-icon"
-                style={{ maskImage: `url(${props.logo ?? glyph})` }}
+                style={tintedIcon(props.logo ?? glyph)}
                 role="img"
                 aria-label={props.logo ? 'Station icon' : 'RadioXL glyph'}
               />

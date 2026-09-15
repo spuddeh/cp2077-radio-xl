@@ -83,7 +83,7 @@ export function App() {
   const [echoes, setEchoes] = useState(() => loadSwitch(ECHOES_KEY, true))
   const toggleAnimate = () => setAnimate(saveSwitch(ANIMATE_KEY, !animate))
   const toggleEchoes = () => setEchoes(saveSwitch(ECHOES_KEY, !echoes))
-  const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined
+  const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : s.iconMode === 'atlas' ? (s.iconImage ?? undefined) : undefined
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
   const [about, setAbout] = useState(false)
 
@@ -236,11 +236,54 @@ export function App() {
               )}
               {s.iconMode === 'atlas' && (
                 <>
-                  <Row label="Atlas" note={ownIconNote("The .inkatlas path inside your station's archive.")}>
+                  <Row
+                    label="Atlas"
+                    note={
+                      <>
+                        The .inkatlas path inside your station&apos;s archive. The preview cannot read an archive, so
+                        choose the same image below to see it.{' '}
+                        <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
+                          Making a station icon
+                        </a>
+                      </>
+                    }
+                  >
                     <TextInput value={s.iconAtlas} onChange={(v) => s.set({ iconAtlas: v })} placeholder="mymod\gui\icons.inkatlas" />
                   </Row>
                   <Row label="Part">
                     <TextInput value={s.iconPart} onChange={(v) => s.set({ iconPart: v })} placeholder="my_station" />
+                  </Row>
+                  <Row
+                    label="Preview image"
+                    note="Shows your icon in the previews, tinted the way the game tints it. The zip does not include it: the icon still goes in your own archive."
+                  >
+                    <label className="file-pick">
+                      <span>{s.iconImage ? 'Change image' : 'Choose a PNG'}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/webp,image/svg+xml"
+                        hidden
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (!f) return
+                          if (s.iconImage) URL.revokeObjectURL(s.iconImage)
+                          s.set({ iconImage: URL.createObjectURL(f) })
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                    {s.iconImage && (
+                      <button
+                        type="button"
+                        className="link file-clear"
+                        onClick={() => {
+                          URL.revokeObjectURL(s.iconImage!)
+                          s.set({ iconImage: null })
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </Row>
                 </>
               )}
@@ -304,6 +347,7 @@ export function App() {
         </span>
       </footer>
 
+      {(build || toast) && <div className={animate ? 'feedback-fade animate' : 'feedback-fade'} aria-hidden />}
       <BuildProgress
         phase={build?.phase ?? null}
         title={`Building ${build?.file ?? ''}`}

@@ -117,7 +117,20 @@
   opacity: 0.5;
 }
 .track + .track { margin-top: 6px; }
-.track-no { font-size: var(--font-readable-x-small); opacity: 0.5; font-variant-numeric: tabular-nums; }
+.track-no {
+  border: 0;
+  background: none;
+  padding: 10px 0;
+  cursor: grab;
+  touch-action: none;
+  color: var(--red);
+  font-size: var(--font-readable-x-small);
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+.track-no:hover, .track-no:focus-visible { opacity: 1; color: var(--blue); }
+.track.dragging { position: relative; z-index: 5; cursor: grabbing; }
+.track.dragging .track-title { --edge: var(--blue); --edge-opacity: 1; --fill: var(--faint-blue); --fill-opacity: 0.9; }
 .track-title { flex-direction: column; align-items: stretch; justify-content: center; padding-block: 4px; }
 .track-title input { padding: 2px 0 0 !important; }
 .track-file { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -482,9 +495,14 @@
 }
 .footer-state { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.7; }
 
+.file-pick { cursor: pointer; color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+.file-pick:hover { color: var(--active-blue); }
+.file-clear { margin-left: auto; }
+
 /* --- tracks tools --------------------------------------------------------------------------- */
 
-.tracks-tools { display: flex; justify-content: flex-end; margin: -2px 0 8px; }
+.tracks-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 8px; }
+.tracks-hint { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.5; }
 .remove-all {
   --cut: 6px;
   --edge: var(--red);
@@ -502,20 +520,30 @@
 
 /* --- build progress and notifications --------------------------------------------------------- */
 
-.build-overlay {
+/* Behind the progress bar and a notification: the page fades back so they read clearly. */
+.feedback-fade {
   position: fixed;
   inset: 0;
   z-index: 40;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--fs-primary-background-darkest) 85%, transparent);
+}
+.feedback-fade.animate { animation: feedback-fade-in 0.2s linear both; }
+@keyframes feedback-fade-in { from { opacity: 0; } }
+.build-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--black) 75%, transparent);
+  overflow: hidden;
 }
 /* The widget is authored on a 2000x600 canvas; only its middle holds the bar. */
-.build-progress { margin-top: -40px; }
+.build-progress { margin-top: -60px; }
 .toast {
   position: fixed;
-  left: max(16px, calc(50% - 720px));
-  bottom: 90px;
+  left: calc(50% - min(320px, 45vw));
+  top: 38%;
   z-index: 50;
   pointer-events: none;
 }
@@ -554,6 +582,51 @@
 .about code { color: var(--blue); font-family: var(--font-ui); }
 .about-list dt { margin-top: 14px; color: var(--red); font-size: var(--font-readable-medium); }
 .about-list dd { margin: 4px 0 0; }
+
+/* --- tooltip: tooltipslibrary_4k simpleTooltip ------------------------------------------------ */
+
+.tooltip-anchor { position: relative; display: inline-flex; }
+.tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 30;
+  display: none;
+  width: max-content;
+  max-width: 260px;
+  text-transform: none;
+  pointer-events: none;
+}
+.tooltip.open { display: flex; }
+.tooltip-tab { /* color_flip_bg / _fg: MainColors.FaintRed under a MildRed frame */
+  flex: none;
+  width: 10px;
+  margin-right: 2px;
+  background: var(--faint-red);
+  box-shadow: inset 0 0 0 1px var(--mild-red);
+  clip-path: polygon(0 5px, 5px 0, 100% 0, 100% 100%, 0 100%);
+}
+.tooltip-body { /* cell_bg / cell_fg: Tooltip.backgroundColor under Tooltip.frameColor */
+  --edge: var(--mild-red);
+  --fill: var(--fs-primary-background-darkest);
+  --cut: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 7px 14px 9px 12px;
+}
+.tooltip-title { /* nameLabel: Tooltip.textColor at ReadableMedium */
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--dark-red); /* description line: Tooltip.separatorLineColor */
+  color: var(--sup-red);
+  font-size: var(--font-readable-medium);
+  text-transform: uppercase;
+}
+.tooltip-text { /* value: ReadableXSmall */
+  padding-top: 6px;
+  color: var(--sup-red);
+  font-size: var(--font-readable-x-small);
+  line-height: 1.3;
+}
 
 /* --- colophon ---------------------------------------------------------------------------- */
 

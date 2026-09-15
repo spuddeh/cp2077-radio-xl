@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import layouts from '../world/layouts.json'
 import glyph from '../assets/radioxl-glyph.png'
+import { tintedIcon } from './tint'
 
 export type WorldLayout = Exclude<keyof typeof layouts, 'equaliser'>
 
@@ -110,8 +111,8 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
             top: n.y + n.h / 2 - lh / 2,
             width: lw,
             height: lh,
-            background: n.color,
-            maskImage: `url(${logoUrl})`,
+            color: n.color,
+            ...tintedIcon(logoUrl),
           }}
         />
       )

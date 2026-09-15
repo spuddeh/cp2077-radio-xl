@@ -26,6 +26,8 @@ interface StationState {
   iconRecord: string
   iconPart: string
   iconAtlas: string
+  /** An image for the preview only; the zip does not carry it. */
+  iconImage: string | null
   tracks: Track[]
   set: (patch: Partial<StationState>) => void
   addFiles: (files: File[]) => void
@@ -74,6 +76,7 @@ export const useStation = create<StationState>((set) => ({
   iconRecord: '',
   iconPart: '',
   iconAtlas: '',
+  iconImage: null,
   tracks: [],
   set: (patch) =>
     set((s) => {

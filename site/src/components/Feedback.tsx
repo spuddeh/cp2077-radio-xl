@@ -58,6 +58,8 @@ export function BuildProgress(props: {
   }, [phase, animate, onFinished])
 
   if (!phase) return null
+  // The bar spans the middle 1000 of the widget's 2000 authored pixels; fit that to the window.
+  const scale = Math.min(0.7, (window.innerWidth - 32) / 1000)
   const share = props.total ? Math.min(1, props.written / props.total) : 0
   const mb = (b: number) => (b / 1048576).toFixed(1)
   return (
@@ -65,7 +67,7 @@ export function BuildProgress(props: {
       <InkWidget
         ref={widget}
         data={PROGRESS}
-        scale={0.5}
+        scale={scale}
         animate={animate}
         className="build-progress"
         texts={{
@@ -113,7 +115,7 @@ export function ToastView(props: { toast: Toast; animate: boolean; onDone: () =>
       <InkWidget
         ref={widget}
         data={TOAST}
-        scale={0.5}
+        scale={Math.min(0.7, (window.innerWidth - 32) / 900)}
         animate={animate}
         texts={{ [TOAST_TITLE]: props.toast.title }}
         // Over a busy page rather than the game world, the shadow is darkened so the text stays readable.
