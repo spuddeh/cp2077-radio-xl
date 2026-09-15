@@ -37,7 +37,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
     m.atlas = s.iconAtlas.replace(/\//g, '\\')
   }
   m.tracks = s.tracks.map((t) => {
-    const out: Record<string, unknown> = { file: t.file }
+    const out: Record<string, unknown> = t.url ? { url: t.url } : { file: t.file }
     if (t.ident) out.ident = true
     else if (t.title) out.title = t.title
     return out
@@ -56,6 +56,11 @@ export function checkManifest(s: ManifestInput): Fault[] {
   if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
   else if (s.tracks.every((t) => t.ident))
     faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })
+  const missing = s.tracks.filter((t) => !t.url && !t.source)
+  if (missing.length)
+    faults.push({ field: 'tracks', message: `No audio for ${missing.map((t) => t.file).join(', ')}. Remove the track or open the station with its files.` })
+  if (s.tracks.some((t) => t.url) && s.tracks.length > 1)
+    faults.push({ field: 'tracks', message: 'A station with a stream plays that stream only; remove the other tracks.' })
   if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
     faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
   if (s.iconMode === 'atlas' && (!s.iconPart || !s.iconAtlas))

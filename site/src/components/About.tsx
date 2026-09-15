@@ -26,6 +26,16 @@ export function About() {
       </section>
 
       <section>
+        <h2 className="section">Editing a station</h2>
+        <p>
+          Drop a RadioXL station&apos;s zip or its installed folder on Edit a RadioXL station. The form fills from its{' '}
+          <code>station.json</code>, each track is matched to its audio, and every other file in the mod, such as an
+          icon archive, goes back into the zip unchanged. The station keeps its folder name, so the new zip installs
+          over the old one.
+        </p>
+      </section>
+
+      <section>
         <h2 className="section">Your files</h2>
         <p>
           Nothing is uploaded. Audio is read by this browser and written straight into the zip on your computer. The

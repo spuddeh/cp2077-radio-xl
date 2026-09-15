@@ -138,7 +138,9 @@ function TrackRow(props: { track: Track; index: number }) {
         ) : (
           <input type="text" value={t.title} spellCheck={false} onChange={(e) => updateTrack(t.id, { title: e.target.value })} />
         )}
-        <span className="track-file">{t.file}</span>
+        <span className={!t.url && !t.source ? 'track-file missing' : 'track-file'}>
+          {t.url ? `Stream: ${t.url}` : t.source ? t.file : `${t.file} (no audio file)`}
+        </span>
       </div>
       <Tooltip
         title="Ident"

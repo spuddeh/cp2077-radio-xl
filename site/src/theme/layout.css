@@ -499,6 +499,15 @@
 .file-pick:hover { color: var(--active-blue); }
 .file-clear { margin-left: auto; }
 
+/* --- open a station ----------------------------------------------------------------------- */
+
+.open-station { margin-top: 22px; }
+.open-station .drop { padding-block: 14px; }
+.open-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; color: var(--neutral); }
+.open-notes { margin: 10px 0 0; padding-left: 18px; color: var(--neutral); font-size: var(--font-readable-x-small); opacity: 0.8; }
+.open-notes li + li { margin-top: 3px; }
+.track-file.missing { color: var(--red); opacity: 1; }
+
 /* --- tracks tools --------------------------------------------------------------------------- */
 
 .tracks-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 8px; }

@@ -7,6 +7,7 @@ import { WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldR
 import { Tracks } from './components/Tracks'
 import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
 import { About } from './components/About'
+import { OpenStation } from './components/OpenStation'
 import { buildZip, modFolder, pickSaveTarget } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
@@ -109,7 +110,7 @@ export function App() {
 
   const startBuild = async () => {
     if (faults.length > 0 || build) return
-    const folder = modFolder(s.stationName, s.cname)
+    const folder = s.folder ?? modFolder(s.stationName, s.cname)
     const file = `${folder}.zip`
     let target = null
     try {
@@ -125,6 +126,7 @@ export function App() {
         folder,
         manifest,
         tracks: s.tracks,
+        extras: s.extras,
         target,
         onProgress: ({ written, total }) => {
           // One state update per frame, however many chunks arrive in it.
@@ -199,6 +201,7 @@ export function App() {
             <p className="pending">Converting a {s.source === 'radioext' ? 'RadioExt' : 'RadioXL 0.1.0'} station is not built yet.</p>
           ) : (
             <>
+              <OpenStation hasWork={hasWork} onOpened={(name) => notify('Station opened', name)} />
               <h2 className="section">Station</h2>
               <Row label="Frequency" note="Decides the station's place on the dial." fault={s.frequency ? faultFor('frequency') : undefined}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />

@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import type { ImportedStation } from './importStation'
+
 export type Source = 'new' | 'radioext' | 'radioxl010'
 export type IconMode = 'glyph' | 'record' | 'atlas'
 
@@ -8,8 +10,10 @@ export interface Track {
   file: string
   title: string
   ident: boolean
-  /** The audio file the zip copies in. */
-  source?: File
+  /** In place of file: a stream. */
+  url?: string
+  /** The audio the zip copies in. Missing when an opened station's file was not found. */
+  source?: Blob
 }
 
 interface StationState {
@@ -29,10 +33,15 @@ interface StationState {
   /** An image for the preview only; the zip does not carry it. */
   iconImage: string | null
   tracks: Track[]
+  /** The mod folder to write, kept from an opened station so a rebuild replaces it. */
+  folder: string | null
+  /** Files from an opened station that go back into the zip unchanged. */
+  extras: { path: string; source: Blob }[]
   set: (patch: Partial<StationState>) => void
   addFiles: (files: File[]) => void
   updateTrack: (id: number, patch: Partial<Track>) => void
   removeTrack: (id: number) => void
+  openStation: (station: ImportedStation) => void
 }
 
 let nextId = 1
@@ -78,6 +87,8 @@ export const useStation = create<StationState>((set) => ({
   iconAtlas: '',
   iconImage: null,
   tracks: [],
+  folder: null,
+  extras: [],
   set: (patch) =>
     set((s) => {
       const next = { ...s, ...patch }
@@ -96,4 +107,23 @@ export const useStation = create<StationState>((set) => ({
     }),
   updateTrack: (id, patch) => set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   removeTrack: (id) => set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
+  openStation: (st) =>
+    set({
+      source: 'new',
+      frequency: st.frequency,
+      stationName: st.stationName,
+      cname: st.cname,
+      cnameEdited: true,
+      news: st.news,
+      gain: st.gain,
+      iconMode: st.iconMode,
+      iconChoice: st.iconChoice,
+      iconRecord: st.iconRecord,
+      iconPart: st.iconPart,
+      iconAtlas: st.iconAtlas,
+      iconImage: null,
+      tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
+      folder: st.folder || null,
+      extras: st.extras,
+    }),
 }))

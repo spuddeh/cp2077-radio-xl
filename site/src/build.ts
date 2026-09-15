@@ -45,23 +45,30 @@ export async function buildZip(opts: {
   folder: string
   manifest: string
   tracks: Track[]
+  extras: { path: string; source: Blob }[]
   target: SaveTarget | null
   onProgress: (p: BuildProgress) => void
 }): Promise<void> {
   const base = `red4ext/plugins/RadioXL/stations/${opts.folder}/`
   const manifestFile = new File([opts.manifest], 'station.json', { type: 'application/json' })
-  const entries = [
-    { name: base + 'station.json', input: manifestFile },
-    ...opts.tracks.flatMap((t) => (t.source ? [{ name: base + t.file, input: t.source }] : [])),
-  ]
-  const total = Number(predictLength(entries.map((e) => ({ name: e.name, size: e.input.size }))))
-  let written = 0
-  opts.onProgress({ written, total })
+  const written = new Set<string>()
+  const entries: { name: string; input: Blob; size: number }[] = []
+  const add = (name: string, input: Blob) => {
+    if (written.has(name.toLowerCase())) return
+    written.add(name.toLowerCase())
+    entries.push({ name, input, size: input.size })
+  }
+  add(base + 'station.json', manifestFile)
+  for (const t of opts.tracks) if (t.source && !t.url) add(base + t.file, t.source)
+  for (const x of opts.extras) add(x.path, x.source)
+  const total = Number(predictLength(entries.map((e) => ({ name: e.name, size: e.size }))))
+  let done = 0
+  opts.onProgress({ written: done, total })
 
   const counter = new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
-      written += chunk.byteLength
-      opts.onProgress({ written, total })
+      done += chunk.byteLength
+      opts.onProgress({ written: done, total })
       controller.enqueue(chunk)
     },
   })
