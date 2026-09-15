@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStation, type IconMode, type Source } from './store'
-import { buildManifest, checkManifest, defaultIconTarget, displayName, generatesIcon, iconTarget } from './manifest'
+import { buildManifest, checkManifest, defaultIconTarget, displayName, generatesIcon, ICON_IMAGE_RECOMMENDED, iconTarget } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
@@ -38,6 +38,29 @@ function volumeLabel(gain: number): string {
 }
 
 const ICON_GUIDE = 'https://github.com/spuddeh/cp2077-radio-xl/blob/main/red4ext/plugins/RadioXL/stations/README.md#the-icon'
+
+/**
+ * Whether any pixel of an image is not transparent, read from a copy scaled to at most 256 px. A
+ * browser that refuses the pixels (a cross-origin image) counts as having them.
+ */
+function hasOpaquePixels(img: HTMLImageElement): boolean {
+  const scale = Math.min(1, 256 / Math.max(img.naturalWidth, img.naturalHeight, 1))
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) return true
+  ctx.drawImage(img, 0, 0, w, h)
+  try {
+    const { data } = ctx.getImageData(0, 0, w, h)
+    for (let i = 3; i < data.length; i += 4) if (data[i] !== 0) return true
+    return false
+  } catch {
+    return true
+  }
+}
 
 /** A note for an icon the preview cannot draw, with the guide to making one. */
 function ownIconNote(first: string) {
@@ -99,9 +122,10 @@ export function App() {
             if (!f) return
             if (s.iconImage) URL.revokeObjectURL(s.iconImage)
             const url = URL.createObjectURL(f)
-            s.set({ iconImage: url, iconImageSize: null })
+            s.set({ iconImage: url, iconImageSize: null, iconImageHasPixels: true })
             const img = new Image()
-            img.onload = () => s.set({ iconImageSize: [img.naturalWidth, img.naturalHeight] })
+            img.onload = () =>
+              s.set({ iconImageSize: [img.naturalWidth, img.naturalHeight], iconImageHasPixels: hasOpaquePixels(img) })
             img.src = url
             e.target.value = ''
           }}
@@ -113,7 +137,7 @@ export function App() {
           className="link file-clear"
           onClick={() => {
             URL.revokeObjectURL(s.iconImage!)
-            s.set({ iconImage: null, iconImageSize: null })
+            s.set({ iconImage: null, iconImageSize: null, iconImageHasPixels: true })
           }}
         >
           Remove
@@ -125,10 +149,10 @@ export function App() {
     <>
       {' '}
       This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at its texture&apos;s
-      size, and the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide
-      {s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h
-        ? `, so the preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}; size the texture to match.`
-        : '.'}
+      size: the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide and 130 to {LOGO_MAX.h} px tall, and{' '}
+      {ICON_IMAGE_RECOMMENDED} x {ICON_IMAGE_RECOMMENDED} px is as large as one is worth making.
+      {(s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h) &&
+        ` The preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}.`}
     </>
   )
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''

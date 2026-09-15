@@ -106,8 +106,9 @@ atlas and archive and names them in the manifest. By hand in WolvenKit:
 
 1. **Draw it white on a transparent background.** The Radioport tints the icon with the UI's colour,
    so a white logo comes out matching the game's own station logos, and a coloured one loses its
-   colours: pink turns blue-violet and white lettering turns cyan. The game's logos are 240 to 400 px
-   wide and 130 to 330 px tall.
+   colours: pink turns blue-violet and white lettering turns cyan. A coloured logo still reads well
+   tinted, and PHONKWAVE Radio's is one. The game's logos are 240 to 400 px wide and 130 to 330 px
+   tall, and 500 x 500 px is as large as one is worth making.
 2. **Store black under every transparent pixel** (premultiplied alpha). Most editors export white
    there, and that shows in game as a white box.
 3. **Import the PNG as an `.xbm`** in WolvenKit with `TEXG_Generic_UI`, `TRF_TrueColor`,

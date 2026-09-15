@@ -34,6 +34,8 @@ interface StationState {
   iconImage: string | null
   /** Its pixel size, for the note on how the game will size it. */
   iconImageSize: [number, number] | null
+  /** False when every pixel is transparent, which would show nothing in game. */
+  iconImageHasPixels: boolean
   tracks: Track[]
   /** The mod folder to write, kept from an opened station so a rebuild replaces it. */
   folder: string | null
@@ -89,6 +91,7 @@ export const useStation = create<StationState>((set) => ({
   iconAtlas: '',
   iconImage: null,
   iconImageSize: null,
+  iconImageHasPixels: true,
   tracks: [],
   folder: null,
   extras: [],
@@ -126,6 +129,7 @@ export const useStation = create<StationState>((set) => ({
       iconAtlas: st.iconAtlas,
       iconImage: null,
       iconImageSize: null,
+      iconImageHasPixels: true,
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
       folder: st.folder || null,
       extras: st.extras,

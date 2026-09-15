@@ -14,11 +14,15 @@ export interface ManifestInput {
   /** In image mode, Build .zip writes the icon's archive from it. In atlas mode it is for the preview only. */
   iconImage: string | null
   iconImageSize: [number, number] | null
+  iconImageHasPixels: boolean
   tracks: Track[]
 }
 
 /** The largest icon image the page writes a texture for, per side. */
 export const ICON_IMAGE_MAX = 4096
+
+/** The largest icon worth making, per side. PHONKWAVE Radio's is exactly this. */
+export const ICON_IMAGE_RECOMMENDED = 500
 
 /** Whether Build .zip writes the icon's texture, atlas and archive. */
 export function generatesIcon(s: Pick<ManifestInput, 'iconMode' | 'iconImage'>): boolean {
@@ -111,6 +115,8 @@ export function checkManifest(s: ManifestInput): Fault[] {
       faults.push({ field: 'icon', message: `The icon image is larger than ${ICON_IMAGE_MAX} px on a side.` })
     if (size && (size[0] === 0 || size[1] === 0))
       faults.push({ field: 'icon', message: 'The icon image has no size. An SVG needs a width and height.' })
+    if (!s.iconImageHasPixels)
+      faults.push({ field: 'icon', message: 'Every pixel of the icon image is transparent, so nothing would show.' })
   }
   return faults
 }
