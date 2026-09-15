@@ -158,6 +158,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Label("RadioXL.labKeys2");
     b.Label("RadioXL.labKeys3");
     b.Label("RadioXL.labKeys4");
+    b.Label("RadioXL.labKeys5");
     this.AddKeys(b, controls, RadioXLBindSet.Main);
     b.Toggle(RadioXL_KeyUseModifiers(), "RadioXL.optUseModifiers").Rebuilds();
     b.Tip("RadioXL.tipUseModifiers");

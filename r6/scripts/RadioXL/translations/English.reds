@@ -35,6 +35,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     // --- keys ---
     this.Text("RadioXL.labKeys1", "One set of keys for both radios.");
     this.Text("RadioXL.labKeys2", "In a vehicle they act on the vehicle radio. On foot, on the Radioport.");
+    this.Text("RadioXL.labKeys5", "Next picks a song at random, the way the station does. Previous goes back to the one you just heard.");
     this.Text("RadioXL.labKeys3", "Press a key or a controller button to bind one. Escape clears it.");
     this.Text("RadioXL.labKeys4", "A key the game already uses keeps doing what the game says.");
     this.Text("RadioXL.keyNext", "Next song");

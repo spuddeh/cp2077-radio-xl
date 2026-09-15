@@ -10,8 +10,16 @@
 //              lags a request by a moment, so the key just asked for stands in as "current" until
 //              the receiver catches up or a short window passes.
 //
+//              NEXT PICKS AT RANDOM, THE WAY THE STATION DOES. The engine draws every station's
+//              songs from a remaining list, so a next key that walked the track list would hand
+//              the player a song the station was never going to play next. A pick avoids the song
+//              playing and the last few heard; the automatic skip past a switched-off song picks
+//              the same way. PREVIOUS GOES BACK through a short history of what was heard on the
+//              station, kept by the arrival handler, so it returns to the song the player just
+//              left rather than to a list neighbour.
+//
 //              THE EMPTY-STATION RULE. A station whose tracks are ALL switched off ignores the
-//              setting: a user press steps through the switched-off set, and the automatic skip
+//              setting: a user press picks among the switched-off set, and the automatic skip
 //              leaves the track alone. A station with one song left on is not that station - a
 //              press there has nowhere to go and stays put. Streamer mode drops every track
 //              flagged as not streaming-friendly, and the two Kerry USC songs stay hidden until
@@ -43,6 +51,14 @@ public class RadioXLReceiver {
 public class RadioXLDeck extends ScriptableService {
   private let m_pendingKey: Uint64;
   private let m_pendingAt: Float;
+
+  // What was heard on the current station, oldest first, capped. `m_lastHeard` is the song
+  // playing now as far as arrivals go, stored as index + 1 so that 0 is none; `m_backing` marks
+  // an arrival the previous key asked for, which must not push the song it came from again.
+  private let m_historyStation: CName;
+  private let m_history: array<Int32>;
+  private let m_lastHeard: Int32;
+  private let m_backing: Bool;
 
   public final static func Get() -> ref<RadioXLDeck> {
     return GameInstance.GetScriptableServiceContainer()
@@ -113,9 +129,9 @@ public class RadioXLDeck extends ScriptableService {
 
   // --- stepping -------------------------------------------------------------------------------
 
-  // A key press. Steps to the next or previous track the player has left enabled, in the
-  // station's own order, wrapping at the ends. With nothing enabled, steps through the disabled
-  // set instead, so a station is never left with no way to skip.
+  // A key press. Next picks a random track the player has left enabled, avoiding the one
+  // playing and the last few heard; with nothing enabled it picks among the switched-off set, so
+  // a station is never left with no way to skip. Previous returns to the song heard before.
   public func Step(gi: GameInstance, forward: Bool) -> Void {
     let r = this.Receiver(gi);
     if !r.IsValid() {
@@ -124,20 +140,30 @@ public class RadioXLDeck extends ScriptableService {
     }
     let count = ArraySize(r.station.tracks);
     if count < 2 { return; }
+    this.KeepHistoryFor(r.station.name);
     let current = this.CurrentIndex(gi, r);
     let streamer = this.IsStreamerMode(gi);
-    let picked: Int32 = this.Find(gi, r.station, current, forward, streamer, true);
+    if !forward {
+      let back: Int32 = this.PopHistory(gi, r.station, current, streamer);
+      if back >= 0 {
+        this.m_backing = true;
+        this.Play(gi, r, back);
+        return;
+      }
+      RadioXLLog(s"\(r.station.name): nothing heard before this, picking at random instead");
+    }
+    let picked: Int32 = this.Pick(gi, r.station, current, streamer, true);
     if picked < 0 {
       // Nothing else qualifies, and that is two different situations. The station may have one
       // song left on and it is the one already playing, in which case a press has nowhere to go;
-      // or it may have none at all, which is the only case that steps through the switched-off
+      // or it may have none at all, which is the only case that picks among the switched-off
       // songs. Reading the first as the second sends the press to a song the player switched off,
       // and the automatic skip then takes it back half a second later - heard as a snippet.
       if this.PlayableCount(gi, r.station, streamer) > 0 {
         RadioXLLog(s"\(r.station.name): nothing else is switched on, staying put");
         return;
       }
-      picked = this.Find(gi, r.station, current, forward, streamer, false);
+      picked = this.Pick(gi, r.station, current, streamer, false);
     }
     if picked < 0 || picked == current { return; }
     this.Play(gi, r, picked);
@@ -282,11 +308,65 @@ public class RadioXLDeck extends ScriptableService {
         return;
       }
     }
-    if controls.IsTrackEnabled(r.station.tracks[index].event) { return; }
-    let picked = this.Find(gi, r.station, index, true, this.IsStreamerMode(gi), true);
+    if controls.IsTrackEnabled(r.station.tracks[index].event) {
+      this.Heard(r.station.name, index);
+      return;
+    }
+    let picked = this.Pick(gi, r.station, index, this.IsStreamerMode(gi), true);
     if picked < 0 || picked == index { return; }
     RadioXLLog(s"\(r.station.name): \(r.station.tracks[index].event) is switched off, moving on");
     this.Play(gi, r, picked);
+  }
+
+  // --- the history ------------------------------------------------------------------------------
+
+  // A station change starts a fresh history; the one before is worthless on another dial.
+  private func KeepHistoryFor(station: CName) -> Void {
+    if Equals(station, this.m_historyStation) { return; }
+    this.m_historyStation = station;
+    ArrayClear(this.m_history);
+    this.m_lastHeard = 0;
+    this.m_backing = false;
+  }
+
+  // An enabled track has started. The one heard before it goes on the history, unless this
+  // arrival is the previous key landing, in which case the song it left is already accounted for.
+  private func Heard(station: CName, index: Int32) -> Void {
+    this.KeepHistoryFor(station);
+    if this.m_lastHeard > 0 && this.m_lastHeard != index + 1 && !this.m_backing {
+      ArrayPush(this.m_history, this.m_lastHeard - 1);
+      while ArraySize(this.m_history) > 8 { ArrayErase(this.m_history, 0); }
+    }
+    this.m_backing = false;
+    this.m_lastHeard = index + 1;
+  }
+
+  // The most recent song heard before the current one that can still play; -1 when none.
+  private func PopHistory(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32, streamer: Bool) -> Int32 {
+    let controls = RadioXLControls.Get();
+    while ArraySize(this.m_history) > 0 {
+      let last: Int32 = ArraySize(this.m_history) - 1;
+      let index: Int32 = this.m_history[last];
+      ArrayErase(this.m_history, last);
+      if index != current && index < ArraySize(station.tracks)
+        && this.IsPlayable(gi, station.tracks[index], streamer)
+        && (!IsDefined(controls) || controls.IsTrackEnabled(station.tracks[index].event)) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  // Whether a track was heard within the last few, which a random pick steers away from.
+  private func IsRecent(index: Int32, window: Int32) -> Bool {
+    let n: Int32 = ArraySize(this.m_history);
+    let i: Int32 = n - window;
+    if i < 0 { i = 0; }
+    while i < n {
+      if this.m_history[i] == index { return true; }
+      i += 1;
+    }
+    return false;
   }
 
   // The same check against whatever the receiver reports right now.
@@ -313,28 +393,36 @@ public class RadioXLDeck extends ScriptableService {
     return count;
   }
 
-  // The first track after (or before) `from` that is playable and, when `enabledOnly`, switched
-  // on. `from` may be -1 when the current track is unknown, in which case the search starts at
-  // the top. Returns -1 when no other track qualifies.
-  private func Find(gi: GameInstance, station: ref<RadioXLCatalogStation>, from: Int32, forward: Bool,
+  // A random track other than `current` that is playable and, when `enabledOnly`, switched on.
+  // The last few heard are avoided while enough others remain, so a small station still cycles
+  // rather than repeating. Returns -1 when no other track qualifies.
+  private func Pick(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
                     streamer: Bool, enabledOnly: Bool) -> Int32 {
     let controls = RadioXLControls.Get();
     let count = ArraySize(station.tracks);
-    let step: Int32 = forward ? 1 : -1;
-    let i: Int32 = from < 0 ? (forward ? 0 : count - 1) : from + step;
-    let tried: Int32 = 0;
-    while tried < count {
-      if i < 0 { i = count - 1; }
-      if i >= count { i = 0; }
-      if i == from { return -1; }
+    let all: array<Int32>;
+    let i: Int32 = 0;
+    while i < count {
       let track = station.tracks[i];
-      if this.IsPlayable(gi, track, streamer) && (!enabledOnly || controls.IsTrackEnabled(track.event)) {
-        return i;
+      if i != current && this.IsPlayable(gi, track, streamer)
+        && (!enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(track.event)) {
+        ArrayPush(all, i);
       }
-      i += step;
-      tried += 1;
+      i += 1;
     }
-    return -1;
+    if ArraySize(all) == 0 { return -1; }
+    // Avoid the recent ones only while that leaves a choice: with two songs, "not the last one"
+    // is the whole answer.
+    let window: Int32 = ArraySize(all) - 1;
+    if window > 4 { window = 4; }
+    let fresh: array<Int32>;
+    for candidate in all {
+      if !this.IsRecent(candidate, window) { ArrayPush(fresh, candidate); }
+    }
+    let pool: array<Int32> = ArraySize(fresh) > 0 ? fresh : all;
+    let at: Int32 = RandRange(0, ArraySize(pool));
+    if at >= ArraySize(pool) { at = ArraySize(pool) - 1; }
+    return pool[at];
   }
 
   private func Play(gi: GameInstance, r: ref<RadioXLReceiver>, index: Int32) -> Void {
