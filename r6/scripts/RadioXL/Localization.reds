@@ -18,6 +18,16 @@ module RadioXL
 // ScriptableService), so this import is unconditional.
 import Codeware.Localization.*
 
+// One of the panel's own strings, by key. Reads go through Codeware's LocalizationSystem, which
+// is where a ModLocalizationProvider's texts live; the game's GetLocalizedText does not see
+// them. A missing key renders as the key, so a fault names itself on screen.
+public func RadioXLText(key: String) -> String {
+  let loc = LocalizationSystem.GetInstance(GetGameInstance());
+  if !IsDefined(loc) { return key; }
+  let text = loc.GetText(key);
+  return StrLen(text) > 0 ? text : key;
+}
+
 // The same package for every language: a station's name and titles are the modder's text as
 // written, not translated. Codeware asks for the fallback and the current language and merges both.
 public class RadioXLLocalizationProvider extends ModLocalizationProvider {
