@@ -185,7 +185,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 14px;
   width: 100%;
 }
-.slider output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.slider output { min-width: 3.2em; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
 .slider input[type='range'] {
   flex: 1;
   appearance: none;
@@ -237,6 +237,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   display: flex;
   gap: 3px;
   justify-content: center;
+}
+.stepper-count {
+  grid-column: 2;
+  grid-row: 2;
+  text-align: center;
+  font-size: var(--font-readable-x-small);
+  opacity: 0.5;
 }
 .stepper-dots span { width: 22px; height: 3px; background: var(--red); opacity: 0.3; }
 .stepper-dots span.here { background: var(--blue); opacity: 1; }

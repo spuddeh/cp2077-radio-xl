@@ -46,7 +46,14 @@ export function Bool(props: { value: boolean; onChange: (v: boolean) => void }) 
   )
 }
 
-export function Slider(props: { value: number; min: number; max: number; step: number; onChange: (v: number) => void }) {
+export function Slider(props: {
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (v: number) => void
+  format?: (v: number) => string
+}) {
   return (
     <div className="slider">
       <input
@@ -57,7 +64,7 @@ export function Slider(props: { value: number; min: number; max: number; step: n
         value={props.value}
         onChange={(e) => props.onChange(Number(e.target.value))}
       />
-      <output>{props.value.toFixed(2)}</output>
+      <output>{props.format ? props.format(props.value) : props.value.toFixed(2)}</output>
     </div>
   )
 }
@@ -70,11 +77,17 @@ export function Stepper<T extends string>(props: { options: { value: T; label: s
       <button type="button" className="prev" aria-label="Previous" onClick={() => step(-1)} />
       <span className="stepper-value">{props.options[i].label}</span>
       <button type="button" className="next" aria-label="Next" onClick={() => step(1)} />
-      <div className="stepper-dots" aria-hidden>
-        {props.options.map((o, n) => (
-          <span key={o.value} className={n === i ? 'here' : undefined} />
-        ))}
-      </div>
+      {props.options.length <= 8 ? (
+        <div className="stepper-dots" aria-hidden>
+          {props.options.map((o, n) => (
+            <span key={o.value} className={n === i ? 'here' : undefined} />
+          ))}
+        </div>
+      ) : (
+        <div className="stepper-count">
+          {i + 1} / {props.options.length}
+        </div>
+      )}
     </div>
   )
 }

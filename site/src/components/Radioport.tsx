@@ -8,7 +8,7 @@ import glyph from '../assets/radioxl-glyph.png'
 export function Radioport(props: { frequency: string; name: string; nowPlaying: string }) {
   const freq = Number.parseFloat(props.frequency)
   const own = { freq: Number.isFinite(freq) ? freq : Infinity, label: [props.frequency, props.name].filter(Boolean).join(' ') || 'Your station', own: true }
-  const dial = [...VANILLA_STATIONS.map(([f, n]) => ({ freq: f, label: `${f.toFixed(1)} ${n}`, own: false })), own]
+  const dial = [...VANILLA_STATIONS.map((v) => ({ freq: v.frequency, label: `${v.frequency.toFixed(1)} ${v.name}`, own: false })), own]
     .sort((a, b) => a.freq - b.freq)
   const at = dial.indexOf(own)
   const shown = dial.slice(Math.max(0, Math.min(at - 3, dial.length - 7)), Math.max(0, Math.min(at - 3, dial.length - 7)) + 7)

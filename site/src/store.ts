@@ -19,6 +19,8 @@ interface StationState {
   news: boolean
   gain: number
   iconMode: IconMode
+  /** A vanilla station's `UIIcon` record, or `other` for the free-text record. */
+  iconChoice: string
   iconRecord: string
   iconPart: string
   iconAtlas: string
@@ -57,6 +59,7 @@ export const useStation = create<StationState>((set) => ({
   news: false,
   gain: 1,
   iconMode: 'glyph',
+  iconChoice: 'UIIcon.RadioDowntempo',
   iconRecord: '',
   iconPart: '',
   iconAtlas: '',

@@ -2,7 +2,7 @@
 
 .shell {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto auto;
   min-height: 100vh;
   max-width: 1440px;
   margin: 0 auto;
@@ -316,6 +316,22 @@
   border-top: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
 }
 .footer-state { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.7; }
+
+/* --- colophon ---------------------------------------------------------------------------- */
+
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 18px 0 28px;
+  font-size: var(--font-readable-x-small);
+  color: var(--neutral);
+}
+.colophon nav { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.colophon a { color: var(--blue); text-decoration: none; opacity: 0.8; }
+.colophon a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+.colophon p { margin: 0; max-width: 46em; opacity: 0.55; }
 
 @media (max-width: 640px) {
   .shell { padding: 0 16px; }

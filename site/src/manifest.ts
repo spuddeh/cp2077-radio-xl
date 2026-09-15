@@ -7,6 +7,7 @@ export interface ManifestInput {
   news: boolean
   gain: number
   iconMode: 'glyph' | 'record' | 'atlas'
+  iconChoice: string
   iconRecord: string
   iconPart: string
   iconAtlas: string
@@ -27,7 +28,10 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   const m: Record<string, unknown> = { name: s.cname, displayName: displayName(s) }
   if (s.news) m.news = true
   if (s.gain < 1) m.gain = Math.round(s.gain * 100) / 100
-  if (s.iconMode === 'record' && s.iconRecord) m.icon = s.iconRecord
+  if (s.iconMode === 'record') {
+    const record = s.iconChoice === 'other' ? s.iconRecord.trim() : s.iconChoice
+    if (record) m.icon = record
+  }
   if (s.iconMode === 'atlas') {
     m.icon = s.iconPart
     m.atlas = s.iconAtlas.replace(/\//g, '\\')
@@ -52,6 +56,8 @@ export function checkManifest(s: ManifestInput): Fault[] {
   if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
   else if (s.tracks.every((t) => t.ident))
     faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })
+  if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
+    faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
   if (s.iconMode === 'atlas' && (!s.iconPart || !s.iconAtlas))
     faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
   return faults
