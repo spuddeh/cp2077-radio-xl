@@ -1,0 +1,288 @@
+/*
+ * Widget shapes traced from the game's atlases, drawn in CSS. Sizes are the game's own
+ * authored values at the 1080p render scale (half of the 3840x2160 authoring canvas).
+ *
+ * A chamfered frame is two stacked clipped layers: a ring in the edge colour, and the fill
+ * inset by the stroke width. The game draws its plates as a translucent fill under a fainter
+ * stroke, so the edge is a ring (an evenodd polygon) and never shows through the fill.
+ * A border plus an overlaid diagonal never meets flush.
+ */
+
+:root {
+  --font-ui: 'Rajdhani', 'Segoe UI', sans-serif;
+  --weight-body: 500;   /* MainColors.BodyFontWeight: Medium */
+  --weight-header: 600; /* MainColors.HeaderFontWeight: Semi-Bold */
+
+  --bg: var(--fs-primary-background-darkest);
+  --cut-cell: 12px;  /* atlas_shapes_sync cell_bg / cell_fg */
+  --cut-plate: 8px;  /* notification_assets Plate_main / Plate_main_Stroke */
+  --divider: 1.5px;  /* vehicles_radio divider-top: 3px authored */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--red);
+  font: var(--weight-body) var(--font-readable-small) / 1.2 var(--font-ui);
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+::selection { background: var(--faint-blue); color: var(--active-blue); }
+
+/* --- chamfered frame --------------------------------------------------------------------- */
+
+.ink-frame {
+  --cut: var(--cut-cell);
+  --edge: var(--red);
+  --edge-opacity: 1;
+  --fill: transparent;
+  --fill-opacity: 1;
+  position: relative;
+  isolation: isolate;
+}
+.ink-frame::before,
+.ink-frame::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.ink-frame::before {
+  inset: 0;
+  z-index: -2;
+  background: var(--edge);
+  opacity: var(--edge-opacity);
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 0,
+    1px 1px, 1px calc(100% - 1px), calc(100% - var(--cut) + 0.41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - var(--cut) + 0.41px), calc(100% - 1px) 1px, 1px 1px);
+}
+.ink-frame::after {
+  inset: 1px;
+  z-index: -1;
+  background: var(--fill);
+  opacity: var(--fill-opacity);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut) + 0.41px), calc(100% - var(--cut) + 0.41px) 100%, 0 100%);
+}
+/* --- settings row: settings_main.inkwidget settingsSelector* ---------------------------- */
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 1.25fr);
+  align-items: stretch;
+  min-height: 40px;
+  gap: 0;
+}
+.row + .row { margin-top: 6px; }
+
+.row-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 14px;
+  color: var(--button-text-color-b-default);
+  font-size: var(--font-readable-medium);
+}
+.row-label::before { /* indentLine */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: var(--divider);
+  background: var(--button-frame-color-default);
+  opacity: 0;
+}
+.row:hover .row-label,
+.row:focus-within .row-label { color: var(--button-text-color-b-hover); }
+.row:hover .row-label::before,
+.row:focus-within .row-label::before { background: var(--button-frame-color-hover); opacity: 1; }
+
+.row-note {
+  grid-column: 1 / -1;
+  padding: 4px 14px 0;
+  font-size: var(--font-readable-x-small);
+  color: var(--neutral);
+  opacity: 0.6;
+}
+.row-note.fault { color: var(--warning); opacity: 1; }
+
+.cell {
+  --edge: var(--button-frame-color-default);
+  --edge-opacity: var(--button-frame-opacity-default);
+  --fill: var(--button-bg-color-default);
+  --fill-opacity: var(--button-bg-opacity-default);
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 calc(var(--cut-cell) + 4px) 0 14px;
+  color: var(--blue);
+  font-size: var(--font-readable-medium);
+}
+.row:hover .cell,
+.row:focus-within .cell {
+  --edge: var(--button-frame-color-hover);
+  --edge-opacity: var(--button-frame-opacity-press);
+  --fill: var(--button-bg-color-hover);
+  --fill-opacity: var(--button-bg-opacity-hover);
+}
+
+.cell input[type='text'],
+.cell input:not([type]) {
+  width: 100%;
+  background: none;
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  color: var(--blue);
+}
+.cell input::placeholder { color: var(--grey); opacity: 0.55; }
+
+/* --- On / Off: settingsSelectorBool ----------------------------------------------------- */
+
+.bool {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: flex-end;
+}
+.bool button {
+  --cut: 6px;
+  --edge: var(--bool-frame-color-off-default);
+  --edge-opacity: var(--bool-frame-opacity-off-default);
+  --fill: transparent;
+  min-width: 72px;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--grey);
+  text-transform: uppercase;
+}
+.bool button[aria-pressed='true'].on {
+  --edge: var(--bool-frame-color-on-default);
+  --edge-opacity: 1;
+  --fill: var(--bool-filler-color-on-default);
+  --fill-opacity: 0.18;
+  color: var(--bool-text-color-on-default);
+}
+.bool button[aria-pressed='true'].off {
+  --edge: var(--bool-frame-color-off-default);
+  --edge-opacity: 1;
+  --fill: var(--bool-filler-color-off-default);
+  --fill-opacity: 0.25;
+  color: var(--bool-text-color-off-default);
+}
+.bool button:hover { --edge-opacity: 1; }
+
+/* --- float slider: settingsSelectorFloat ------------------------------------------------ */
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.slider output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.slider input[type='range'] {
+  flex: 1;
+  appearance: none;
+  height: 16px;
+  background: none;
+  cursor: pointer;
+}
+.slider input[type='range']::-webkit-slider-runnable-track { height: 2px; background: var(--mild-blue); }
+.slider input[type='range']::-moz-range-track { height: 2px; background: var(--mild-blue); }
+.slider input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 8px;
+  height: 16px;
+  margin-top: -7px;
+  border: 0;
+  background: var(--blue);
+}
+.slider input[type='range']::-moz-range-thumb { width: 8px; height: 16px; border: 0; border-radius: 0; background: var(--blue); }
+
+/* --- stepper: settingsSelectorStringList (arrow_rect, dots) ---------------------------- */
+
+.stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+.stepper-value { text-align: center; }
+.stepper button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--red);
+  opacity: 0.55;
+}
+.stepper button:hover { background: var(--blue); opacity: 1; }
+.stepper .prev { clip-path: polygon(100% 0, 100% 100%, 15% 50%); }
+.stepper .next { clip-path: polygon(0 0, 85% 50%, 0 100%); }
+.stepper-dots {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+.stepper-dots span { width: 22px; height: 3px; background: var(--red); opacity: 0.3; }
+.stepper-dots span.here { background: var(--blue); opacity: 1; }
+
+/* --- section header ---------------------------------------------------------------------- */
+
+.section {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 26px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
+  text-transform: uppercase;
+  font-weight: var(--weight-header);
+  font-size: var(--font-readable-font-size);
+  letter-spacing: 0.02em;
+}
+.section .count { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.6; font-weight: var(--weight-body); }
+
+/* --- input hints: inputHints + inputDisplayController ---------------------------------- */
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  align-items: center;
+  font-size: var(--font-readable-small);
+  text-transform: uppercase;
+}
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--red);
+}
+.hint kbd {
+  --cut: 5px;
+  --edge: currentColor;
+  --edge-opacity: 0.7;
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  font: var(--weight-header) var(--font-readable-x-small) var(--font-ui);
+}
+.hint:hover { color: var(--blue); }
+.hint:disabled { color: var(--grey); cursor: default; opacity: 0.6; }
