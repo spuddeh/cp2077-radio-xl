@@ -25,6 +25,7 @@ const ICON_RECORDS = [
 const ICON_MODES: { value: IconMode; label: string }[] = [
   { value: 'glyph', label: 'RadioXL glyph' },
   { value: 'record', label: 'Existing icon' },
+  { value: 'image', label: 'From an image' },
   { value: 'atlas', label: 'Own atlas' },
 ]
 
@@ -84,7 +85,52 @@ export function App() {
   const [echoes, setEchoes] = useState(() => loadSwitch(ECHOES_KEY, true))
   const toggleAnimate = () => setAnimate(saveSwitch(ANIMATE_KEY, !animate))
   const toggleEchoes = () => setEchoes(saveSwitch(ECHOES_KEY, !echoes))
-  const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : s.iconMode === 'atlas' ? (s.iconImage ?? undefined) : undefined
+  const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : s.iconMode === 'atlas' || s.iconMode === 'image' ? (s.iconImage ?? undefined) : undefined
+  const imagePicker = (
+    <>
+      <label className="file-pick">
+        <span>{s.iconImage ? 'Change image' : 'Choose a PNG'}</span>
+        <input
+          type="file"
+          accept="image/png,image/webp,image/svg+xml"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            if (s.iconImage) URL.revokeObjectURL(s.iconImage)
+            const url = URL.createObjectURL(f)
+            s.set({ iconImage: url, iconImageSize: null })
+            const img = new Image()
+            img.onload = () => s.set({ iconImageSize: [img.naturalWidth, img.naturalHeight] })
+            img.src = url
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {s.iconImage && (
+        <button
+          type="button"
+          className="link file-clear"
+          onClick={() => {
+            URL.revokeObjectURL(s.iconImage!)
+            s.set({ iconImage: null, iconImageSize: null })
+          }}
+        >
+          Remove
+        </button>
+      )}
+    </>
+  )
+  const imageSizeNote = s.iconImageSize && (
+    <>
+      {' '}
+      This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at its texture&apos;s
+      size, and the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide
+      {s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h
+        ? `, so the preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}; size the texture to match.`
+        : '.'}
+    </>
+  )
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
   const [about, setAbout] = useState(false)
 
@@ -244,89 +290,66 @@ export function App() {
                   )}
                 </>
               )}
-              {s.iconMode === 'atlas' && (
+              {s.iconMode === 'image' && (
                 <>
                   <Row
                     label="Icon image"
                     note={
                       <>
-                        {s.iconImage
-                          ? 'Build .zip makes the icon’s texture, atlas and archive from this image.'
-                          : 'Choose an image and Build .zip makes the icon’s texture, atlas and archive from it. Without one, the zip names the atlas below and the archive is yours to add.'}{' '}
-                        Draw it white on a transparent background: the Radioport tints the icon with the UI&apos;s colour,
-                        as the previews show.
-                        {s.iconImageSize && (
-                          <>
-                            {' '}
-                            This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at
-                            its texture&apos;s size, and the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide
-                            {s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h
-                              ? `, so the preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}; size the texture to match.`
-                              : '.'}
-                          </>
-                        )}
+                        Build .zip makes the icon&apos;s texture, atlas and archive from this image. Draw it white on a
+                        transparent background: the Radioport tints the icon with the UI&apos;s colour, as the previews
+                        show.
+                        {imageSizeNote}
                       </>
                     }
                   >
-                    <label className="file-pick">
-                      <span>{s.iconImage ? 'Change image' : 'Choose a PNG'}</span>
-                      <input
-                        type="file"
-                        accept="image/png,image/webp,image/svg+xml"
-                        hidden
-                        onChange={(e) => {
-                          const f = e.target.files?.[0]
-                          if (!f) return
-                          if (s.iconImage) URL.revokeObjectURL(s.iconImage)
-                          const url = URL.createObjectURL(f)
-                          s.set({ iconImage: url, iconImageSize: null })
-                          const img = new Image()
-                          img.onload = () => s.set({ iconImageSize: [img.naturalWidth, img.naturalHeight] })
-                          img.src = url
-                          e.target.value = ''
-                        }}
-                      />
-                    </label>
-                    {s.iconImage && (
-                      <button
-                        type="button"
-                        className="link file-clear"
-                        onClick={() => {
-                          URL.revokeObjectURL(s.iconImage!)
-                          s.set({ iconImage: null, iconImageSize: null })
-                        }}
-                      >
-                        Remove
-                      </button>
-                    )}
+                    {imagePicker}
                   </Row>
-                  <Row
-                    label="Atlas"
-                    note={
-                      s.iconImage ? (
-                        'The .inkatlas path the archive holds. Empty uses the station ID.'
-                      ) : (
-                        <>
-                          The .inkatlas path inside your station&apos;s archive.{' '}
-                          <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
-                            Making a station icon
-                          </a>
-                        </>
-                      )
-                    }
-                  >
+                  <Row label="Atlas" note="The .inkatlas path the archive holds. Empty uses the station ID.">
                     <TextInput
                       value={s.iconAtlas}
                       onChange={(v) => s.set({ iconAtlas: v })}
-                      placeholder={s.iconImage && s.cname ? defaultIconTarget(s.cname).atlas : 'mymod\\gui\\icons.inkatlas'}
+                      placeholder={s.cname ? defaultIconTarget(s.cname).atlas : 'mymod\\gui\\icons.inkatlas'}
                     />
                   </Row>
-                  <Row label="Part" note={s.iconImage ? 'The icon’s name in the atlas. Empty uses the station ID.' : undefined}>
+                  <Row label="Part" note="The icon's name in the atlas. Empty uses the station ID.">
                     <TextInput
                       value={s.iconPart}
                       onChange={(v) => s.set({ iconPart: v })}
-                      placeholder={s.iconImage && s.cname ? defaultIconTarget(s.cname).part : 'my_station'}
+                      placeholder={s.cname ? defaultIconTarget(s.cname).part : 'my_station'}
                     />
+                  </Row>
+                </>
+              )}
+              {s.iconMode === 'atlas' && (
+                <>
+                  <Row
+                    label="Atlas"
+                    note={
+                      <>
+                        The .inkatlas path inside your station&apos;s archive. Add the archive to the zip yourself, or open
+                        a station that already has it.{' '}
+                        <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
+                          Making a station icon
+                        </a>
+                      </>
+                    }
+                  >
+                    <TextInput value={s.iconAtlas} onChange={(v) => s.set({ iconAtlas: v })} placeholder="mymod\gui\icons.inkatlas" />
+                  </Row>
+                  <Row label="Part">
+                    <TextInput value={s.iconPart} onChange={(v) => s.set({ iconPart: v })} placeholder="my_station" />
+                  </Row>
+                  <Row
+                    label="Preview image"
+                    note={
+                      <>
+                        Shows your icon in the previews, tinted the way the game tints it. The zip does not include it.
+                        {imageSizeNote}
+                      </>
+                    }
+                  >
+                    {imagePicker}
                   </Row>
                 </>
               )}

@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import type { ImportedStation } from './importStation'
 
 export type Source = 'new' | 'radioext' | 'radioxl010'
-export type IconMode = 'glyph' | 'record' | 'atlas'
+export type IconMode = 'glyph' | 'record' | 'image' | 'atlas'
 
 export interface Track {
   id: number
@@ -30,7 +30,7 @@ interface StationState {
   iconRecord: string
   iconPart: string
   iconAtlas: string
-  /** An image for the preview only; the zip does not carry it. */
+  /** In image mode, the image Build .zip writes the icon archive from; in atlas mode, the preview only. */
   iconImage: string | null
   /** Its pixel size, for the note on how the game will size it. */
   iconImageSize: [number, number] | null

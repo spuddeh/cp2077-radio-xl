@@ -6,12 +6,12 @@ export interface ManifestInput {
   cname: string
   news: boolean
   gain: number
-  iconMode: 'glyph' | 'record' | 'atlas'
+  iconMode: 'glyph' | 'record' | 'image' | 'atlas'
   iconChoice: string
   iconRecord: string
   iconPart: string
   iconAtlas: string
-  /** With an image in Own atlas mode, Build .zip writes the icon's archive from it. */
+  /** In image mode, Build .zip writes the icon's archive from it. In atlas mode it is for the preview only. */
   iconImage: string | null
   iconImageSize: [number, number] | null
   tracks: Track[]
@@ -22,7 +22,7 @@ export const ICON_IMAGE_MAX = 4096
 
 /** Whether Build .zip writes the icon's texture, atlas and archive. */
 export function generatesIcon(s: Pick<ManifestInput, 'iconMode' | 'iconImage'>): boolean {
-  return s.iconMode === 'atlas' && s.iconImage !== null
+  return s.iconMode === 'image' && s.iconImage !== null
 }
 
 /** The default part and atlas for a generated icon, named after the station ID. */
@@ -60,7 +60,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
     const record = s.iconChoice === 'other' ? s.iconRecord.trim() : s.iconChoice
     if (record) m.icon = record
   }
-  if (s.iconMode === 'atlas') {
+  if (s.iconMode === 'atlas' || s.iconMode === 'image') {
     const target = iconTarget(s)
     m.icon = target.part
     m.atlas = target.atlas
@@ -92,8 +92,10 @@ export function checkManifest(s: ManifestInput): Fault[] {
     faults.push({ field: 'tracks', message: 'A station with a stream plays that stream only; remove the other tracks.' })
   if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
     faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
-  if (s.iconMode === 'atlas' && !generatesIcon(s) && (!s.iconPart.trim() || !s.iconAtlas.trim()))
-    faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path, or an icon image to make them from.' })
+  if (s.iconMode === 'atlas' && (!s.iconPart.trim() || !s.iconAtlas.trim()))
+    faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
+  if (s.iconMode === 'image' && !s.iconImage)
+    faults.push({ field: 'icon', message: 'Choose the image to make the icon from.' })
   if (generatesIcon(s)) {
     const { part, atlas } = iconTarget(s)
     // An empty field with no station ID yet names nothing; the station ID's own fault reports that.
