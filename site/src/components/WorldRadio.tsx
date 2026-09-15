@@ -57,14 +57,15 @@ const MAX_HEIGHT = 520
  * Every world radio screen is common_holograms_transparent_a_w500_h150 with
  * parallaxscreen_transparent_ui at its defaults: the UI is drawn as four layers LayersSeparation
  * (0.1) apart in depth, at IntensityPerLayer 1, 0.1, 0.075 and 0.05. Head-on the layers overlap;
- * at an angle the deeper ones show as echoes. The preview looks at the screen head-on.
+ * at an angle the deeper ones show as echoes. The preview holds one fixed angle, so each deeper
+ * layer sits further up and to the right.
  */
 const LAYER_INTENSITY = [1, 0.1, 0.075, 0.05]
 const SEPARATION = 0.1
-/** The viewing direction, -1 to 1 on each axis; 0, 0 is head-on. */
-const VIEW = { x: 0, y: 0 }
-/** How far a full-angle view moves one layer, as a share of the screen. */
-const VIEW_REACH = 0.35
+/** The viewing direction, -1 to 1 on each axis; 0, 0 is head-on. Up and to the right. */
+const VIEW = { x: 0.7, y: -0.7 }
+/** How far a full-angle view moves one layer, in authored pixels, the same on every screen. */
+const VIEW_REACH = 400
 
 /**
  * A world radio's screen, drawn from the widget tree of its radio_ui inkwidget. Positions are
@@ -160,8 +161,8 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
     <div className="world-radio" style={{ width: boxW * scale, height: boxH * scale }}>
       {(props.echoes ? [3, 2, 1, 0] : [0]).map((layer) => {
         // Offsets are in page space, so the tall radio's rotated screen echoes the same way.
-        const dx = VIEW.x * layer * SEPARATION * VIEW_REACH * boxW * scale
-        const dy = VIEW.y * layer * SEPARATION * VIEW_REACH * boxH * scale
+        const dx = VIEW.x * layer * SEPARATION * VIEW_REACH * scale
+        const dy = VIEW.y * layer * SEPARATION * VIEW_REACH * scale
         const place = rotated
           ? `translate(${boxW * scale + dx}px, ${dy}px) rotate(90deg) scale(${scale})`
           : `translate(${dx}px, ${dy}px) scale(${scale})`
