@@ -118,8 +118,9 @@ export function ToastView(props: { toast: Toast; animate: boolean; onDone: () =>
         scale={Math.min(0.7, (window.innerWidth - 32) / 900)}
         animate={animate}
         texts={{ [TOAST_TITLE]: props.toast.title }}
-        // Over a busy page rather than the game world, the shadow is darkened so the text stays readable.
-        styles={{ [TOAST_SHADOW]: { filter: 'brightness(0.4)' } }}
+        // The page fade behind every notification replaces the widget's shadow blob, which would draw
+        // a darker ring on top of it.
+        styles={{ [TOAST_SHADOW]: { display: 'none' } }}
         slots={{
           [TOAST_ICON]: (
             <div className="toast-item">
