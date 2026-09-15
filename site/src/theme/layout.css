@@ -427,6 +427,15 @@
 .wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 /* World screens are emissive: the game's bloom is approximated with a glow. */
 .wr-screen { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 55%, transparent)); }
+.wr-echo { filter: none; transition: transform 0.12s ease-out; }
+.wr-screen:not(.wr-echo) { transition: none; }
+/* ScanlinesDensity 125: horizontal lines across the screen */
+.wr-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(100% / 125 - 1px), rgb(0 0 0 / 0.35) calc(100% / 125 - 1px), rgb(0 0 0 / 0.35) calc(100% / 125));
+}
 .wr-node { position: absolute; transform-origin: 50% 50%; }
 .wr-eq { overflow: hidden; }
 .wr-image { display: block; mask-size: 100% 100%; mask-repeat: no-repeat; }

@@ -53,6 +53,20 @@ const ROTATED: WorldLayout[] = ['tall']
 
 const MAX_HEIGHT = 520
 
+/*
+ * Every world radio screen is common_holograms_transparent_a_w500_h150 with
+ * parallaxscreen_transparent_ui at its defaults: the UI is drawn as four layers LayersSeparation
+ * (0.1) apart in depth, at IntensityPerLayer 1, 0.1, 0.075 and 0.05. Head-on the layers overlap;
+ * at an angle the deeper ones show as echoes. The echo opacities keep that 1 : 0.75 : 0.5 ratio at
+ * the level an in-game screenshot shows once the screen's emissive bloom is added.
+ */
+const ECHO_OPACITY = [0.3, 0.22, 0.15]
+const SEPARATION = 0.1
+/** How far a full tilt moves one layer, as a share of the screen, matched to that screenshot. */
+const TILT_REACH = 0.35
+/** The view with no pointer over the screen: slightly from above, so the echoes rise. */
+const RESTING_TILT = { x: 0.1, y: -0.6 }
+
 /**
  * A world radio's screen, drawn from the widget tree of its radio_ui inkwidget. Positions are
  * computed at build time by scripts/world-radios.py; this only draws them.
@@ -67,6 +81,7 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
   const boxW = rotated ? root.h : root.w
   const boxH = rotated ? root.w : root.h
   const scale = Math.min(width / boxW, MAX_HEIGHT / boxH)
+  const [tilt, setTilt] = useState(RESTING_TILT)
 
   const draw = (n: InkNode, eqIndex?: number): React.ReactNode => {
     const style: CSSProperties = { left: n.x, top: n.y, width: n.w, height: n.h }
@@ -144,19 +159,35 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
   return (
     <div ref={frame} className="world-radio-frame">
     <style>{EQ_KEYFRAMES}</style>
-    <div className="world-radio" style={{ width: boxW * scale, height: boxH * scale }}>
-      <div
-        className="wr-screen"
-        style={{
-          width: root.w,
-          height: root.h,
-          transform: rotated
-            ? `translate(${boxW * scale}px, 0) rotate(90deg) scale(${scale})`
-            : `scale(${scale})`,
-        }}
-      >
-        {root.children?.map((c) => draw(c))}
-      </div>
+    <div
+      className="world-radio"
+      style={{ width: boxW * scale, height: boxH * scale }}
+      onPointerMove={(e) => {
+        if (!props.animate) return
+        const r = e.currentTarget.getBoundingClientRect()
+        setTilt({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: ((e.clientY - r.top) / r.height) * 2 - 1 })
+      }}
+      onPointerLeave={() => setTilt(RESTING_TILT)}
+    >
+      {[3, 2, 1, 0].map((layer) => {
+        // Offsets are in page space, so the tall radio's rotated screen echoes the same way.
+        const dx = tilt.x * layer * SEPARATION * TILT_REACH * boxW * scale
+        const dy = tilt.y * layer * SEPARATION * TILT_REACH * boxH * scale
+        const place = rotated
+          ? `translate(${boxW * scale + dx}px, ${dy}px) rotate(90deg) scale(${scale})`
+          : `translate(${dx}px, ${dy}px) scale(${scale})`
+        return (
+          <div
+            key={layer}
+            className={layer ? 'wr-screen wr-echo' : 'wr-screen'}
+            aria-hidden={layer ? true : undefined}
+            style={{ width: root.w, height: root.h, transform: place, opacity: layer ? ECHO_OPACITY[layer - 1] : 1 }}
+          >
+            {root.children?.map((c) => draw(c))}
+          </div>
+        )
+      })}
+      <span className="wr-scanlines" aria-hidden />
     </div>
     </div>
   )
