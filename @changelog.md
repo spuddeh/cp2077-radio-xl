@@ -61,6 +61,13 @@
   run: the songs are listed under every station with no fold (`show:` rows gone), the situation
   switches' note is three label rows, and the Radioport poll shows the popup on the first read
   too, so switching the Radioport on shows what is playing.
+  Then the next key was changed from walking the track list to a random pick (`RandRange`,
+  exclusive upper bound as the game's own scripts use it), avoiding the song playing and the last
+  four heard while enough others remain; previous pops a per-station history of eight that the
+  arrival handler keeps, with a `m_backing` flag so the landing does not push the song it left.
+  The automatic skip past a switched-off song picks the same way. The Radioport keys became a
+  heading inside Keys, the long labels became one-line rows, a divider separates a station's
+  step-over switch from its songs, and never-again puts "Switched off: <song>" on screen.
 - Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
   (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
   event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses

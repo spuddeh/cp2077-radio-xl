@@ -76,8 +76,9 @@
 
 ## Awaiting in-game verification
 
-- The Radioport popup on the moment the Radioport switches on (not only on a song change), added
-  after the first run.
+- After the first run: the Radioport popup on the moment the Radioport switches on; next picks a
+  song at random the way the station does and previous goes back through what was heard; the
+  never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line rows.
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
 
