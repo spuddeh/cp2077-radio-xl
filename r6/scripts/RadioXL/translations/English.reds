@@ -79,15 +79,13 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipIgnorePocket", "Tune the car radio even when the Radioport is already playing another station.");
 
     // --- stations ---
-    this.Text("RadioXL.labStations", "One section per station, in dial order. Set a station aside and the station keys step over it; unfold its songs to switch any of them off.");
+    this.Text("RadioXL.labStations", "One section per station, in dial order. Set a station aside and the station keys step over it; switch any of its songs off below it.");
     this.Text("RadioXL.tipStreamer", "A song set to Off is skipped whenever it comes up. Off while streaming plays as normal and is skipped only while the game's Streamer Mode setting is on; songs the game marks as not streamer friendly start there, and a song from a station mod carries no such mark, so this is where one is set. If every song on a station is off, the station plays as normal.");
     this.Text("RadioXL.noteStreamerOn", "Streamer Mode is ON. Songs set to Off while streaming are marked and are being skipped.");
     this.Text("RadioXL.noteStreamerOff", "Streamer Mode is off. Songs set to Off while streaming are playing normally.");
     this.Text("RadioXL.noteNoCatalog", "The station list is read when a game is loaded. Load a save and open this panel again.");
     this.Text("RadioXL.optSkipStation", "Keys step over this station");
     this.Text("RadioXL.tipSkipStation", "The next and previous station keys skip it. It can still be picked from the radio itself.");
-    this.Text("RadioXL.optShowSongs", "Show songs");
-    this.Text("RadioXL.tipShowSongs", "Unfolds this station's songs below.");
     this.Text("RadioXL.songOn", "On");
     this.Text("RadioXL.songOff", "Off");
     this.Text("RadioXL.songStreamerOff", "Off while streaming");

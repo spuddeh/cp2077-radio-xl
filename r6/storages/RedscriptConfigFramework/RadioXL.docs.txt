@@ -102,7 +102,7 @@ Nothing is tuned while the game blocks radio input: in a police vehicle, during 
 [b]Stations[/b]
 One section per station, in dial order.
 [*][b]Keys step over this station.[/b] The next and previous station keys skip it. It can still be picked from the radio itself.[/*]
-[*][b]Show songs.[/b] Unfolds the station's songs, one row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one.[/*]
+[*][b]Its songs.[/b] One row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one.[/*]
 The top of the tab says whether Streamer Mode is on right now, and while it is, every song being skipped for it is marked in its own row. If every song on a station is set to Off, the station plays as normal, and the next and previous keys step through them.
 
 [b]Mute[/b]

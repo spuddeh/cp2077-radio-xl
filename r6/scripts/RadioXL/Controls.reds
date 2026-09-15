@@ -85,10 +85,6 @@ public class RadioXLControls extends ScriptableService {
   // because a position moves the moment a station mod is added or removed.
   private let m_skipped: array<CName>;
 
-  // Stations whose songs are unfolded on the Stations tab. Panel state, kept so the panel opens
-  // the way it was left.
-  private let m_shown: array<CName>;
-
   private let m_binds: array<ref<RadioXLBind>>;
 
   public final static func Get() -> ref<RadioXLControls> {
@@ -179,21 +175,6 @@ public class RadioXLControls extends ScriptableService {
       if !ArrayContains(this.m_skipped, station) { ArrayPush(this.m_skipped, station); }
     } else {
       ArrayRemove(this.m_skipped, station);
-    }
-  }
-
-  // --- the stations unfolded on the panel ------------------------------------------------------
-
-  public func IsStationShown(station: CName) -> Bool {
-    return ArrayContains(this.m_shown, station);
-  }
-
-  public func SetStationShown(station: CName, shown: Bool) -> Void {
-    if !IsNameValid(station) { return; }
-    if shown {
-      if !ArrayContains(this.m_shown, station) { ArrayPush(this.m_shown, station); }
-    } else {
-      ArrayRemove(this.m_shown, station);
     }
   }
 

@@ -208,8 +208,8 @@ public class RadioXLPocketWatch extends ScriptableService {
     if IsDefined(deck) {
       deck.Arrived(gi, NameToHash(track));
     }
-    // The first read after the radio comes on is the track already playing, not a change.
-    if first { return; }
+    // The first read after the radio comes on is the track already playing, not a change, and
+    // it is shown too: the Radioport switching on is when the player wants to know what is on.
     if controls.notifyRadioport || controls.notifyOnscreen {
       let evt = new VehicleRadioSongChanged();
       evt.radioSongName = track;

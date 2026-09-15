@@ -14,10 +14,9 @@
 //
 //              FOUR TABS. Controls holds the keys and the two notifications; My station the
 //              remembered station; Stations one section per station from the catalog, each with
-//              its step-over switch and, unfolded, its songs; Mute the station talk and the twelve
-//              situation switches. Rows behind a switch (modifiers, the Radioport keys, a
-//              station's songs) exist only while the switch is on: RCF rebuilds the panel the
-//              moment such a switch flips.
+//              its step-over switch and its songs; Mute the station talk and the twelve
+//              situation switches. Rows behind a switch (modifiers, the Radioport keys) exist
+//              only while the switch is on: RCF rebuilds the panel the moment such a switch flips.
 //
 //              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
 //              plugin, because this mod matches the key itself on Codeware's Input/Key event.
@@ -126,11 +125,10 @@ public func RadioXL_KeyPlayOnPocketPowerOn() -> String { return "playOnPocketPow
 public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio"; }
 public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
-// A song row's key is the event name behind a fixed prefix; a station's step-over and unfold
-// rows are its event name behind two more. The name comes back out of each unchanged.
+// A song row's key is the event name behind a fixed prefix; a station's step-over row is its
+// event name behind another. The name comes back out of each unchanged.
 public func RadioXL_SongPrefix() -> String { return "song:"; }
 public func RadioXL_SkipPrefix() -> String { return "skip:"; }
-public func RadioXL_ShowPrefix() -> String { return "show:"; }
 
 @if(ModuleExists("RedscriptConfigFramework"))
 public class RadioXLConfigProvider extends DVRCF_Provider {
@@ -336,8 +334,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   }
 
   // --- the Stations tab -------------------------------------------------------------------------
-  // One section per station, in dial order: the step-over switch, the unfold switch, and while
-  // unfolded a dropdown per song keyed by the song's event name. Section and song labels are the
+  // One section per station, in dial order: the step-over switch, then a dropdown per song keyed
+  // by the song's event name. Section and song labels are the
   // game's own resolved text: RCF runs every label through its localizer and keeps a string it
   // cannot resolve, so resolved text passes through unchanged.
 
@@ -364,15 +362,11 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
         b.Toggle(RadioXL_SkipPrefix() + NameToString(name), "RadioXL.optSkipStation");
         b.Tip("RadioXL.tipSkipStation");
         if IsDefined(station) && ArraySize(station.tracks) > 0 {
-          b.Toggle(RadioXL_ShowPrefix() + NameToString(name), "RadioXL.optShowSongs").Rebuilds();
-          b.Tip("RadioXL.tipShowSongs");
-          if controls.IsStationShown(name) {
-            let i: Int32 = 0;
-            while i < ArraySize(station.tracks) {
-              let track = station.tracks[i];
-              b.Dropdown(RadioXL_SongPrefix() + NameToString(track.event), this.SongLabel(track), options);
-              i += 1;
-            }
+          let i: Int32 = 0;
+          while i < ArraySize(station.tracks) {
+            let track = station.tracks[i];
+            b.Dropdown(RadioXL_SongPrefix() + NameToString(track.event), this.SongLabel(track), options);
+            i += 1;
           }
         }
       }
@@ -443,9 +437,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     if StrBeginsWith(key, RadioXL_SkipPrefix()) {
       return s.IsStationSkipped(StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix()))));
     }
-    if StrBeginsWith(key, RadioXL_ShowPrefix()) {
-      return s.IsStationShown(StringToName(StrMid(key, StrLen(RadioXL_ShowPrefix()))));
-    }
     if Equals(key, RadioXL_KeyUseModifiers()) { return s.useModifiers; }
     if Equals(key, RadioXL_KeySeparateRadioport()) { return s.separateRadioportKeys; }
     if Equals(key, RadioXL_KeyNotifyRadioport()) { return s.notifyRadioport; }
@@ -485,10 +476,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     if !IsDefined(s) { return; }
     if StrBeginsWith(key, RadioXL_SkipPrefix()) {
       s.SetStationSkipped(StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix()))), value);
-      return;
-    }
-    if StrBeginsWith(key, RadioXL_ShowPrefix()) {
-      s.SetStationShown(StringToName(StrMid(key, StrLen(RadioXL_ShowPrefix()))), value);
       return;
     }
     if Equals(key, RadioXL_KeyUseModifiers()) { s.useModifiers = value; }
