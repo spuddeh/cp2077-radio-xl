@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useStation, type IconMode, type Source } from './store'
 import { buildManifest, checkManifest, displayName } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
+import { WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
@@ -49,6 +50,8 @@ export function App() {
   const faultFor = (field: string) => faults.find((f) => f.field === field)?.message
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
+  const [preview, setPreview] = useState<'radioport' | WorldLayout>('radioport')
+  const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
 
   // Closing or reloading the tab loses everything entered, so the browser asks first.
@@ -137,12 +140,22 @@ export function App() {
         </section>
 
         <aside className="side">
-          <Radioport
-            frequency={s.frequency.trim()}
-            name={s.stationName.trim()}
-            nowPlaying={firstSong?.title ?? ''}
-            logo={s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined}
-          />
+          <nav className="preview-tabs" aria-label="Preview">
+            <button type="button" aria-current={preview === 'radioport'} onClick={() => setPreview('radioport')}>
+              Radioport
+            </button>
+            {WORLD_LAYOUTS.map((l) => (
+              <button key={l.value} type="button" aria-current={preview === l.value} onClick={() => setPreview(l.value)}>
+                <span className="sub">World radio </span>
+                {l.label}
+              </button>
+            ))}
+          </nav>
+          {preview === 'radioport' ? (
+            <Radioport frequency={s.frequency.trim()} name={s.stationName.trim()} nowPlaying={firstSong?.title ?? ''} logo={logo} />
+          ) : (
+            <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} />
+          )}
           <details className="json">
             <summary>station.json</summary>
             <pre>{manifest}</pre>

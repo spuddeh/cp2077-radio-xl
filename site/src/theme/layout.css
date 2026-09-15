@@ -331,6 +331,41 @@
   opacity: 0.6;
 }
 
+/* --- preview switch and world radios ---------------------------------------------------- */
+
+.preview-tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 14px; }
+.preview-tabs button {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-size: var(--font-readable-small);
+  font-weight: var(--weight-header);
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0.5;
+}
+.preview-tabs button:hover { opacity: 1; }
+.preview-tabs button[aria-current='true'] { color: var(--blue); opacity: 1; box-shadow: 0 2px 0 var(--blue); }
+.preview-tabs .sub { font-size: var(--font-readable-x-small); }
+
+.world-radio-frame { width: 100%; }
+.world-radio {
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+  background: #050708;
+  outline: 1px solid color-mix(in srgb, var(--blue) 12%, transparent);
+}
+.wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* World screens are emissive: the game's bloom is approximated with a glow. */
+.wr-screen { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 55%, transparent)); }
+.wr-node { position: absolute; transform-origin: 50% 50%; }
+.wr-eq { overflow: hidden; }
+.wr-image { display: block; mask-size: 100% 100%; mask-repeat: no-repeat; }
+.wr-text { overflow: hidden; white-space: nowrap; line-height: 1; font-family: var(--font-ui); }
+.wr-text.fit { overflow: visible; white-space: pre; line-height: 1.2; }
+
 .json { margin-top: 22px; }
 .json summary {
   cursor: pointer;
