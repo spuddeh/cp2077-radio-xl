@@ -100,8 +100,9 @@ know its own in advance. The framework creates the records.
 A station with no `icon` shows the RadioXL glyph. To use one of the game's own station logos, set
 `icon` to its record (`UIIcon.RadioHipHop` for The Dirge) and ship nothing. For a logo of your own:
 
-1. **Draw it on a transparent background.** The game's own station logos are white, 240 to 400 px
-   wide and 130 to 330 px tall.
+1. **Draw it on a transparent background, in white or in colour.** A white logo takes on the UI's
+   colour, the way the game's own station logos do. A coloured logo keeps its own colours. The game's
+   logos are 240 to 400 px wide and 130 to 330 px tall.
 2. **Store black under every transparent pixel** (premultiplied alpha). Most editors export white
    there, and that shows in game as a white box.
 3. **Import the PNG as an `.xbm`** in WolvenKit with `TEXG_Generic_UI`, `TRF_TrueColor`,
