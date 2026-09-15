@@ -8,7 +8,8 @@ export function About() {
         <p>
           The station builder makes a radio station mod for RadioXL. Fill in the station, add its audio, and Build .zip
           writes a mod ready to install with a mod manager: a <code>station.json</code> and the audio files, in the
-          folder RadioXL reads stations from.
+          folder RadioXL reads stations from. Given an icon image, it also writes the icon&apos;s texture, atlas and
+          archive.
         </p>
         <p>
           The preview shows the station the way the game does: on the Radioport, where it sits on the dial, and on the
@@ -30,8 +31,8 @@ export function About() {
         <p>
           Drop a RadioXL station&apos;s zip or its installed folder on Edit a RadioXL station. The form fills from its{' '}
           <code>station.json</code>, each track is matched to its audio, and every other file in the mod, such as an
-          icon archive, goes back into the zip unchanged. The station keeps its folder name, so the new zip installs
-          over the old one.
+          icon archive, goes back into the zip unchanged. Choosing a new icon image replaces the old icon archive. The
+          station keeps its folder name, so the new zip installs over the old one.
         </p>
       </section>
 

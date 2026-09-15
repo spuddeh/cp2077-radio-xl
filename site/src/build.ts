@@ -1,5 +1,59 @@
 import { downloadZip, predictLength } from 'client-zip'
 import type { Track } from './store'
+import { buildIconArchive } from './iconArchive'
+
+/**
+ * An image's straight RGBA pixels, top row first, at its own size. WebGL with premultiplication off
+ * reads the decoded values exactly; a 2D canvas stores premultiplied 8-bit colour and loses precision
+ * wherever alpha is low, so it is the fallback only.
+ */
+async function imagePixels(url: string): Promise<{ rgba: Uint8Array | Uint8ClampedArray; width: number; height: number }> {
+  const img = new Image()
+  img.src = url
+  await img.decode()
+  const width = img.naturalWidth
+  const height = img.naturalHeight
+  const exact = webglPixels(img, width, height)
+  if (exact) return { rgba: exact, width, height }
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('No 2D canvas')
+  ctx.drawImage(img, 0, 0)
+  return { rgba: ctx.getImageData(0, 0, width, height).data, width, height }
+}
+
+/** Reads an image through a WebGL texture, top row first. Null where WebGL is unavailable. */
+function webglPixels(img: HTMLImageElement, width: number, height: number): Uint8Array | null {
+  const canvas = document.createElement('canvas')
+  const gl = canvas.getContext('webgl')
+  if (!gl) return null
+  try {
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE)
+    const texture = gl.createTexture()
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
+    const fb = gl.createFramebuffer()
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) return null
+    // readPixels returns the texture's row 0 first, which is the image's top row as uploaded.
+    const out = new Uint8Array(width * height * 4)
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, out)
+    return gl.getError() === gl.NO_ERROR ? out : null
+  } finally {
+    gl.getExtension('WEBGL_lose_context')?.loseContext()
+  }
+}
+
+/** The station's icon archive, written from an image, at the path a mod manager installs it to. */
+export async function iconArchiveFile(opts: { image: string; atlas: string; part: string; folder: string }) {
+  const { rgba, width, height } = await imagePixels(opts.image)
+  const bytes = buildIconArchive(rgba, width, height, opts.atlas, opts.part)
+  return { path: `archive/pc/mod/${opts.folder}.archive`, source: new Blob([bytes as BlobPart]) }
+}
 
 export interface BuildProgress {
   written: number

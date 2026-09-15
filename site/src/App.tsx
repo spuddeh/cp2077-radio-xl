@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStation, type IconMode, type Source } from './store'
-import { buildManifest, checkManifest, displayName } from './manifest'
+import { buildManifest, checkManifest, defaultIconTarget, displayName, generatesIcon, iconTarget } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
@@ -8,7 +8,7 @@ import { Tracks } from './components/Tracks'
 import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
-import { buildZip, modFolder, pickSaveTarget } from './build'
+import { buildZip, iconArchiveFile, modFolder, pickSaveTarget } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
 const SOURCES: { value: Source; label: string }[] = [
@@ -122,11 +122,18 @@ export function App() {
     setBuild({ phase: 'running', written: 0, total: 0, file })
     let frame = 0
     try {
+      let extras = s.extras
+      if (generatesIcon(s)) {
+        const { part, atlas } = iconTarget(s)
+        const icon = await iconArchiveFile({ image: s.iconImage!, atlas, part, folder })
+        // A station mod carries one icon archive; an opened station's old one would name the same atlas.
+        extras = [icon, ...s.extras.filter((x) => !/\.archive$/i.test(x.path))]
+      }
       await buildZip({
         folder,
         manifest,
         tracks: s.tracks,
-        extras: s.extras,
+        extras,
         target,
         onProgress: ({ written, total }) => {
           // One state update per frame, however many chunks arrive in it.
@@ -240,28 +247,14 @@ export function App() {
               {s.iconMode === 'atlas' && (
                 <>
                   <Row
-                    label="Atlas"
+                    label="Icon image"
                     note={
                       <>
-                        The .inkatlas path inside your station&apos;s archive. The preview cannot read an archive, so
-                        choose the same image below to see it.{' '}
-                        <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
-                          Making a station icon
-                        </a>
-                      </>
-                    }
-                  >
-                    <TextInput value={s.iconAtlas} onChange={(v) => s.set({ iconAtlas: v })} placeholder="mymod\gui\icons.inkatlas" />
-                  </Row>
-                  <Row label="Part">
-                    <TextInput value={s.iconPart} onChange={(v) => s.set({ iconPart: v })} placeholder="my_station" />
-                  </Row>
-                  <Row
-                    label="Preview image"
-                    note={
-                      <>
-                        Shows your icon in the previews, tinted the way the game tints it. The zip does not include it:
-                        the icon still goes in your own archive.
+                        {s.iconImage
+                          ? 'Build .zip makes the icon’s texture, atlas and archive from this image.'
+                          : 'Choose an image and Build .zip makes the icon’s texture, atlas and archive from it. Without one, the zip names the atlas below and the archive is yours to add.'}{' '}
+                        Draw it white on a transparent background: the Radioport tints the icon with the UI&apos;s colour,
+                        as the previews show.
                         {s.iconImageSize && (
                           <>
                             {' '}
@@ -306,6 +299,34 @@ export function App() {
                         Remove
                       </button>
                     )}
+                  </Row>
+                  <Row
+                    label="Atlas"
+                    note={
+                      s.iconImage ? (
+                        'The .inkatlas path the archive holds. Empty uses the station ID.'
+                      ) : (
+                        <>
+                          The .inkatlas path inside your station&apos;s archive.{' '}
+                          <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
+                            Making a station icon
+                          </a>
+                        </>
+                      )
+                    }
+                  >
+                    <TextInput
+                      value={s.iconAtlas}
+                      onChange={(v) => s.set({ iconAtlas: v })}
+                      placeholder={s.iconImage && s.cname ? defaultIconTarget(s.cname).atlas : 'mymod\\gui\\icons.inkatlas'}
+                    />
+                  </Row>
+                  <Row label="Part" note={s.iconImage ? 'The icon’s name in the atlas. Empty uses the station ID.' : undefined}>
+                    <TextInput
+                      value={s.iconPart}
+                      onChange={(v) => s.set({ iconPart: v })}
+                      placeholder={s.iconImage && s.cname ? defaultIconTarget(s.cname).part : 'my_station'}
+                    />
                   </Row>
                 </>
               )}

@@ -98,7 +98,11 @@ know its own in advance. The framework creates the records.
 ## The icon
 
 A station with no `icon` shows the RadioXL glyph. To use one of the game's own station logos, set
-`icon` to its record (`UIIcon.RadioHipHop` for The Dirge) and ship nothing. For a logo of your own:
+`icon` to its record (`UIIcon.RadioHipHop` for The Dirge) and ship nothing.
+
+For a logo of your own, the [station builder](https://spuddeh.github.io/cp2077-radio-xl/) does steps 2
+to 6 below from an image: set Icon to Own atlas, choose the image, and Build .zip writes the texture,
+atlas and archive and names them in the manifest. By hand in WolvenKit:
 
 1. **Draw it white on a transparent background.** The Radioport tints the icon with the UI's colour,
    so a white logo comes out matching the game's own station logos, and a coloured one loses its

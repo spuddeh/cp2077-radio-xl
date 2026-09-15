@@ -11,7 +11,35 @@ export interface ManifestInput {
   iconRecord: string
   iconPart: string
   iconAtlas: string
+  /** With an image in Own atlas mode, Build .zip writes the icon's archive from it. */
+  iconImage: string | null
+  iconImageSize: [number, number] | null
   tracks: Track[]
+}
+
+/** The largest icon image the page writes a texture for, per side. */
+export const ICON_IMAGE_MAX = 4096
+
+/** Whether Build .zip writes the icon's texture, atlas and archive. */
+export function generatesIcon(s: Pick<ManifestInput, 'iconMode' | 'iconImage'>): boolean {
+  return s.iconMode === 'atlas' && s.iconImage !== null
+}
+
+/** The default part and atlas for a generated icon, named after the station ID. */
+export function defaultIconTarget(cname: string): { part: string; atlas: string } {
+  return { part: cname, atlas: `${cname}\\gui\\${cname}.inkatlas` }
+}
+
+/**
+ * The part and atlas the manifest names. A generated icon fills an empty field from the station ID
+ * and writes the path in lowercase, so the manifest and the archive name the same resource.
+ */
+export function iconTarget(s: Pick<ManifestInput, 'iconMode' | 'iconImage' | 'iconPart' | 'iconAtlas' | 'cname'>): { part: string; atlas: string } {
+  const part = s.iconPart.trim()
+  const atlas = s.iconAtlas.trim().replace(/\//g, '\\')
+  if (!generatesIcon(s)) return { part, atlas }
+  const fallback = defaultIconTarget(s.cname)
+  return { part: part || fallback.part, atlas: (atlas || fallback.atlas).toLowerCase() }
 }
 
 export interface Fault {
@@ -33,8 +61,9 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
     if (record) m.icon = record
   }
   if (s.iconMode === 'atlas') {
-    m.icon = s.iconPart
-    m.atlas = s.iconAtlas.replace(/\//g, '\\')
+    const target = iconTarget(s)
+    m.icon = target.part
+    m.atlas = target.atlas
   }
   m.tracks = s.tracks.map((t) => {
     const out: Record<string, unknown> = t.url ? { url: t.url } : { file: t.file }
@@ -63,7 +92,23 @@ export function checkManifest(s: ManifestInput): Fault[] {
     faults.push({ field: 'tracks', message: 'A station with a stream plays that stream only; remove the other tracks.' })
   if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
     faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
-  if (s.iconMode === 'atlas' && (!s.iconPart || !s.iconAtlas))
-    faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
+  if (s.iconMode === 'atlas' && !generatesIcon(s) && (!s.iconPart.trim() || !s.iconAtlas.trim()))
+    faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path, or an icon image to make them from.' })
+  if (generatesIcon(s)) {
+    const { part, atlas } = iconTarget(s)
+    // An empty field with no station ID yet names nothing; the station ID's own fault reports that.
+    const named = s.cname !== '' || (s.iconPart.trim() !== '' && s.iconAtlas.trim() !== '')
+    if (named && !/^[\x21-\x7e]+$/.test(part))
+      faults.push({ field: 'icon', message: 'The part name is plain letters, digits and punctuation, with no spaces.' })
+    if (named && !/^[a-z0-9_\-.]+(\\[a-z0-9_\-.]+)*\.inkatlas$/.test(atlas))
+      faults.push({ field: 'icon', message: 'The atlas path is folders of letters, digits and underscores, ending in .inkatlas.' })
+    else if (named && /^(base|ep1)\\/.test(atlas))
+      faults.push({ field: 'icon', message: 'The atlas path must not start with base\\ or ep1\\. A path there can replace a file of the game.' })
+    const size = s.iconImageSize
+    if (size && (size[0] > ICON_IMAGE_MAX || size[1] > ICON_IMAGE_MAX))
+      faults.push({ field: 'icon', message: `The icon image is larger than ${ICON_IMAGE_MAX} px on a side.` })
+    if (size && (size[0] === 0 || size[1] === 0))
+      faults.push({ field: 'icon', message: 'The icon image has no size. An SVG needs a width and height.' })
+  }
   return faults
 }
