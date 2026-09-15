@@ -2,7 +2,7 @@
 
 usage:
   python measure-loudness.py record <out.wav> [--seconds 900] [--device "Game ("]
-  python measure-loudness.py report <out.wav> <radiostationprobe log> [--settle 4] [--min 20]
+  python measure-loudness.py report <out.wav> <radiostationprobe log> [--settle 4] [--min 20] [--world]
   python measure-loudness.py devices
 
 record   captures a WASAPI loopback device to a 16-bit WAV. The file's start time is written beside it
@@ -16,7 +16,8 @@ report   splits the recording into the stretches where one station was on the Ra
 
 The probe (MyMods/RadioXL/probe) logs a station line with a timestamp whenever its state changes.
 The station whose listeners include `pocket_radio_emitter:on` or `vehicle_radio_emitter:on` is the one
-the player hears. A world device (`radio:on`) is not counted: its level depends on distance.
+the player hears. A world device (`radio:on`) is not counted unless --world is given: its level depends on distance, so
+two readings taken through one are comparable only from the same standing spot at the same device.
 
 A reading is only comparable to another taken with the same volume settings, standing in the same
 place. Both vanilla and custom stations change material song to song, so a minute or more per station
@@ -211,6 +212,10 @@ def main():
     device = option("--device", "Game (")
     settle = float(option("--settle", "4"))
     minimum = float(option("--min", "20"))
+    if "--world" in args:
+        args.remove("--world")
+        global HEARD
+        HEARD = HEARD + ("radio:on",)
     if args[:1] == ["devices"]:
         devices()
     elif args[:1] == ["record"] and len(args) == 2:
