@@ -158,129 +158,176 @@
 
 /* --- Radioport popup ------------------------------------------------------------------- */
 
-.radioport { margin: 0; }
+/*
+ * Colours and tints are the widget tree's. Opacities are matched to an in-game screenshot
+ * instead: ink blends in linear light, so a stroke authored at 0.22 reads about twice as
+ * strong on screen as the same opacity blended by a browser.
+ */
+.radioport {
+  --rp-line: color-mix(in srgb, var(--red) 45%, transparent);
+  margin: 0;
+  text-transform: uppercase;
+}
+.rp-fluff { font-size: 10px; color: var(--red); opacity: 0.45; }
+.rp-fluff-top { display: block; margin: 0 0 3px 2px; }
 
-/* bg_topBar: PrimaryBackgroundDarkest at 0.61, frame_topBar: Red at 0.22 */
+.rp-bar { display: flex; gap: 3px; align-items: stretch; }
+
+/* notification_bracket: a tab down the left edge, notched at mid-height */
+.rp-bracket {
+  flex: none;
+  width: 8px;
+  background: var(--red);
+  opacity: 0.6;
+  clip-path: polygon(0 0, 100% 0, 100% 38%, 55% 45%, 55% 55%, 100% 62%, 100% 100%, 0 100%);
+}
+
+/* bg_topBar + frame_topBar */
 .rp-top {
   --cut: var(--cut-plate);
   --edge: var(--red);
-  --edge-opacity: 0.22;
+  --edge-opacity: 0.5;
   --fill: var(--fs-primary-background-darkest);
   --fill-opacity: 0.61;
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 38px;
-  padding: 0 14px 0 20px;
+  height: 36px;
+  padding: 0 14px;
 }
 .rp-title { font-size: var(--font-readable-font-size); color: var(--blue); }
-.rp-fluff { font-size: 10px; color: var(--red); opacity: 0.3; text-transform: uppercase; }
-.rp-top .rp-fluff { margin-left: auto; }
-
-/* notification_bracket: a narrow tab down the left edge with a notch at mid-height */
-.rp-bracket {
-  position: absolute;
-  left: -2px;
-  top: 4px;
-  bottom: 4px;
-  width: 8px;
-  background: var(--red);
-  opacity: 0.22;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 62%, 45% 55%, 45% 45%, 0 38%);
-}
 
 .rp-now {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 16px;
-  margin-top: 14px;
+  grid-template-columns: 190px 1fr;
+  gap: 18px;
+  margin-top: 22px;
 }
 .rp-image {
-  position: relative;
+  --cut: var(--cut-plate);
+  --edge: var(--red);
+  --edge-opacity: 0.3;
+  flex: 1;
   display: grid;
   place-items: center;
-  height: 180px;
+  aspect-ratio: 1;
+  padding: 6px;
   color: var(--blue); /* radioIcon: PanelBlue */
-  background:
-    linear-gradient(color-mix(in srgb, var(--red) 7%, transparent) 1px, transparent 1px) 0 0 / 12px 12px,
-    linear-gradient(90deg, color-mix(in srgb, var(--red) 7%, transparent) 1px, transparent 1px) 0 0 / 12px 12px;
-}
-.rp-image::after { /* bg + frame barHolder */
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 3px;
-  background: var(--red);
-  opacity: 0.22;
-}
-.rp-kernel {
-  position: absolute;
-  top: 6px;
-  left: 14px;
-  margin: 0;
-  font: 6px/1.3 var(--font-ui);
-  color: var(--red);
-  opacity: 0.22;
 }
 .rp-icon { /* the station's atlas part, tinted like radioIcon */
-  width: 150px;
-  height: 120px;
+  width: 88%;
+  height: 88%;
   background: currentColor;
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
 }
-
-.rp-details {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  border-top: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
-  border-bottom: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
-  min-width: 0;
+.rp-kernel {
+  position: absolute;
+  left: 10px;
+  bottom: 6px;
+  margin: 0;
+  font: 600 6px/1.25 var(--font-ui);
+  color: var(--red);
+  opacity: 0.45;
 }
+
+.rp-details { display: flex; flex-direction: column; min-width: 0; }
+.rp-details .rp-fluff { padding-bottom: 5px; border-bottom: var(--divider) solid var(--rp-line); }
 .rp-track {
+  margin-top: 16px;
   font-size: var(--font-readable-font-size);
   color: var(--red);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.rp-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-bottom: 8px;
+  border-bottom: var(--divider) solid var(--rp-line);
+  font-size: var(--font-readable-medium);
+  color: var(--red);
+}
+.rp-volume > span:first-child { margin-right: auto; }
+.rp-volume-value { color: var(--blue); font-weight: 700; }
+.radioport kbd {
+  --cut: 4px;
+  --edge: var(--blue);
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  font: var(--weight-header) 14px var(--font-ui);
+  color: var(--blue);
+}
 
-.rp-list { list-style: none; margin: 16px 0 0; padding: 0; }
+.rp-listwrap { position: relative; margin-top: 14px; padding-right: 22px; }
+.rp-list { list-style: none; margin: 0; padding: 0; }
 .rp-list li {
   --cut: var(--cut-plate);
   display: flex;
   align-items: center;
   gap: 10px;
   height: 34px;
-  padding: 0 14px;
+  padding: 0 12px 0 8px;
   font-size: var(--font-readable-medium);
   color: var(--blue);
-  opacity: 0.5; /* ContactListItem.ItemOpacity Default */
+  opacity: 0.75; /* ContactListItem.ItemOpacity Default, as it reads in game */
 }
+.rp-list li + li { margin-top: 3px; }
 .rp-list li.active {
-  --edge: var(--blue);
+  --edge: var(--active-blue);
   --edge-opacity: 1;
   --fill: var(--blue);
-  --fill-opacity: 0.03;
+  --fill-opacity: 0.17;
   color: var(--active-blue);
   opacity: 1;
 }
-.rp-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+.rp-code { /* Code_TL */
+  width: 20px;
+  white-space: pre;
+  font: 600 4.5px/1.15 var(--font-ui);
+  opacity: 0.8;
+}
+.rp-eq { display: inline-flex; align-items: flex-end; gap: 2px; width: 20px; height: 12px; }
 .rp-eq i { width: 2px; background: currentColor; }
 .rp-eq i:nth-child(1) { height: 60%; }
 .rp-eq i:nth-child(2) { height: 100%; }
 .rp-eq i:nth-child(3) { height: 40%; }
 .rp-eq i:nth-child(4) { height: 80%; }
 
-.rp-caption {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
-  font-size: var(--font-readable-x-small);
+/* scrollbar: slidingArea, handle in MainColors.Red */
+.rp-scroll { position: absolute; top: 0; bottom: 0; right: 4px; width: 3px; }
+.rp-scroll span { position: absolute; left: 0; right: 0; background: var(--red); }
+
+.rp-foot {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: var(--divider) solid var(--rp-line);
+}
+.rp-fluff-legal { max-width: 150px; margin-right: auto; font-size: 6px; line-height: 1.3; }
+.rp-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-readable-small);
+  font-weight: 700;
   color: var(--red);
+}
+.rp-mouse { width: 12px; height: 18px; color: var(--blue); }
+
+.rp-caption {
+  margin: 12px 0 0;
+  font-size: var(--font-readable-x-small);
+  color: var(--neutral);
   opacity: 0.6;
 }
 
@@ -338,7 +385,7 @@
   .shell { padding: 0 16px; }
   .row { grid-template-columns: 1fr; }
   .row-label { padding-block: 6px; }
-  .rp-now { grid-template-columns: 1fr; }
+  .rp-now { grid-template-columns: 150px 1fr; gap: 12px; }
   .tracks-head, .track { grid-template-columns: 24px minmax(0, 1fr) 16px; }
   .track-ident-toggle { grid-column: 2; justify-self: start; }
   .track-remove { grid-row: 1; grid-column: 3; }

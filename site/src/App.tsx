@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useStation, type IconMode, type Source } from './store'
 import { buildManifest, checkManifest, displayName } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
@@ -38,7 +38,7 @@ function ownIconNote(first: string) {
   return (
     <>
       {first} The preview cannot load an icon from another mod, so it shows the RadioXL glyph.{' '}
-      <a href={ICON_GUIDE}>Making a station icon</a>
+      <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">Making a station icon</a>
     </>
   )
 }
@@ -49,6 +49,15 @@ export function App() {
   const faultFor = (field: string) => faults.find((f) => f.field === field)?.message
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
+  const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
+
+  // Closing or reloading the tab loses everything entered, so the browser asks first.
+  useEffect(() => {
+    if (!hasWork) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [hasWork])
 
   return (
     <div className="shell">
@@ -153,9 +162,9 @@ export function App() {
 
       <footer className="colophon">
         <nav aria-label="Links">
-          <a href="https://www.nexusmods.com/cyberpunk2077/mods/33488">RadioXL on Nexus Mods</a>
-          <a href="https://github.com/spuddeh/cp2077-radio-xl">Source on GitHub</a>
-          <a href="https://www.cdprojektred.com/en/fan-content">CD PROJEKT RED fan content guidelines</a>
+          <a href="https://www.nexusmods.com/cyberpunk2077/mods/33488" target="_blank" rel="noopener noreferrer">RadioXL on Nexus Mods</a>
+          <a href="https://github.com/spuddeh/cp2077-radio-xl" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
+          <a href="https://www.cdprojektred.com/en/fan-content" target="_blank" rel="noopener noreferrer">CD PROJEKT RED fan content guidelines</a>
         </nav>
         <p>
           An unofficial fan work, not approved or endorsed by CD PROJEKT RED. Cyberpunk 2077 and its
