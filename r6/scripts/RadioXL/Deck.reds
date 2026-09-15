@@ -226,6 +226,8 @@ public class RadioXLDeck extends ScriptableService {
     let track = r.station.tracks[index];
     controls.SetSongState(track.event, RadioXL_SongOff());
     RadioXLLog(s"\(r.station.name): \(track.event) switched off from the key");
+    // The key gives no other sign it worked, so the song's name goes on screen.
+    RadioXLNotify.Line(gi, RadioXLText("RadioXL.noteNeverAgain") + " " + this.TrackTitle(track));
     this.Step(gi, true);
   }
 
@@ -341,6 +343,16 @@ public class RadioXLDeck extends ScriptableService {
     this.m_pendingKey = track.key;
     this.m_pendingAt = this.Now(gi);
     RadioXLLog(s"\(r.station.name): requested track \(index) \(track.event)");
+  }
+
+  // The same lookup the popup makes: the receiver reports the track as a CName built from
+  // primaryLocKey, and GetLocalizedTextByKey resolves that name; the event name is the fallback.
+  private func TrackTitle(track: ref<RadioXLCatalogTrack>) -> String {
+    let text: String = track.key != 0ul ? GetLocalizedTextByKey(HashToName(track.key)) : "";
+    if StrLen(text) == 0 && IsNameValid(track.title) {
+      text = GetLocalizedText(NameToString(track.title));
+    }
+    return StrLen(text) > 0 ? text : NameToString(track.event);
   }
 
   private func Now(gi: GameInstance) -> Float {

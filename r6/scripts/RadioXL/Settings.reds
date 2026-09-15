@@ -154,7 +154,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     // --- Controls ---
     b.Tab("RadioXL.tabControls");
     b.Section("RadioXL.secKeys");
-    b.Label("RadioXL.tipKeys");
+    b.Label("RadioXL.labKeys1");
+    b.Label("RadioXL.labKeys2");
+    b.Label("RadioXL.labKeys3");
+    b.Label("RadioXL.labKeys4");
     this.AddKeys(b, controls, RadioXLBindSet.Main);
     b.Toggle(RadioXL_KeyUseModifiers(), "RadioXL.optUseModifiers").Rebuilds();
     b.Tip("RadioXL.tipUseModifiers");
@@ -162,20 +165,22 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       b.Group("RadioXL.grpModifiers");
       this.AddModifiers(b, controls, RadioXLBindSet.Main);
     }
-    b.Toggle(RadioXL_KeySeparateRadioport(), "RadioXL.optSeparateRadioport").Rebuilds();
-    b.Tip("RadioXL.tipSeparateRadioport");
-    if IsDefined(controls) && controls.separateRadioportKeys {
-      b.Group("RadioXL.grpRadioport");
-      this.AddKeys(b, controls, RadioXLBindSet.Radioport);
-      if controls.useModifiers {
-        this.AddModifiers(b, controls, RadioXLBindSet.Radioport);
-      }
-    }
     b.Section("RadioXL.secOnScreen");
     b.Toggle(RadioXL_KeyNotifyRadioport(), "RadioXL.optNotifyRadioport");
     b.Tip("RadioXL.tipNotifyRadioport");
     b.Toggle(RadioXL_KeyNotifyOnscreen(), "RadioXL.optNotifyOnscreen");
     b.Tip("RadioXL.tipNotifyOnscreen");
+    b.Section("RadioXL.secRadioport");
+    b.Label("RadioXL.labRadioport");
+    b.Toggle(RadioXL_KeySeparateRadioport(), "RadioXL.optSeparateRadioport").Rebuilds();
+    b.Tip("RadioXL.tipSeparateRadioport");
+    if IsDefined(controls) && controls.separateRadioportKeys {
+      this.AddKeys(b, controls, RadioXLBindSet.Radioport);
+      if controls.useModifiers {
+        b.Group("RadioXL.grpModifiers");
+        this.AddModifiers(b, controls, RadioXLBindSet.Radioport);
+      }
+    }
 
     // --- My station ---
     b.Tab("RadioXL.tabMyStation");
@@ -346,8 +351,11 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       return;
     }
     b.Section("RadioXL.tabStations");
-    b.Label("RadioXL.labStations");
-    b.Label("RadioXL.tipStreamer");
+    b.Label("RadioXL.labStations1");
+    b.Label("RadioXL.labStations2");
+    b.Label("RadioXL.labStations3");
+    b.Label("RadioXL.labStations4");
+    b.Label("RadioXL.labStations5");
     b.Label(this.IsStreamerMode() ? "RadioXL.noteStreamerOn" : "RadioXL.noteStreamerOff");
     let options: array<String> = this.SongOptions();
     let count: Int32 = RadioStationDataProvider.GetStationsCount();
@@ -362,6 +370,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
         b.Toggle(RadioXL_SkipPrefix() + NameToString(name), "RadioXL.optSkipStation");
         b.Tip("RadioXL.tipSkipStation");
         if IsDefined(station) && ArraySize(station.tracks) > 0 {
+          b.Divider();
           let i: Int32 = 0;
           while i < ArraySize(station.tracks) {
             let track = station.tracks[i];

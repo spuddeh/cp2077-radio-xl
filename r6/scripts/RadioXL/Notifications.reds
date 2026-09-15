@@ -137,10 +137,15 @@ private final func TryShowVehicleRadioNotification() -> Bool {
 // while it is there it displaces every other HUD element below it.
 public class RadioXLNotify {
   public static func Onscreen(gi: GameInstance, station: CName, track: CName) -> Void {
+    RadioXLNotify.Line(gi, GetLocalizedTextByKey(station) + "\n" + GetLocalizedTextByKey(track));
+  }
+
+  // Any text, the same way.
+  public static func Line(gi: GameInstance, text: String) -> Void {
     let message: SimpleScreenMessage;
     message.isShown = true;
     message.duration = 4.0;
-    message.message = GetLocalizedTextByKey(station) + "\n" + GetLocalizedTextByKey(track);
+    message.message = text;
     let defs = GetAllBlackboardDefs();
     let board = GameInstance.GetBlackboardSystem(gi).Get(defs.UI_Notifications);
     if IsDefined(board) {

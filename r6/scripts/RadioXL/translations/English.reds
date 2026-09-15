@@ -28,11 +28,15 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.secMyStation", "My station");
     this.Text("RadioXL.secTalk", "Station talk");
     this.Text("RadioXL.secMuteWhen", "Mute the radio when...");
+    this.Text("RadioXL.secRadioport", "Radioport keys");
     this.Text("RadioXL.grpRadioport", "Radioport keys");
     this.Text("RadioXL.grpModifiers", "Modifiers");
 
     // --- keys ---
-    this.Text("RadioXL.tipKeys", "One set of keys for both radios: in a vehicle they act on the vehicle radio, on foot on the Radioport. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.");
+    this.Text("RadioXL.labKeys1", "One set of keys for both radios.");
+    this.Text("RadioXL.labKeys2", "In a vehicle they act on the vehicle radio. On foot, on the Radioport.");
+    this.Text("RadioXL.labKeys3", "Press a key or a controller button to bind one. Escape clears it.");
+    this.Text("RadioXL.labKeys4", "A key the game already uses keeps doing what the game says.");
     this.Text("RadioXL.keyNext", "Next song");
     this.Text("RadioXL.keyPrevious", "Previous song");
     this.Text("RadioXL.keyNextStation", "Next station");
@@ -56,6 +60,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipModifier", "Held down with the key above.");
     this.Text("RadioXL.optSeparateRadioport", "Separate keys for the Radioport");
     this.Text("RadioXL.tipSeparateRadioport", "Gives the Radioport its own set of keys, used on foot instead of the set above.");
+    this.Text("RadioXL.labRadioport", "Off, the keys above serve the Radioport too.");
 
     // --- on screen ---
     this.Text("RadioXL.optNotifyRadioport", "Show the song on the Radioport");
@@ -79,8 +84,11 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipIgnorePocket", "Tune the car radio even when the Radioport is already playing another station.");
 
     // --- stations ---
-    this.Text("RadioXL.labStations", "One section per station, in dial order. Set a station aside and the station keys step over it; switch any of its songs off below it.");
-    this.Text("RadioXL.tipStreamer", "A song set to Off is skipped whenever it comes up. Off while streaming plays as normal and is skipped only while the game's Streamer Mode setting is on; songs the game marks as not streamer friendly start there, and a song from a station mod carries no such mark, so this is where one is set. If every song on a station is off, the station plays as normal.");
+    this.Text("RadioXL.labStations1", "One section per station, in dial order.");
+    this.Text("RadioXL.labStations2", "A song set to Off is skipped whenever it comes up.");
+    this.Text("RadioXL.labStations3", "Off while streaming is skipped only while the game's Streamer Mode is on.");
+    this.Text("RadioXL.labStations4", "Songs the game marks as not streamer friendly start there. A station mod's songs start On.");
+    this.Text("RadioXL.labStations5", "A station with every song off plays as normal.");
     this.Text("RadioXL.noteStreamerOn", "Streamer Mode is ON. Songs set to Off while streaming are marked and are being skipped.");
     this.Text("RadioXL.noteStreamerOff", "Streamer Mode is off. Songs set to Off while streaming are playing normally.");
     this.Text("RadioXL.noteNoCatalog", "The station list is read when a game is loaded. Load a save and open this panel again.");
@@ -90,6 +98,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.songOff", "Off");
     this.Text("RadioXL.songStreamerOff", "Off while streaming");
     this.Text("RadioXL.noteHidden", "hidden now");
+    this.Text("RadioXL.noteNeverAgain", "Switched off:");
 
     // --- mute ---
     this.Text("RadioXL.optMuteIdents", "Mute station idents");

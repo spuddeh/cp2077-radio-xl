@@ -85,10 +85,10 @@ Four tabs in the Redscript Configuration Framework panel. Every station and ever
 [*][b]Next song / Previous song.[/b] One set of keys for both radios: in a vehicle they act on the vehicle radio, on foot on the Radioport, the metro included. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.[/*]
 [*][b]Next station / Previous station.[/b] Move along the dial in the same order the radio does, skipping the stations set aside on the Stations tab. Unbound by default.[/*]
 [*][b]Show what's playing.[/b] Puts the radio popup on screen for the song playing now. Unbound by default.[/*]
-[*][b]Never play this song again.[/b] Switches the song that is playing off and moves on. Unbound by default.[/*]
+[*][b]Never play this song again.[/b] Switches the song that is playing off and moves on, and says so on screen. Unbound by default.[/*]
 [*][b]Jump to my station.[/b] Tunes straight to the station set on the My station tab, whether or not the automatic tuning is switched on. Unbound by default.[/*]
 [*][b]Hold a modifier with the keys.[/b] Gives every key a second row: a key that must be held down with it. A key with its modifier held wins over the same key bound on its own, so F3 can be the next song and Shift+F3 the next station.[/*]
-[*][b]Separate keys for the Radioport.[/b] Gives the Radioport its own set of keys, used on foot instead of the set above.[/*]
+[*][b]Radioport keys.[/b] Off, the keys above serve the Radioport too. On, the Radioport gets its own set, used on foot instead.[/*]
 [*][b]Show the song on the Radioport.[/b] The vehicle radio's song popup, shown for the Radioport as well when a song changes.[/*]
 [*][b]Show the song as an on-screen message.[/b] The station and the song at the left of the screen when a song changes. Off by default.[/*]
 
