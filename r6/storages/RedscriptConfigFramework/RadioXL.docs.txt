@@ -82,7 +82,7 @@ A stream station joins the broadcast live when you tune in, after a second or tw
 Four tabs in the Redscript Configuration Framework panel. Every station and every song on them is read from the game when a save loads, so a song added by any radio mod is listed with nothing extra to install.
 
 [b]Controls[/b]
-[*][b]Next song / Previous song.[/b] Next picks a song at random, the way the station itself does; previous goes back to the song you just heard. One set of keys for both radios: in a vehicle they act on the vehicle radio, on foot on the Radioport, the metro included. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.[/*]
+[*][b]Next song / Previous song.[/b] Next draws a song the way the station itself does, every song once before any repeats. Previous goes back through what played, and next after that goes forward again through the same songs before drawing a new one. One set of keys for both radios: in a vehicle they act on the vehicle radio, on foot on the Radioport, the metro included. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.[/*]
 [*][b]Next station / Previous station.[/b] Move along the dial in the same order the radio does, skipping the stations set aside on the Stations tab. Unbound by default.[/*]
 [*][b]Show what's playing.[/b] Puts the radio popup on screen for the song playing now. Unbound by default.[/*]
 [*][b]Never play this song again.[/b] Switches the song that is playing off and moves on, and says so on screen. Unbound by default.[/*]
