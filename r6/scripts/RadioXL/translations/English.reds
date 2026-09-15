@@ -98,7 +98,9 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipMuteIdents", "The station's own spot between songs: its name, its frequency and whatever its host says over them. Applies from the next song.");
     this.Text("RadioXL.optMuteNews", "Mute DJ announcements");
     this.Text("RadioXL.tipMuteNews", "Everything that takes a slot between your songs: Stanley's news, Maximum Mike's song intros and Growl FM's Ash. Kurt Hansen's Dogtown broadcasts are left alone. Takes effect straight away, and switching it back puts the sound in place exactly as it was.");
-    this.Text("RadioXL.labMuteWhen", "Every switch is on by default. On: the Radioport goes quiet in that situation, exactly as the game does. Off: it keeps playing through it, on every station, the game's own included.");
+    this.Text("RadioXL.labMuteWhen1", "Every switch is on by default.");
+    this.Text("RadioXL.labMuteWhen2", "ON: the Radioport goes quiet in that situation, exactly as the game does.");
+    this.Text("RadioXL.labMuteWhen3", "OFF: it keeps playing through it, on every station, the game's own included.");
     this.Text("RadioXL.labMuteCombat", "Combat and police heat have no switch. They are the game's own mix rules and apply to every station.");
     this.Text("RadioXL.muteSceneTier", "A scene is playing");
     this.Text("RadioXL.tipMuteSceneTier", "Default: on. Any scripted scene, from a conversation that takes some control away up to a full cutscene. Off also lifts the hands-empty lock and the skip prompt a scene raises with it, for the length of the scene.");

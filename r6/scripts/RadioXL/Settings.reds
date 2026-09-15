@@ -209,7 +209,9 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Section("RadioXL.secMuteWhen");
     // **A Tip attaches to the LAST row built, whatever it is.** Text that belongs to a section
     // is a Label.
-    b.Label("RadioXL.labMuteWhen");
+    b.Label("RadioXL.labMuteWhen1");
+    b.Label("RadioXL.labMuteWhen2");
+    b.Label("RadioXL.labMuteWhen3");
     b.Toggle("muteSceneTier", "RadioXL.muteSceneTier");
     b.Tip("RadioXL.tipMuteSceneTier");
     b.Toggle("mutePhoneCall", "RadioXL.mutePhoneCall");
