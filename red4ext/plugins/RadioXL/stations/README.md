@@ -169,8 +169,8 @@ A mod's files cannot change that setting, so a stream station's description must
 which host to add. A server that redirects to another host needs that host listed too; AudioXL's log
 names the host it refused, and RadioXL's log says when a stream was skipped because http is off.
 
-**Updating AudioXL replaces `AudioXL.ini`**, which turns streaming off again until the lines are
-added back.
+**AudioXL creates `AudioXL.ini` on its first start**, with everything off, and an update leaves it
+alone. Under Mod Organizer 2 the file is in Overwrite.
 
 ## Song titles and the station name
 

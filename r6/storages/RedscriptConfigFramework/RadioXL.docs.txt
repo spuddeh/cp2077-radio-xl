@@ -72,7 +72,7 @@ allowHttpConnections = true
 allowedHost = ice1.somafm.com[/code][/quote]
 Use the host the station's own page names; one [b]allowedHost[/b] line per host. A station that stays silent usually needs one more host: AudioXL's log names the one it refused.
 
-[b]Updating AudioXL replaces AudioXL.ini.[/b] After an update, add the lines again, or every stream station is silent.
+[b]AudioXL creates AudioXL.ini on its first start[/b], with everything off, and an update leaves it alone. Under Mod Organizer 2 the file is in Overwrite.
 
 A stream station joins the broadcast live when you tune in, after a second or two of buffering, and shows the station's own title rather than the song playing.
 
