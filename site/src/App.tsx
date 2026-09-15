@@ -144,7 +144,7 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
-      if (e.ctrlKey || e.metaKey || e.altKey || el.closest('input, textarea, select, [contenteditable]')) return
+      if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || el.closest('input, textarea, select, [contenteditable]')) return
       if (e.key === 'z' || e.key === 'Z') startBuild()
       if (e.key === 'c' || e.key === 'C') copyManifest()
     }
