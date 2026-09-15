@@ -11,4 +11,10 @@
 - Song titles are optional: an untitled song plays everywhere, with no name shown.
 - A station can mark tracks as idents, jingles or ads: they play between songs like the game's own station idents and show no song title.
 - A station can play a live internet radio stream. The player allows the stream's host in AudioXL's settings file.
-- Requires AudioXL 0.4.0 or later.
+- Next and previous song on any radio, and next and previous station along the dial, on keys of your own. F3 and F2 out of the box; a key can carry a modifier, and the Radioport can have its own set.
+- Switch any song off, on any station, or off only while Streamer Mode is on. A key can switch off the song playing now.
+- My station: the radio comes on to the station you choose, when you get into a car, when the car radio switches on, or when the Radioport switches on. A key jumps there any time.
+- Stations the station keys step over, so cycling only visits the ones you listen to.
+- The vehicle radio's song popup for the Radioport too, and an on-screen line, each optional.
+- Mute station idents, and mute the DJs' talk between songs.
+- Requires AudioXL 0.4.3 or later.

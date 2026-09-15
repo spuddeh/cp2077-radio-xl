@@ -42,6 +42,23 @@
   drops it.
 
 ### Added
+- Simple Radio Control folded in (#35), on a four-tab panel: Controls, My station, Stations,
+  Mute. `Controls.reds` holds every setting and the bind table (one set of keys for both radios,
+  ids `nextKey`..`myStationKey`; the Radioport set `pocket*` and the `mod:<id>` modifiers exist
+  behind `separateRadioportKeys` and `useModifiers`, both `Rebuilds`); `Input.reds` matches a
+  press on Codeware's Input/Key with the receiver decided at the press; `Deck.reds` is next,
+  previous, never-again and the automatic skip through `RequestSongOnRadioStation`;
+  `Catalog.reds` reads every station and track from the cooked metadata at session ready and
+  owns the ident and announcement mutes; `MyStation.reds` tunes the remembered station on the
+  three receiver-on moments; `Notifications.reds` the popup, the on-screen line and the 1 s
+  Radioport poll; `State.reds` the mod's own `state.json` in RedFileSystem storage `RadioXL`.
+  The Stations tab folds each station's songs behind a `show:<station>` switch. Panel strings
+  are keys (`RadioXL.*`) in `translations/English.reds`, read through `RadioXLText`; the
+  twelve situation switches moved onto the same keys. The master Enabled switch was dropped.
+  RCF's restore is ignored for `rememberStation`, `muteIdents` and `muteNews`, bracketed by
+  `BeginRestore`/`EndRestore` around both `RestoreInto` and `Register`. Optional dependencies
+  RedFileSystem and RedData added. Compiled both configurations; not yet run in game after the
+  merge (the features were measured in Simple Radio Control 0.1.0 on 2026-09-11).
 - Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
   (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
   event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses

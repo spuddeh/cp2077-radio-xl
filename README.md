@@ -60,7 +60,12 @@ framework so the `stations/` folder survives packaging.
 - [TweakXL](https://www.nexusmods.com/cyberpunk2077/mods/4197) - the station's records for the dial
 
 Optional: [Redscript Configuration Framework](https://www.nexusmods.com/cyberpunk2077/mods/30726)
-shows the settings panel; without it the defaults apply.
+shows the settings panel and captures the keys; without it the defaults apply, with the next and
+previous song on F3 and F2. [RedFileSystem](https://www.nexusmods.com/cyberpunk2077/mods/13378)
+and [RedData](https://www.nexusmods.com/cyberpunk2077/mods/14139) keep the remembered station and
+the two talk mutes across launches; without them the station is remembered for the session only
+and the mutes stay off. Both are dependencies of the framework above, so a player with the panel
+has them.
 [RedLogger](https://www.nexusmods.com/cyberpunk2077/mods/31920): with it installed the framework
 writes what it registered to `r6/logs/mods/`; without it the logging compiles away.
 

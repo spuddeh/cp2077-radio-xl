@@ -69,13 +69,23 @@
 
 ## Awaiting in-game verification
 
+- The player controls folded in from Simple Radio Control (#35), each measured there on
+  2026-09-11 and not yet run inside RadioXL: next and previous song and station keys, one set for
+  both radios with modifiers and a Radioport set behind switches; per-song On, Off and Off while
+  streaming, with the game's not-streamer-friendly marks seeded in; the never-play-again and
+  what's-playing keys; My station, remembered by name and tuned on the three receiver-on moments;
+  stations the station keys step over; the Radioport song popup and the on-screen line; mute
+  station idents and mute DJ announcements, both applied as the resources load.
+- The Stations tab folds each station's songs behind a switch; the modifier and Radioport key rows
+  appear behind theirs. RCF 2.1.7's rebuild-on-toggle, not yet seen with this schema.
+
 - The Radioport level against a vanilla station, by capture rather than by ear.
 
 ## Planned
 
-- Hear a queued Stanley news line (not a greeting) on a custom station, to finish #16. News goes to
-  the last Stanley station in hash order with any listener nearby, so the test is away from other
-  radios.
+- Mute news only, leaving the rest of the DJ talk: the announcement graph names its scenes, so a
+  filter on `radio_00_news.scene` is possible.
+- Panel translations beyond English (`translations/`).
 - Replace the two roster readers rather than patching their bounds, which lifts the 127-station
   ceiling. The vehicle step already carries a 32-bit total.
 - Adopt RadioXL station definitions unchanged, starting with Outrun Waves 93.7.

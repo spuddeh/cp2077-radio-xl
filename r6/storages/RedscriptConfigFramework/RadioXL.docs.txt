@@ -79,12 +79,43 @@ A stream station joins the broadcast live when you tune in, after a second or tw
 
 [color=#e06666][size=6][b]- Settings -[/b][/size][/color]
 
-One tab in the Redscript Configuration Framework panel.
+Four tabs in the Redscript Configuration Framework panel. Every station and every song on them is read from the game when a save loads, so a song added by any radio mod is listed with nothing extra to install.
 
-[b]Mute radio when...[/b]
-Twelve switches, all on by default, and they apply to every station on the Radioport, the game's own included. A switch stands for a situation: turning off the holo call switch also lifts the locks a call brings with it, and the same for a scene and a vehicle scene. Each is a situation in which the game silences the radio: a scene, a phone call, a club, fast travel and so on. On, a RadioXL station goes quiet there exactly as a vanilla station does. Off, a RadioXL station keeps playing through it. The game's own stations are never affected either way.
+[b]Controls[/b]
+[*][b]Next song / Previous song.[/b] One set of keys for both radios: in a vehicle they act on the vehicle radio, on foot on the Radioport, the metro included. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.[/*]
+[*][b]Next station / Previous station.[/b] Move along the dial in the same order the radio does, skipping the stations set aside on the Stations tab. Unbound by default.[/*]
+[*][b]Show what's playing.[/b] Puts the radio popup on screen for the song playing now. Unbound by default.[/*]
+[*][b]Never play this song again.[/b] Switches the song that is playing off and moves on. Unbound by default.[/*]
+[*][b]Jump to my station.[/b] Tunes straight to the station set on the My station tab, whether or not the automatic tuning is switched on. Unbound by default.[/*]
+[*][b]Hold a modifier with the keys.[/b] Gives every key a second row: a key that must be held down with it. A key with its modifier held wins over the same key bound on its own, so F3 can be the next song and Shift+F3 the next station.[/*]
+[*][b]Separate keys for the Radioport.[/b] Gives the Radioport its own set of keys, used on foot instead of the set above.[/*]
+[*][b]Show the song on the Radioport.[/b] The vehicle radio's song popup, shown for the Radioport as well when a song changes.[/*]
+[*][b]Show the song as an on-screen message.[/b] The station and the song at the left of the screen when a song changes. Off by default.[/*]
 
-Combat and police heat have no switch. The game ducks and stops every station in those, RadioXL stations included.
+[b]My station[/b]
+[*][b]Tune to my station.[/b] The switch for this tab.[/*]
+[*][b]Station.[/b] The station to tune to. It is remembered by name, so it stays the same station after you add or remove station mods. If that station is not installed, nothing is tuned.[/*]
+[*][b]When getting into a car / When the car radio is switched on / When the Radioport is switched on.[/b] The three moments the radio is tuned.[/*]
+[*][b]Even if the Radioport is on.[/b] Tunes the car radio even when the Radioport is already playing another station. Off leaves the Radioport's station alone.[/*]
+Nothing is tuned while the game blocks radio input: in a police vehicle, during a scripted drive, as Johnny, and before the car radio is unlocked.
+
+[b]Stations[/b]
+One section per station, in dial order.
+[*][b]Keys step over this station.[/b] The next and previous station keys skip it. It can still be picked from the radio itself.[/*]
+[*][b]Show songs.[/b] Unfolds the station's songs, one row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one.[/*]
+The top of the tab says whether Streamer Mode is on right now, and while it is, every song being skipped for it is marked in its own row. If every song on a station is set to Off, the station plays as normal, and the next and previous keys step through them.
+
+[b]Mute[/b]
+[*][b]Mute station idents.[/b] The station's own spot between songs: its name, its frequency and whatever its host says over them. Each station keeps its own, so this is what silences Pacific Dreams' host. Applies from the next song.[/*]
+[*][b]Mute DJ announcements.[/b] Everything that takes a slot between your songs: Stanley's news bulletins, Maximum Mike's song intros and Growl FM's Ash. Kurt Hansen is left alone: he broadcasts over Dogtown rather than through your radio. A station's own spot is the setting above, not this one, and songs are never affected.[/*]
+Both are off by default, both take effect straight away, and switching either back puts the sound in place exactly as it was.
+[*][b]Mute the radio when...[/b] Twelve switches, all on by default, and they apply to every station on the Radioport, the game's own included. Each is a situation in which the game silences the radio: a scene, a phone call, a club, fast travel and so on. On, the Radioport goes quiet there exactly as the game does. Off, it keeps playing through it. A switch stands for a situation: turning off the holo call switch also lifts the locks a call brings with it, and the same for a scene and a vehicle scene.[/*]
+Combat and police heat have no switch. The game ducks and stops every station in those.
+
+
+[color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
+
+Keys are ignored in menus and in photo mode, and the song and station keys only work with a radio on. Check the key is bound on the Controls tab and not only in the game's own settings, and that its modifier, if you use them, is held down. A station key does nothing while the radio plays through another mod's own player rather than the game's, which is how RadioExt stations work: pick a station from the radio itself and the keys work again. If the Stations tab says the station list has not been read, load a save and open the panel again; the list is read when a game loads, not at the main menu.
 
 
 [color=#e06666][size=6][b]- A station is not showing up -[/b][/size][/color]
