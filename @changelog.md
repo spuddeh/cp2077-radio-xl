@@ -68,6 +68,12 @@
   The automatic skip past a switched-off song picks the same way. The Radioport keys became a
   heading inside Keys, the long labels became one-line rows, a divider separates a station's
   step-over switch from its songs, and never-again puts "Switched off: <song>" on screen.
+  The random pick then became a per-station shuffle bag (Fisher-Yates over the enabled,
+  playable tracks minus the current one; a song the station plays itself leaves the bag through
+  `Record`) and the history a cursor over every song that played: `Seek` walks it either way,
+  `Draw` refills the bag past its end, and a song the engine picks while the cursor is back
+  truncates the forward part. A requested arrival is told apart from an engine pick by the
+  pending key.
 - Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
   (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
   event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses
