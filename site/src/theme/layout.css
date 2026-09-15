@@ -222,12 +222,13 @@
   color: var(--red);
   opacity: 0.22;
 }
-.rp-icon { /* radioxl_icons.inkatlas part radioxl, tinted like radioIcon */
-  width: 112px;
-  height: 112px;
+.rp-icon { /* the station's atlas part, tinted like radioIcon */
+  width: 150px;
+  height: 120px;
   background: currentColor;
   mask-size: contain;
   mask-repeat: no-repeat;
+  mask-position: center;
 }
 
 .rp-details {

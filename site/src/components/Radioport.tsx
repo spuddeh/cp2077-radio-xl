@@ -5,7 +5,7 @@ import glyph from '../assets/radioxl-glyph.png'
  * The Radioport's station popup (vehicles_radio.inkwidget), laid out from its widget tree at
  * half scale, showing where the station lands on the dial.
  */
-export function Radioport(props: { frequency: string; name: string; nowPlaying: string }) {
+export function Radioport(props: { frequency: string; name: string; nowPlaying: string; logo?: string }) {
   const freq = Number.parseFloat(props.frequency)
   const own = { freq: Number.isFinite(freq) ? freq : Infinity, label: [props.frequency, props.name].filter(Boolean).join(' ') || 'Your station', own: true }
   const dial = [...VANILLA_STATIONS.map((v) => ({ freq: v.frequency, label: `${v.frequency.toFixed(1)} ${v.name}`, own: false })), own]
@@ -25,7 +25,12 @@ export function Radioport(props: { frequency: string; name: string; nowPlaying: 
         <div className="rp-image">
           <span className="rp-bracket tall" aria-hidden />
           <pre className="rp-kernel" aria-hidden>{'IMAGE NAME:   SILVERBIRCH-3.10.10\nIMAGE TYPE:   ROOT AV92 KERNEL IMAGE'}</pre>
-          <span className="rp-icon" style={{ maskImage: `url(${glyph})` }} role="img" aria-label="RadioXL glyph" />
+          <span
+            className="rp-icon"
+            style={{ maskImage: `url(${props.logo ?? glyph})` }}
+            role="img"
+            aria-label={props.logo ? 'Station icon' : 'RadioXL glyph'}
+          />
         </div>
         <div className="rp-details">
           <span className="rp-fluff">Now playing</span>

@@ -12,5 +12,12 @@ the MIT licence grants no rights to it. It appears in these files:
 To use the glyph anywhere else, ask DigitalVixen through the
 [RadioXL Nexus page](https://www.nexusmods.com/cyberpunk2077/mods/33488).
 
-The station builder's colours, sizes and layout are taken from Cyberpunk 2077's UI data, which
-belongs to CD PROJEKT RED. The site carries no game textures, fonts or other shipped assets.
+**Cyberpunk 2077 material is not covered either.** It belongs to CD PROJEKT RED and is used under
+their [fan content guidelines](https://www.cdprojektred.com/en/fan-content):
+
+- `site/src/assets/stations/`: the fourteen vanilla station logos, cut from
+  `radiostations_icons.inkatlas`
+- the station builder's colours, sizes and layout, taken from the game's UI data
+- the vanilla station names
+
+The site carries no other game textures, and no game fonts.

@@ -4,7 +4,7 @@ import { buildManifest, checkManifest, displayName } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { Tracks } from './components/Tracks'
-import { VANILLA_STATIONS } from './vanilla'
+import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
 const SOURCES: { value: Source; label: string }[] = [
   { value: 'new', label: 'New station' },
@@ -116,7 +116,12 @@ export function App() {
         </section>
 
         <aside className="side">
-          <Radioport frequency={s.frequency.trim()} name={s.stationName.trim()} nowPlaying={firstSong?.title ?? ''} />
+          <Radioport
+            frequency={s.frequency.trim()}
+            name={s.stationName.trim()}
+            nowPlaying={firstSong?.title ?? ''}
+            logo={s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined}
+          />
           <details className="json">
             <summary>station.json</summary>
             <pre>{manifest}</pre>
