@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useStation } from '../store'
+import { Fault } from './Controls'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
 
@@ -43,7 +44,7 @@ export function Tracks() {
           onChange={(e) => take([...(e.target.files ?? [])].map((f) => f.name))}
         />
       </div>
-      {skipped.length > 0 && <p className="row-note fault">Not an audio file AudioXL reads: {skipped.join(', ')}</p>}
+      {skipped.length > 0 && <Fault>Not an audio file AudioXL reads: {skipped.join(', ')}</Fault>}
 
       {tracks.length > 0 && (
         <ol className="tracks">

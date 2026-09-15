@@ -97,12 +97,26 @@ know its own in advance. The framework creates the records.
 
 ## The icon
 
-Import the texture the way the game's own station atlas is built, or it renders wrong:
-`TEXG_Generic_UI`, `TRF_TrueColor`, `TCM_QualityColor`, no mip chain, not streamable, **alpha
-premultiplied** and **vertically flipped on import**. The game's UI textures store black under every
-transparent pixel; a PNG with white there shows as a white box, and an unflipped import shows upside
-down. In WolvenKit both are import switches. The atlas part's UV rect selects the used region, so the
-sheet can be padded to a multiple of 4.
+A station with no `icon` shows the RadioXL glyph. To use one of the game's own station logos, set
+`icon` to its record (`UIIcon.RadioHipHop` for The Dirge) and ship nothing. For a logo of your own:
+
+1. **Draw it white on a transparent background**, the way the game's station logos are drawn. The
+   Radioport colours the icon itself, so a coloured logo comes out tinted rather than in its own
+   colours. The game's logos are 240 to 400 px wide and 130 to 330 px tall.
+2. **Store black under every transparent pixel** (premultiplied alpha). Most editors export white
+   there, and that shows in game as a white box.
+3. **Import the PNG as an `.xbm`** in WolvenKit with `TEXG_Generic_UI`, `TRF_TrueColor`,
+   `TCM_QualityColor`, no mip chain, not streamable, **premultiplied alpha** and **flipped
+   vertically**. An import that is not flipped shows upside down.
+4. **Make an `.inkatlas`** that points at the `.xbm` and has one part covering the logo. The part's
+   rect selects the used area, so the texture can be padded to a multiple of 4.
+5. **Pack both into your station's archive** under a folder of your own, with no `base\` prefix
+   (`mystation\gui\icon.inkatlas`). WolvenKit warns about the missing prefix; the warning does not
+   apply to a UI texture named by path.
+6. **Name both in the manifest:** `"icon"` is the part name and `"atlas"` the `.inkatlas` path.
+
+The [Custom in-game icons](https://wiki.redmodding.org/cyberpunk-2077-modding/modding-guides/custom-icons-and-ui/custom-in-game-icons)
+guide on the modding wiki walks through the WolvenKit side of steps 3 and 4 with screenshots.
 
 ## The audio
 

@@ -17,6 +17,8 @@ their [fan content guidelines](https://www.cdprojektred.com/en/fan-content):
 
 - `site/src/assets/stations/`: the fourteen vanilla station logos, cut from
   `radiostations_icons.inkatlas`
+- `site/src/assets/warning-triangle.png`: the warning triangle from
+  `character_creation_atlas.inkatlas`
 - the station builder's colours, sizes and layout, taken from the game's UI data
 - the vanilla station names
 

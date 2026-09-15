@@ -31,6 +31,18 @@ function volumeLabel(gain: number): string {
   return `${pct} (${(20 * Math.log10(gain)).toFixed(1)} dB)`
 }
 
+const ICON_GUIDE = 'https://github.com/spuddeh/cp2077-radio-xl/blob/main/red4ext/plugins/RadioXL/stations/README.md#the-icon'
+
+/** A note for an icon the preview cannot draw, with the guide to making one. */
+function ownIconNote(first: string) {
+  return (
+    <>
+      {first} The preview cannot load an icon from another mod, so it shows the RadioXL glyph.{' '}
+      <a href={ICON_GUIDE}>Making a station icon</a>
+    </>
+  )
+}
+
 export function App() {
   const s = useStation()
   const faults = useMemo(() => checkManifest(s), [s])
@@ -90,7 +102,7 @@ export function App() {
                     <Stepper options={ICON_RECORDS} value={s.iconChoice} onChange={(v) => s.set({ iconChoice: v })} />
                   </Row>
                   {s.iconChoice === 'other' && (
-                    <Row label="Record" note="Any UIIcon record. One that does not exist falls back to the RadioXL glyph.">
+                    <Row label="Record" note={ownIconNote('Any UIIcon record. One that does not exist shows the RadioXL glyph in game too.')}>
                       <TextInput value={s.iconRecord} onChange={(v) => s.set({ iconRecord: v })} placeholder="UIIcon.MyStation" />
                     </Row>
                   )}
@@ -98,7 +110,7 @@ export function App() {
               )}
               {s.iconMode === 'atlas' && (
                 <>
-                  <Row label="Atlas">
+                  <Row label="Atlas" note={ownIconNote("The .inkatlas path inside your station's archive.")}>
                     <TextInput value={s.iconAtlas} onChange={(v) => s.set({ iconAtlas: v })} placeholder="mymod\gui\icons.inkatlas" />
                   </Row>
                   <Row label="Part">

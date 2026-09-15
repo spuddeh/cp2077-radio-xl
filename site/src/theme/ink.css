@@ -107,7 +107,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
   color: var(--neutral);
   opacity: 0.6;
 }
-.row-note.fault { color: var(--warning); opacity: 1; }
+/* character_creation_step_2 warning: fluff_triangle and ReadableSmall text, both MainColors.Red */
+.row-note.fault {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--red);
+  font-size: var(--font-readable-small);
+  opacity: 1;
+}
+.fault-icon {
+  flex: none;
+  width: 18px;
+  height: 16px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+.row-note a { color: var(--blue); }
 
 .cell {
   --edge: var(--button-frame-color-default);
