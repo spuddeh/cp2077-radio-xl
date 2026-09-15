@@ -45,16 +45,28 @@ function ownIconNote(first: string) {
 }
 
 const ANIMATE_KEY = 'radioxl-builder-animate'
+const ECHOES_KEY = 'radioxl-builder-echoes'
 
-/** Previews animate unless the viewer turned it off here or asks the OS for reduced motion. */
-function initialAnimate(): boolean {
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** A preview switch as this browser last left it, or its default. */
+function loadSwitch(key: string, fallback: boolean): boolean {
   try {
-    const saved = localStorage.getItem(ANIMATE_KEY)
+    const saved = localStorage.getItem(key)
     if (saved) return saved === 'on'
   } catch {
     // storage unavailable
   }
-  return !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  return fallback
+}
+
+function saveSwitch(key: string, value: boolean): boolean {
+  try {
+    localStorage.setItem(key, value ? 'on' : 'off')
+  } catch {
+    // storage unavailable: the choice lasts for this visit only
+  }
+  return value
 }
 
 export function App() {
@@ -64,15 +76,10 @@ export function App() {
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
   const [preview, setPreview] = useState<'radioport' | WorldLayout>('radioport')
-  const [animate, setAnimate] = useState(initialAnimate)
-  const toggleAnimate = () => {
-    setAnimate(!animate)
-    try {
-      localStorage.setItem(ANIMATE_KEY, animate ? 'off' : 'on')
-    } catch {
-      // storage unavailable: the choice lasts for this visit only
-    }
-  }
+  const [animate, setAnimate] = useState(() => loadSwitch(ANIMATE_KEY, !prefersReducedMotion()))
+  const [echoes, setEchoes] = useState(() => loadSwitch(ECHOES_KEY, true))
+  const toggleAnimate = () => setAnimate(saveSwitch(ANIMATE_KEY, !animate))
+  const toggleEchoes = () => setEchoes(saveSwitch(ECHOES_KEY, !echoes))
   const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
 
@@ -173,9 +180,16 @@ export function App() {
               </button>
             ))}
           </nav>
-          <button type="button" className="ink-frame animate-toggle" aria-pressed={animate} onClick={toggleAnimate}>
-            Animation {animate ? 'on' : 'off'}
-          </button>
+          <div className="preview-switches">
+            {preview !== 'radioport' && (
+              <button type="button" className="ink-frame animate-toggle" aria-pressed={echoes} onClick={toggleEchoes}>
+                Echoes {echoes ? 'on' : 'off'}
+              </button>
+            )}
+            <button type="button" className="ink-frame animate-toggle" aria-pressed={animate} onClick={toggleAnimate}>
+              Animation {animate ? 'on' : 'off'}
+            </button>
+          </div>
           {preview === 'radioport' ? (
             <Radioport
               frequency={s.frequency.trim()}
@@ -185,7 +199,7 @@ export function App() {
               animate={animate}
             />
           ) : (
-            <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} animate={animate} />
+            <WorldRadio layout={preview} name={displayName(s) || 'Your station'} logo={logo} animate={animate} echoes={echoes} />
           )}
           <details className="json">
             <summary>station.json</summary>

@@ -401,12 +401,11 @@
 .preview-tabs .sub { font-size: var(--font-readable-x-small); }
 
 .world-radio-frame { width: 100%; }
+.preview-switches { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
 .animate-toggle {
   --cut: 6px;
   --edge: var(--red);
   --edge-opacity: 0.4;
-  display: block;
-  margin: 0 0 12px auto;
   padding: 4px 12px;
   border: 0;
   background: none;
@@ -427,8 +426,7 @@
 .wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 /* World screens are emissive: the game's bloom is approximated with a glow. */
 .wr-screen { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 55%, transparent)); }
-.wr-echo { filter: none; transition: transform 0.12s ease-out; }
-.wr-screen:not(.wr-echo) { transition: none; }
+.wr-echo { filter: none; }
 /* ScanlinesDensity 125: horizontal lines across the screen */
 .wr-scanlines {
   position: absolute;
