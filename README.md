@@ -202,6 +202,9 @@ its manifest.
 
 [MIT](LICENSE). Take what is useful.
 
+The RadioXL glyph is the exception: it is DigitalVixen's artwork and not covered by MIT. See
+[NOTICE](NOTICE.md).
+
 ## Credits
 
 RED4ext by WopsS. AudioXL and RadioXL by DigitalVixen. Codeware, TweakXL and ArchiveXL by psiberx.
