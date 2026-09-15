@@ -1,11 +1,11 @@
 /*
- * Widget shapes traced from the game's atlases, drawn in CSS. Sizes are the game's own
- * authored values at the 1080p render scale (half of the 3840x2160 authoring canvas).
+ * Widget shapes from the game's atlases, drawn in CSS at the 1080p render scale (half the
+ * 3840x2160 authoring canvas).
  *
- * A chamfered frame is two stacked clipped layers: a ring in the edge colour, and the fill
- * inset by the stroke width. The game draws its plates as a translucent fill under a fainter
- * stroke, so the edge is a ring (an evenodd polygon) and never shows through the fill.
- * A border plus an overlaid diagonal never meets flush.
+ * A chamfered frame is an edge ring (evenodd polygon) under a fill inset by 1px, so a
+ * translucent fill never shows the edge through it. The diagonal must be 1px measured across
+ * the line, which is sqrt(2) along an axis: the ring's inner points sit 0.41px past the cut,
+ * and the fill's cut is 0.59px shorter. Any other offset draws a thinner or thicker diagonal.
  */
 
 :root {
@@ -56,15 +56,15 @@ button, input, select, textarea { font: inherit; color: inherit; }
   opacity: var(--edge-opacity);
   clip-path: polygon(evenodd,
     0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 0,
-    1px 1px, 1px calc(100% - 1px), calc(100% - var(--cut) + 0.41px) calc(100% - 1px),
-    calc(100% - 1px) calc(100% - var(--cut) + 0.41px), calc(100% - 1px) 1px, 1px 1px);
+    1px 1px, 1px calc(100% - 1px), calc(100% - var(--cut) - 0.41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - var(--cut) - 0.41px), calc(100% - 1px) 1px, 1px 1px);
 }
 .ink-frame::after {
   inset: 1px;
   z-index: -1;
   background: var(--fill);
   opacity: var(--fill-opacity);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut) + 0.41px), calc(100% - var(--cut) + 0.41px) 100%, 0 100%);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut) + 0.59px), calc(100% - var(--cut) + 0.59px) 100%, 0 100%);
 }
 /* --- settings row: settings_main.inkwidget settingsSelector* ---------------------------- */
 
@@ -212,9 +212,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-template-columns: auto 1fr auto;
   align-items: center;
   width: 100%;
-  gap: 8px;
+  gap: 4px 8px;
+  padding-block: 6px;
 }
-.stepper-value { text-align: center; }
+.stepper-value { grid-column: 2; grid-row: 1; text-align: center; }
+/* The arrows span the value and the dots, so they sit at the cell's middle. */
+.stepper .prev { grid-column: 1; grid-row: 1 / span 2; }
+.stepper .next { grid-column: 3; grid-row: 1 / span 2; }
 .stepper button {
   width: 22px;
   height: 22px;
@@ -228,11 +232,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .stepper .prev { clip-path: polygon(100% 0, 100% 100%, 15% 50%); }
 .stepper .next { clip-path: polygon(0 0, 85% 50%, 0 100%); }
 .stepper-dots {
-  grid-column: 1 / -1;
+  grid-column: 2;
+  grid-row: 2;
   display: flex;
   gap: 3px;
   justify-content: center;
-  padding-bottom: 6px;
 }
 .stepper-dots span { width: 22px; height: 3px; background: var(--red); opacity: 0.3; }
 .stepper-dots span.here { background: var(--blue); opacity: 1; }

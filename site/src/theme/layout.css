@@ -222,7 +222,13 @@
   color: var(--red);
   opacity: 0.22;
 }
-.rp-icon { width: 96px; height: 96px; }
+.rp-icon { /* radioxl_icons.inkatlas part radioxl, tinted like radioIcon */
+  width: 112px;
+  height: 112px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
 
 .rp-details {
   display: flex;
