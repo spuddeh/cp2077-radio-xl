@@ -1,4 +1,4 @@
-import type { Track } from './store'
+import { defaultIconTarget, type Track } from './store'
 
 export interface ManifestInput {
   frequency: string
@@ -18,20 +18,12 @@ export interface ManifestInput {
   tracks: Track[]
 }
 
-/** The largest icon image the page writes a texture for, per side. */
-export const ICON_IMAGE_MAX = 4096
-
 /** The largest icon worth making, per side. PHONKWAVE Radio's is exactly this. */
 export const ICON_IMAGE_RECOMMENDED = 500
 
 /** Whether Build .zip writes the icon's texture, atlas and archive. */
 export function generatesIcon(s: Pick<ManifestInput, 'iconMode' | 'iconImage'>): boolean {
   return s.iconMode === 'image' && s.iconImage !== null
-}
-
-/** The default part and atlas for a generated icon, named after the station ID. */
-export function defaultIconTarget(cname: string): { part: string; atlas: string } {
-  return { part: cname, atlas: `${cname}\\gui\\${cname}.inkatlas` }
 }
 
 /**
@@ -111,8 +103,6 @@ export function checkManifest(s: ManifestInput): Fault[] {
     else if (named && /^(base|ep1)\\/.test(atlas))
       faults.push({ field: 'icon', message: 'The atlas path must not start with base\\ or ep1\\. A path there can replace a file of the game.' })
     const size = s.iconImageSize
-    if (size && (size[0] > ICON_IMAGE_MAX || size[1] > ICON_IMAGE_MAX))
-      faults.push({ field: 'icon', message: `The icon image is larger than ${ICON_IMAGE_MAX} px on a side.` })
     if (size && (size[0] === 0 || size[1] === 0))
       faults.push({ field: 'icon', message: 'The icon image has no size. An SVG needs a width and height.' })
     if (!s.iconImageHasPixels)

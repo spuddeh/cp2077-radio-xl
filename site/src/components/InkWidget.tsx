@@ -44,7 +44,7 @@ export interface InkWidgetData {
 
 export interface InkWidgetHandle {
   /** Plays a sequence from the start; resolves when it ends. With animate off it resolves at once. */
-  play: (name: string) => Promise<void>
+  play: (name: string, rate?: number) => Promise<void>
 }
 
 const PARTS = import.meta.glob<string>('../assets/ink/*.png', { eager: true, import: 'default' })
@@ -77,10 +77,10 @@ export const InkWidget = forwardRef<
   const root = useRef<HTMLDivElement>(null)
 
   useImperativeHandle(ref, () => ({
-    play: (name) => {
+    play: (name, rate = 1) => {
       const seq = props.data.sequences[name]
       if (!seq || !root.current || !props.animate) return Promise.resolve()
-      return playSequence(root.current, seq)
+      return playSequence(root.current, seq, rate)
     },
   }))
 
@@ -173,7 +173,7 @@ export const InkWidget = forwardRef<
  * its start time with its easing, and its end value at its end time; the first start value is also
  * applied from time 0, and the last value holds after the sequence ends.
  */
-function playSequence(root: HTMLElement, seq: InkSequence): Promise<void> {
+function playSequence(root: HTMLElement, seq: InkSequence, rate = 1): Promise<void> {
   const duration = Math.max(seq.duration, 0.001) * 1000
   const animations: Animation[] = []
   for (const [path, tracks] of Object.entries(seq.targets)) {
@@ -190,7 +190,9 @@ function playSequence(root: HTMLElement, seq: InkSequence): Promise<void> {
       }
       frames.sort((a, b) => (a.offset as number) - (b.offset as number))
       frames.push({ offset: 1, ...css(prop, steps[steps.length - 1].value) })
-      animations.push(el.animate(frames, { duration, fill: 'both' }))
+      const animation = el.animate(frames, { duration, fill: 'both' })
+      animation.playbackRate = rate
+      animations.push(animation)
     }
   }
   return Promise.all(animations.map((a) => a.finished)).then(() => undefined, () => undefined)

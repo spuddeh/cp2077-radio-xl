@@ -1,11 +1,17 @@
 import type { ReactNode } from 'react'
 import warning from '../assets/warning-triangle.png'
 
-export function Row(props: { label: string; note?: ReactNode; fault?: string; children: ReactNode }) {
+export function Row(props: { label: string; note?: ReactNode; fault?: string; notice?: ReactNode; children: ReactNode }) {
   return (
     <div className="row">
       <label className="row-label">{props.label}</label>
       <div className="cell ink-frame">{props.children}</div>
+      {props.notice ? (
+        <div className="row-note notice">
+          <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
+          {props.notice}
+        </div>
+      ) : null}
       {props.fault ? (
         <div className="row-note fault">
           <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
@@ -15,6 +21,15 @@ export function Row(props: { label: string; note?: ReactNode; fault?: string; ch
         <div className="row-note">{props.note}</div>
       ) : null}
     </div>
+  )
+}
+
+export function Notice(props: { children: ReactNode }) {
+  return (
+    <p className="row-note notice">
+      <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
+      {props.children}
+    </p>
   )
 }
 

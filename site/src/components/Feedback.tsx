@@ -98,13 +98,18 @@ export interface Toast {
   message: string
 }
 
-/** items_update.inkwidget Item_Received_SMALL: plays its whole life, in, hold and out, then ends. */
+/**
+ * items_update.inkwidget Item_Received_SMALL: plays its whole life, in, hold and out, then ends.
+ * The game's own sequence runs 5.8 s, which is long for a page, so it plays at TOAST_RATE.
+ */
+const TOAST_RATE = 1.75
+
 export function ToastView(props: { toast: Toast; animate: boolean; onDone: () => void }) {
   const widget = useRef<InkWidgetHandle>(null)
   const { animate, onDone } = props
   useEffect(() => {
     let cancelled = false
-    const ready = animate ? widget.current?.play('Item_Received_SMALL') : new Promise((r) => setTimeout(r, 3000))
+    const ready = animate ? widget.current?.play('Item_Received_SMALL', TOAST_RATE) : new Promise((r) => setTimeout(r, 2200))
     ready?.then(() => !cancelled && onDone())
     return () => {
       cancelled = true

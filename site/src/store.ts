@@ -5,6 +5,11 @@ import type { ImportedStation } from './importStation'
 export type Source = 'new' | 'radioext' | 'radioxl010'
 export type IconMode = 'glyph' | 'record' | 'image' | 'atlas'
 
+/** The part and atlas a generated icon takes from the station ID. */
+export function defaultIconTarget(cname: string): { part: string; atlas: string } {
+  return cname ? { part: cname, atlas: `${cname}\\gui\\${cname}.inkatlas` } : { part: '', atlas: '' }
+}
+
 export interface Track {
   id: number
   file: string
@@ -36,6 +41,8 @@ interface StationState {
   iconImageSize: [number, number] | null
   /** False when every pixel is transparent, which would show nothing in game. */
   iconImageHasPixels: boolean
+  /** Set once the atlas or part is typed in, so the station ID stops filling them. */
+  iconTargetEdited: boolean
   tracks: Track[]
   /** The mod folder to write, kept from an opened station so a rebuild replaces it. */
   folder: string | null
@@ -92,6 +99,7 @@ export const useStation = create<StationState>((set) => ({
   iconImage: null,
   iconImageSize: null,
   iconImageHasPixels: true,
+  iconTargetEdited: false,
   tracks: [],
   folder: null,
   extras: [],
@@ -99,6 +107,11 @@ export const useStation = create<StationState>((set) => ({
     set((s) => {
       const next = { ...s, ...patch }
       if ('stationName' in patch && !s.cnameEdited) next.cname = cnameFrom(next.stationName)
+      if (next.iconMode === 'image' && !next.iconTargetEdited) {
+        const target = defaultIconTarget(next.cname)
+        next.iconPart = target.part
+        next.iconAtlas = target.atlas
+      }
       return next
     }),
   addFiles: (files) =>
@@ -130,6 +143,7 @@ export const useStation = create<StationState>((set) => ({
       iconImage: null,
       iconImageSize: null,
       iconImageHasPixels: true,
+      iconTargetEdited: true,
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
       folder: st.folder || null,
       extras: st.extras,

@@ -1,31 +1,58 @@
 import { downloadZip, predictLength } from 'client-zip'
 import type { Track } from './store'
 import { buildIconArchive } from './iconArchive'
+import { ICON_IMAGE_RECOMMENDED } from './manifest'
 
 /**
- * An image's straight RGBA pixels, top row first, at its own size. WebGL with premultiplication off
+ * An image's straight RGBA pixels, top row first, at the size given. WebGL with premultiplication off
  * reads the decoded values exactly; a 2D canvas stores premultiplied 8-bit colour and loses precision
  * wherever alpha is low, so it is the fallback only.
  */
-async function imagePixels(url: string): Promise<{ rgba: Uint8Array | Uint8ClampedArray; width: number; height: number }> {
-  const img = new Image()
-  img.src = url
-  await img.decode()
-  const width = img.naturalWidth
-  const height = img.naturalHeight
-  const exact = webglPixels(img, width, height)
+async function imagePixels(url: string, width: number, height: number): Promise<{ rgba: Uint8Array | Uint8ClampedArray; width: number; height: number }> {
+  const source = await decodeAt(url, width, height)
+  const exact = webglPixels(source, width, height)
   if (exact) return { rgba: exact, width, height }
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) throw new Error('No 2D canvas')
-  ctx.drawImage(img, 0, 0)
+  ctx.drawImage(source, 0, 0, width, height)
   return { rgba: ctx.getImageData(0, 0, width, height).data, width, height }
 }
 
+/**
+ * The image at the size given. createImageBitmap resizes without going through premultiplied colour;
+ * an image it refuses, such as an SVG in some browsers, is decoded at its own size and scaled by
+ * whichever reader follows.
+ */
+async function decodeAt(url: string, width: number, height: number): Promise<ImageBitmap | HTMLImageElement> {
+  try {
+    const blob = await (await fetch(url)).blob()
+    return await createImageBitmap(blob, {
+      premultiplyAlpha: 'none',
+      colorSpaceConversion: 'none',
+      resizeWidth: width,
+      resizeHeight: height,
+      resizeQuality: 'high',
+    })
+  } catch {
+    const img = new Image()
+    img.src = url
+    await img.decode()
+    return img
+  }
+}
+
+/** An icon's size in the texture: its own, or scaled down to fit the largest size worth making. */
+export function iconTextureSize(size: [number, number]): [number, number] {
+  const fit = Math.min(1, ICON_IMAGE_RECOMMENDED / size[0], ICON_IMAGE_RECOMMENDED / size[1])
+  if (fit === 1) return size
+  return [Math.max(1, Math.round(size[0] * fit)), Math.max(1, Math.round(size[1] * fit))]
+}
+
 /** Reads an image through a WebGL texture, top row first. Null where WebGL is unavailable. */
-function webglPixels(img: HTMLImageElement, width: number, height: number): Uint8Array | null {
+function webglPixels(img: ImageBitmap | HTMLImageElement, width: number, height: number): Uint8Array | null {
   const canvas = document.createElement('canvas')
   const gl = canvas.getContext('webgl')
   if (!gl) return null
@@ -49,8 +76,9 @@ function webglPixels(img: HTMLImageElement, width: number, height: number): Uint
 }
 
 /** The station's icon archive, written from an image, at the path a mod manager installs it to. */
-export async function iconArchiveFile(opts: { image: string; atlas: string; part: string; folder: string }) {
-  const { rgba, width, height } = await imagePixels(opts.image)
+export async function iconArchiveFile(opts: { image: string; size: [number, number]; atlas: string; part: string; folder: string }) {
+  const [w, h] = iconTextureSize(opts.size)
+  const { rgba, width, height } = await imagePixels(opts.image, w, h)
   const bytes = buildIconArchive(rgba, width, height, opts.atlas, opts.part)
   return { path: `archive/pc/mod/${opts.folder}.archive`, source: new Blob([bytes as BlobPart]) }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useStation, type IconMode, type Source } from './store'
-import { buildManifest, checkManifest, defaultIconTarget, displayName, generatesIcon, ICON_IMAGE_RECOMMENDED, iconTarget } from './manifest'
+import { defaultIconTarget, useStation, type IconMode, type Source } from './store'
+import { buildManifest, checkManifest, displayName, generatesIcon, ICON_IMAGE_RECOMMENDED, iconTarget } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
@@ -8,7 +8,7 @@ import { Tracks } from './components/Tracks'
 import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
-import { buildZip, iconArchiveFile, modFolder, pickSaveTarget } from './build'
+import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
 const SOURCES: { value: Source; label: string }[] = [
@@ -151,10 +151,21 @@ export function App() {
       This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at its texture&apos;s
       size: the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide and 130 to {LOGO_MAX.h} px tall, and{' '}
       {ICON_IMAGE_RECOMMENDED} x {ICON_IMAGE_RECOMMENDED} px is as large as one is worth making.
-      {(s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h) &&
-        ` The preview shows it scaled down to fit ${LOGO_MAX.w} x ${LOGO_MAX.h}.`}
     </>
   )
+  const textureSize = s.iconImageSize && iconTextureSize(s.iconImageSize)
+  const scaledNotice = s.iconImageSize && textureSize && textureSize[0] !== s.iconImageSize[0] && (
+    <>
+      Larger than {ICON_IMAGE_RECOMMENDED} x {ICON_IMAGE_RECOMMENDED} px, so the icon is written at{' '}
+      {textureSize[0]} x {textureSize[1]} px.
+    </>
+  )
+  const previewCapNotice = s.iconImageSize &&
+    (s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h) && (
+      <>
+        Larger than the largest logo of the game, so the preview shows it scaled to fit {LOGO_MAX.w} x {LOGO_MAX.h} px.
+      </>
+    )
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
   const [about, setAbout] = useState(false)
 
@@ -195,7 +206,7 @@ export function App() {
       let extras = s.extras
       if (generatesIcon(s)) {
         const { part, atlas } = iconTarget(s)
-        const icon = await iconArchiveFile({ image: s.iconImage!, atlas, part, folder })
+        const icon = await iconArchiveFile({ image: s.iconImage!, size: s.iconImageSize!, atlas, part, folder })
         // A station mod carries one icon archive; an opened station's old one would name the same atlas.
         extras = [icon, ...s.extras.filter((x) => !/\.archive$/i.test(x.path))]
       }
@@ -318,6 +329,7 @@ export function App() {
                 <>
                   <Row
                     label="Icon image"
+                    notice={scaledNotice || undefined}
                     note={
                       <>
                         Build .zip makes the icon&apos;s texture, atlas and archive from this image. Draw it white on a
@@ -329,18 +341,18 @@ export function App() {
                   >
                     {imagePicker}
                   </Row>
-                  <Row label="Atlas" note="The .inkatlas path the archive holds. Empty uses the station ID.">
+                  <Row label="Atlas" note="The .inkatlas path the archive holds.">
                     <TextInput
                       value={s.iconAtlas}
-                      onChange={(v) => s.set({ iconAtlas: v })}
-                      placeholder={s.cname ? defaultIconTarget(s.cname).atlas : 'mymod\\gui\\icons.inkatlas'}
+                      onChange={(v) => s.set({ iconAtlas: v, iconTargetEdited: true })}
+                      placeholder={defaultIconTarget(s.cname).atlas || 'mymod\\gui\\icons.inkatlas'}
                     />
                   </Row>
-                  <Row label="Part" note="The icon's name in the atlas. Empty uses the station ID.">
+                  <Row label="Part" note="The icon's name in the atlas.">
                     <TextInput
                       value={s.iconPart}
-                      onChange={(v) => s.set({ iconPart: v })}
-                      placeholder={s.cname ? defaultIconTarget(s.cname).part : 'my_station'}
+                      onChange={(v) => s.set({ iconPart: v, iconTargetEdited: true })}
+                      placeholder={defaultIconTarget(s.cname).part || 'my_station'}
                     />
                   </Row>
                 </>
@@ -366,6 +378,7 @@ export function App() {
                   </Row>
                   <Row
                     label="Preview image"
+                    notice={previewCapNotice || undefined}
                     note={
                       <>
                         Shows your icon in the previews, tinted the way the game tints it. The zip does not include it.
