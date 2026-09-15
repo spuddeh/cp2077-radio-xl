@@ -361,7 +361,14 @@
 .rp-animate .rp-fluff-top.rp-flicker,
 .rp-animate .rp-kernel { animation: rp-flicker 0.366s 0.3s steps(1, end) both; }
 .rp-animate .rp-fluff-legal { animation: rp-flicker 0.366s 0.4s steps(1, end) both; }
-.rp-animate .rp-eq i { transform-origin: bottom; animation: 1.6s linear infinite both; }
+/* Longhand: a shorthand with no name is minified to animation: none, losing the loop. */
+.rp-animate .rp-eq i {
+  transform-origin: bottom;
+  animation-duration: 1.6s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
 .rp-animate .rp-eq i:nth-child(1) { animation-name: rp-eq-0; }
 .rp-animate .rp-eq i:nth-child(2) { animation-name: rp-eq-1; }
 .rp-animate .rp-eq i:nth-child(3) { animation-name: rp-eq-2; }
@@ -474,6 +481,79 @@
   border-top: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
 }
 .footer-state { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.7; }
+
+/* --- tracks tools --------------------------------------------------------------------------- */
+
+.tracks-tools { display: flex; justify-content: flex-end; margin: -2px 0 8px; }
+.remove-all {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.4;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-x-small);
+  text-transform: uppercase;
+  color: var(--red);
+}
+.remove-all:hover { --edge-opacity: 1; }
+.remove-all.confirm { --edge-opacity: 1; --fill: var(--mild-red); --fill-opacity: 0.3; color: var(--active-red); }
+
+/* --- build progress and notifications --------------------------------------------------------- */
+
+.build-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--black) 75%, transparent);
+}
+/* The widget is authored on a 2000x600 canvas; only its middle holds the bar. */
+.build-progress { margin-top: -40px; }
+.toast {
+  position: fixed;
+  left: max(16px, calc(50% - 720px));
+  bottom: 90px;
+  z-index: 50;
+  pointer-events: none;
+}
+.toast-item { display: flex; align-items: center; gap: 28px; width: 740px; height: 100%; }
+.toast-glyph {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  background: var(--blue);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.toast-message {
+  font: 500 38px/1.1 var(--font-ui);
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- about ------------------------------------------------------------------------------------ */
+
+.tabs .tab-about { margin-left: auto; }
+.about { max-width: 820px; padding: 8px 0 40px; }
+.about p, .about dd { color: var(--neutral); font-size: var(--font-readable-small); line-height: 1.45; }
+.about a { color: var(--blue); }
+.about code { color: var(--blue); font-family: var(--font-ui); }
+.about-list dt { margin-top: 14px; color: var(--red); font-size: var(--font-readable-medium); }
+.about-list dd { margin: 4px 0 0; }
 
 /* --- colophon ---------------------------------------------------------------------------- */
 

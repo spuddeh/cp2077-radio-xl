@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStation, type IconMode, type Source } from './store'
 import { buildManifest, checkManifest, displayName } from './manifest'
 import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
+import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
+import { About } from './components/About'
+import { buildZip, modFolder, pickSaveTarget } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
 const SOURCES: { value: Source; label: string }[] = [
@@ -82,6 +85,72 @@ export function App() {
   const toggleEchoes = () => setEchoes(saveSwitch(ECHOES_KEY, !echoes))
   const logo = s.iconMode === 'record' ? stationLogo(s.iconChoice) : undefined
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
+  const [about, setAbout] = useState(false)
+
+  const [toast, setToast] = useState<Toast | null>(null)
+  const toastId = useRef(1)
+  const notify = useCallback((title: string, message: string) => setToast({ id: toastId.current++, title, message }), [])
+  const closeToast = useCallback(() => setToast(null), [])
+
+  const [build, setBuild] = useState<{ phase: BuildPhase; written: number; total: number; file: string } | null>(null)
+  const closeBuild = useCallback(() => {
+    setBuild((b) => {
+      if (b?.phase === 'done') notify('Station built', b.file)
+      if (b?.phase === 'failed') notify('Build failed', b.file)
+      return null
+    })
+  }, [notify])
+
+  const copyManifest = () =>
+    navigator.clipboard.writeText(manifest).then(
+      () => notify('Copied', 'station.json is on the clipboard'),
+      () => notify('Copy failed', 'The browser refused clipboard access'),
+    )
+
+  const startBuild = async () => {
+    if (faults.length > 0 || build) return
+    const folder = modFolder(s.stationName, s.cname)
+    const file = `${folder}.zip`
+    let target = null
+    try {
+      // The save dialog has to open straight from the click, before any other work.
+      target = await pickSaveTarget(file)
+    } catch (e) {
+      if ((e as DOMException).name === 'AbortError') return
+    }
+    setBuild({ phase: 'running', written: 0, total: 0, file })
+    let frame = 0
+    try {
+      await buildZip({
+        folder,
+        manifest,
+        tracks: s.tracks,
+        target,
+        onProgress: ({ written, total }) => {
+          // One state update per frame, however many chunks arrive in it.
+          cancelAnimationFrame(frame)
+          frame = requestAnimationFrame(() => setBuild((b) => b && { ...b, written, total }))
+        },
+      })
+      cancelAnimationFrame(frame)
+      setBuild((b) => b && { ...b, phase: 'done', written: b.total })
+    } catch {
+      cancelAnimationFrame(frame)
+      setBuild((b) => b && { ...b, phase: 'failed' })
+    }
+  }
+
+  // The footer hints are the page's keys, as they are the game's; typing in a field is left alone.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (e.ctrlKey || e.metaKey || e.altKey || el.closest('input, textarea, select, [contenteditable]')) return
+      if (e.key === 'z' || e.key === 'Z') startBuild()
+      if (e.key === 'c' || e.key === 'C') copyManifest()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
 
   // Closing or reloading the tab loses everything entered, so the browser asks first.
   useEffect(() => {
@@ -102,11 +171,27 @@ export function App() {
 
       <nav className="tabs" aria-label="Start from">
         {SOURCES.map((o) => (
-          <button key={o.value} type="button" aria-current={s.source === o.value} onClick={() => s.set({ source: o.value })}>
+          <button
+            key={o.value}
+            type="button"
+            aria-current={!about && s.source === o.value}
+            onClick={() => {
+              setAbout(false)
+              s.set({ source: o.value })
+            }}
+          >
             {o.label}
           </button>
         ))}
+        <button type="button" className="tab-about" aria-current={about} onClick={() => setAbout(true)}>
+          About
+        </button>
       </nav>
+
+      {about ? (
+        <About />
+      ) : (
+
 
       <main className="workspace">
         <section className="form">
@@ -207,16 +292,27 @@ export function App() {
           </details>
         </aside>
       </main>
+      )}
 
       <footer className="footer">
         <div className="hints">
-          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0} />
-          <Hint keyLabel="C" label="Copy station.json" onClick={() => navigator.clipboard.writeText(manifest)} />
+          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0 || build !== null} onClick={startBuild} />
+          <Hint keyLabel="C" label="Copy station.json" onClick={copyManifest} />
         </div>
         <span className="footer-state">
           {faults.length === 0 ? `${displayName(s)} is ready` : `${faults.length} to fix before building`}
         </span>
       </footer>
+
+      <BuildProgress
+        phase={build?.phase ?? null}
+        title={`Building ${build?.file ?? ''}`}
+        written={build?.written ?? 0}
+        total={build?.total ?? 0}
+        animate={animate}
+        onFinished={closeBuild}
+      />
+      {toast && <ToastView key={toast.id} toast={toast} animate={animate} onDone={closeToast} />}
 
       <footer className="colophon">
         <nav aria-label="Links">

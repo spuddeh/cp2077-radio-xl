@@ -1,18 +1,26 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStation } from '../store'
 import { Fault } from './Controls'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
 
 export function Tracks() {
-  const { tracks, addFiles, updateTrack, removeTrack } = useStation()
+  const { tracks, addFiles, updateTrack, removeTrack, set } = useStation()
+  const [confirming, setConfirming] = useState(false)
+
+  // Remove all asks for a second press, which it waits a few seconds for.
+  useEffect(() => {
+    if (!confirming) return
+    const t = setTimeout(() => setConfirming(false), 4000)
+    return () => clearTimeout(t)
+  }, [confirming])
   const picker = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([])
 
-  const take = (names: string[]) => {
-    setSkipped(names.filter((n) => !AUDIO.test(n)))
-    addFiles(names.filter((n) => AUDIO.test(n)))
+  const take = (files: File[]) => {
+    setSkipped(files.filter((f) => !AUDIO.test(f.name)).map((f) => f.name))
+    addFiles(files.filter((f) => AUDIO.test(f.name)))
   }
 
   return (
@@ -27,7 +35,7 @@ export function Tracks() {
         onDrop={(e) => {
           e.preventDefault()
           setOver(false)
-          take([...e.dataTransfer.files].map((f) => f.name))
+          take([...e.dataTransfer.files])
         }}
       >
         <span>Drop audio files here, or</span>
@@ -41,7 +49,10 @@ export function Tracks() {
           multiple
           accept=".wav,.mp3,.ogg,.flac"
           hidden
-          onChange={(e) => take([...(e.target.files ?? [])].map((f) => f.name))}
+          onChange={(e) => {
+            take([...(e.target.files ?? [])])
+            e.target.value = ''
+          }}
         />
       </div>
       {skipped.length > 0 && <Fault>Not an audio file AudioXL reads: {skipped.join(', ')}</Fault>}
@@ -53,6 +64,19 @@ export function Tracks() {
             <span>Title</span>
             <span />
             <span />
+          </li>
+          <li className="tracks-tools">
+            <button
+              type="button"
+              className={confirming ? 'ink-frame remove-all confirm' : 'ink-frame remove-all'}
+              onClick={() => {
+                if (!confirming) return setConfirming(true)
+                set({ tracks: [] })
+                setConfirming(false)
+              }}
+            >
+              {confirming ? `Remove all ${tracks.length}? Press again` : 'Remove all'}
+            </button>
           </li>
           {tracks.map((t, i) => (
             <li key={t.id} className="track">

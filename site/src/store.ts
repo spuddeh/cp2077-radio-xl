@@ -8,6 +8,8 @@ export interface Track {
   file: string
   title: string
   ident: boolean
+  /** The audio file the zip copies in. */
+  source?: File
 }
 
 interface StationState {
@@ -26,7 +28,7 @@ interface StationState {
   iconAtlas: string
   tracks: Track[]
   set: (patch: Partial<StationState>) => void
-  addFiles: (names: string[]) => void
+  addFiles: (files: File[]) => void
   updateTrack: (id: number, patch: Partial<Track>) => void
   removeTrack: (id: number) => void
 }
@@ -37,6 +39,15 @@ let nextId = 1
 export function titleFromFile(file: string): string {
   const base = file.split(/[\\/]/).pop() ?? file
   return base.replace(/\.[^.]+$/, '').replace(/_/g, ' ').trim()
+}
+
+/** Two files with one name would overwrite each other in the zip, so the second is numbered. */
+function uniquePath(path: string, taken: Set<string>): string {
+  if (!taken.has(path.toLowerCase())) return path
+  const dot = path.lastIndexOf('.')
+  const stem = dot > 0 ? path.slice(0, dot) : path
+  const ext = dot > 0 ? path.slice(dot) : ''
+  for (let n = 2; ; n++) if (!taken.has(`${stem} (${n})${ext}`.toLowerCase())) return `${stem} (${n})${ext}`
 }
 
 /** A CName is letters, digits and underscores; the station name is the only input to it. */
@@ -70,13 +81,16 @@ export const useStation = create<StationState>((set) => ({
       if ('stationName' in patch && !s.cnameEdited) next.cname = cnameFrom(next.stationName)
       return next
     }),
-  addFiles: (names) =>
-    set((s) => ({
-      tracks: [
-        ...s.tracks,
-        ...names.map((file) => ({ id: nextId++, file: `audio/${file}`, title: titleFromFile(file), ident: false })),
-      ],
-    })),
+  addFiles: (files) =>
+    set((s) => {
+      const taken = new Set(s.tracks.map((t) => t.file.toLowerCase()))
+      const added = files.map((source) => {
+        const file = uniquePath(`audio/${source.name}`, taken)
+        taken.add(file.toLowerCase())
+        return { id: nextId++, file, title: titleFromFile(source.name), ident: false, source }
+      })
+      return { tracks: [...s.tracks, ...added] }
+    }),
   updateTrack: (id, patch) => set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   removeTrack: (id) => set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
 }))

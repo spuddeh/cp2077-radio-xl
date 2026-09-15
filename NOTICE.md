@@ -19,6 +19,8 @@ their [fan content guidelines](https://www.cdprojektred.com/en/fan-content):
   `radiostations_icons.inkatlas`
 - `site/src/assets/world/`: the world radio screens' parts, from `radio_ui.inkatlas` and
   `atlas_scanner.inkatlas`, and `site/src/world/layouts.json`, their layouts
+- `site/src/assets/ink/` and `site/src/ink/`: the HUD progress bar and item notification, their
+  parts and animations, from `hud_progress_bar.inkwidget` and `items_update.inkwidget`
 - `site/src/assets/warning-triangle.png`: the warning triangle from
   `character_creation_atlas.inkatlas`
 - the station builder's colours, sizes and layout, taken from the game's UI data
