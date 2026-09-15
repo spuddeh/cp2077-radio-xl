@@ -57,8 +57,10 @@
   twelve situation switches moved onto the same keys. The master Enabled switch was dropped.
   RCF's restore is ignored for `rememberStation`, `muteIdents` and `muteNews`, bracketed by
   `BeginRestore`/`EndRestore` around both `RestoreInto` and `Register`. Optional dependencies
-  RedFileSystem and RedData added. Compiled both configurations; not yet run in game after the
-  merge (the features were measured in Simple Radio Control 0.1.0 on 2026-09-11).
+  RedFileSystem and RedData added. Run in game the same day: every feature passed. After the
+  run: the songs are listed under every station with no fold (`show:` rows gone), the situation
+  switches' note is three label rows, and the Radioport poll shows the popup on the first read
+  too, so switching the Radioport on shows what is playing.
 - Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
   (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
   event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses

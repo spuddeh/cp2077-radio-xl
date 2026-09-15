@@ -50,6 +50,13 @@
 
 ## Verified in game
 
+- The player controls folded in from Simple Radio Control (#35), run inside RadioXL on
+  2026-09-15: the four-tab panel with the modifier and Radioport key rows appearing behind their
+  switches; a song switched Off and skipped; next and previous song on Tool FM in a car and on the
+  Radioport, and the station keys stepping over a station set aside; My station tuning on getting
+  into a car; both talk mutes; the remembered station and the mutes back after a relaunch from
+  `state.json`.
+
 - Idents play between songs, show no title, and leave song slots alone (#29).
 - A stream station plays on the Radioport, a car and a world device, reconnects on tune-back, and at
   gain 1 sits inside the vanilla loudness range (#23).
@@ -69,15 +76,8 @@
 
 ## Awaiting in-game verification
 
-- The player controls folded in from Simple Radio Control (#35), each measured there on
-  2026-09-11 and not yet run inside RadioXL: next and previous song and station keys, one set for
-  both radios with modifiers and a Radioport set behind switches; per-song On, Off and Off while
-  streaming, with the game's not-streamer-friendly marks seeded in; the never-play-again and
-  what's-playing keys; My station, remembered by name and tuned on the three receiver-on moments;
-  stations the station keys step over; the Radioport song popup and the on-screen line; mute
-  station idents and mute DJ announcements, both applied as the resources load.
-- The Stations tab folds each station's songs behind a switch; the modifier and Radioport key rows
-  appear behind theirs. RCF 2.1.7's rebuild-on-toggle, not yet seen with this schema.
+- The Radioport popup on the moment the Radioport switches on (not only on a song change), added
+  after the first run.
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
 
