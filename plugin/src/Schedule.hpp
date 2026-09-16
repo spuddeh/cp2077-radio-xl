@@ -36,7 +36,6 @@ namespace radioxl::schedule
 // A station object's schedule, as the 2.31 picker (0x6bcdfc) reads and writes it.
 constexpr size_t kStationMetadata = 0x110;        // the station's audioRadioStationMetadata
 constexpr size_t kStationRemaining = 0x160;       // DynArray of track indices: entries, size at +0xc
-constexpr size_t kStationRemainingCapacity = 0x168;
 constexpr size_t kStationRemainingCount = 0x16c;
 constexpr size_t kStationPicks = 0x170;           // byte: picks since the last blip
 constexpr size_t kDynArraySize = 0xc;             // a DynArray is { entries, capacity, size }
@@ -174,8 +173,10 @@ inline int ReadTracks(uint64_t aStation, size_t aTracksOffset, uint64_t* aNames,
 // Takes a track out of a station's remaining list, the way the picker does when it draws it, and
 // when `aCount` is set adds one to the pick counter, the way the picker does on every pick. When
 // `aRefill` is set the list is first refilled with 0..n-1, the way the picker refills it when it
-// runs dry or holds nothing it can play; the refill needs the list's buffer to hold n entries and
-// is skipped otherwise, leaving the engine to refill with its own allocator on its next pick.
+// runs dry or holds nothing it can play. The list is grown through its own allocator (the SDK's
+// DynArray shares the engine's layout and reaches the engine's realloc by hash), because a
+// metadata swap leaves the list with no buffer at all and a station that has grown has a buffer
+// sized for the old list.
 // Returns -1 when the station is not in the manager or names no such track, 2 when the list was
 // refilled and the entry erased, 1 when the entry was erased, 0 when the track was not in the
 // list (the counter still moves when asked).
@@ -211,20 +212,19 @@ inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, bool aRefill
         return -1;
     }
     int erased = 0;
-    const auto entries = clock::Read<uintptr_t>(station + kStationRemaining);
-    const auto capacity = clock::Read<uint32_t>(station + kStationRemainingCapacity);
-    auto count = clock::Read<uint32_t>(station + kStationRemainingCount);
-    if (aRefill && entries && trackCount > 0 && capacity >= trackCount)
+    if (aRefill && trackCount > 0)
     {
-        auto* list = reinterpret_cast<Entry*>(entries);
+        auto* list = reinterpret_cast<RED4ext::DynArray<Entry>*>(station + kStationRemaining);
+        list->Clear();
+        list->Reserve(trackCount);
         for (uint32_t i = 0; i < trackCount; ++i)
         {
-            list[i] = static_cast<Entry>(i);
+            list->PushBack(static_cast<Entry>(i));
         }
-        *reinterpret_cast<uint32_t*>(station + kStationRemainingCount) = trackCount;
-        count = trackCount;
         erased = 2;
     }
+    const auto entries = clock::Read<uintptr_t>(station + kStationRemaining);
+    const auto count = clock::Read<uint32_t>(station + kStationRemainingCount);
     if (entries && count <= kMaxTracks)
     {
         for (uint32_t i = 0; i < count; ++i)

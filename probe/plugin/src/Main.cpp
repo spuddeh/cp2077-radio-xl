@@ -309,6 +309,7 @@ struct Sched
     // narrower width can never run past a 4-byte buffer.
     uint32_t remainWords;
     uint32_t remainRaw[64];
+    uint32_t remainCapacity;   // the list's buffer, +0x168; 0 after a metadata swap
     uint32_t blipCursor;
     uint64_t current;
     uint64_t blip;
@@ -391,6 +392,7 @@ uint32_t ReadSchedule()
         s.active = Read<uint8_t>(station + kStationActive);
         s.remaining = Read<uint32_t>(station + kStationRemainingCount);
         s.remainWords = 0;
+        s.remainCapacity = Read<uint32_t>(station + kStationRemaining + 0x8);
         const auto remainingEntries = Read<uintptr_t>(station + kStationRemaining);
         for (uint32_t w = 0; remainingEntries && w < s.remaining && w < 64; ++w)
         {
@@ -604,7 +606,7 @@ void Schedule()
 
         // The remaining list's words, on every change of the list. `remain <station> <count>: w0 w1 ...`
         {
-            std::string remain = std::to_string(s.remaining) + ":";
+            std::string remain = std::to_string(s.remaining) + " cap=" + std::to_string(s.remainCapacity) + ":";
             for (uint32_t w = 0; w < s.remainWords; ++w)
             {
                 char word[16];
