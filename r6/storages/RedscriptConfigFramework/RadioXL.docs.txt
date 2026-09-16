@@ -1,6 +1,6 @@
 [color=#e06666][size=6][b]- Introduction -[/b][/size][/color]
 
-RadioXL adds radio stations to Cyberpunk 2077 as real stations of the game's own radio. A station built on it plays on the Radioport, in every vehicle and on the radios placed around Night City, with its own name, icon and song titles, and the dial, the radio hotkey, the equaliser and the dashboard treat it exactly as they treat the stations the game ships.
+RadioXL adds radio stations to Cyberpunk 2077 as real stations of the game's own radio. A station built on it plays on the Radioport, in every vehicle and on the radios placed around Night City, with its own name, icon and song titles, and the dial, the radio hotkey, the equaliser and the dashboard treat it exactly as they treat the stations the game ships. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
 
 A station mod is one small file and a folder of audio. RadioXL reads the rest from the files.
 
@@ -55,12 +55,12 @@ holding a [b]station.json[/b] and the audio files it names.
 
 [list]
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
-[*][b]frequency[/b] is where the station sits on the dial, as a number from 10 to 999. The dial is sorted by it, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
+[*][b]frequency[/b] is where the station sits on the dial, as a number from 10 to 999. The dial is sorted by it, as it is for the game's own stations, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]displayName[/b] is the station's name, without the frequency: the game shows the two together, [b]104.9 Your Station[/b]. A name that starts or ends with a number, or contains the frequency, is refused, and so is a missing one.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]title[/b] is optional on a track. It is the song name in the Radioport's radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
-[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, and shows no title.[/*]
+[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song and shows no title, exactly as the game's own station idents do.[/*]
 [*][b]news[/b] is optional. true lets the news reach the station - Stanley's bulletins and greetings, and N54 News - the same way it reaches the game's own stations.[/*]
 [/list]
 
@@ -131,7 +131,6 @@ If a station appears but sorts oddly against another one, check its frequency: t
 [color=#e06666][size=6][b]- Known Limits -[/b][/size][/color]
 
 [list]
-[*]Tuning away from a station and back picks the song up where the station has got to, the way a vanilla station does.[/*]
 [*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
 [*]Up to 127 stations.[/*]
 [*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]

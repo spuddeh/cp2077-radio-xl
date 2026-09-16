@@ -1,6 +1,6 @@
 [color=#e06666][size=6][b]- Introduction -[/b][/size][/color]
 
-RadioXL adds radio stations to Cyberpunk 2077 through the game's own radio. Added stations show up on the dial at their own frequency, in a car, on the Radioport and on the radios in the world, and everything that works for a vanilla station works for them: the radio popup, the dashboard readout, the equaliser icon, the radio hotkey, next and previous station, and the moments the game silences the radio.
+RadioXL adds radio stations to Cyberpunk 2077 through the game's own radio. Added stations show up on the dial at their own frequency, in a car, on the Radioport and on the radios in the world, and everything that works for a vanilla station works for them: the radio popup, the dashboard readout, the equaliser icon, the radio hotkey, next and previous station, and the moments the game silences the radio. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
 
 A station mod is one station.json and a folder of audio. RadioXL reads the rest from the files. No yaml, no script, no sound bank.
 
@@ -57,12 +57,12 @@ holding a [b]station.json[/b] and the audio files it names.
 
 [list]
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
-[*][b]frequency[/b] is where the station sits on the dial, as a number. The dial is sorted by it, so 104.9 lands between 103.5 Radio PEBKAC and 106.9 30 PRINCIPALES. Pick one the game does not already use: taken are 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
+[*][b]frequency[/b] is where the station sits on the dial, as a number. The dial is sorted by it, as it is for the game's own stations, so 104.9 lands between 103.5 Radio PEBKAC and 106.9 30 PRINCIPALES. Pick one the game does not already use: taken are 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]displayName[/b] is the station's name, without the frequency. The game shows the two together: [b]104.9 Your Station[/b]. A name that starts or ends with a number, or contains the frequency, is refused.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own; the builder page makes both from a picture. [b]icon[/b] can instead name an icon record the game already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]title[/b] is optional on a track. It is the song name in the radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
-[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song, and shows no title.[/*]
+[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song and shows no title, exactly as the game's own station idents do.[/*]
 [*][b]news[/b] is optional. true lets the news reach the station - Stanley's bulletins and greetings, and N54 News - the same way it reaches the game's own stations.[/*]
 [/list]
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
