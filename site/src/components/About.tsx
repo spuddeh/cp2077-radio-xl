@@ -73,9 +73,11 @@ export function About() {
       </section>
 
       <section>
-        <h2 className="section">Not built yet</h2>
+        <h2 className="section">Converting a RadioExt station</h2>
         <p>
-          Converting a RadioExt station.
+          Drop a RadioExt station&apos;s folder, or the mod that holds it, on From RadioExt. Its name, frequency, volume,
+          track order and icon fill the form, a stream becomes a url track, and the mod&apos;s own archive is carried
+          into the zip at the path a mod manager installs it to. What could not come across is listed under the form.
         </p>
       </section>
     </main>

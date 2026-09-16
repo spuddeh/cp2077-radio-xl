@@ -4,22 +4,28 @@ import { useStation } from '../store'
 import { Fault } from './Controls'
 
 /**
- * Opens a RadioXL station mod (its .zip, or its folder) into the form. Opening over a station that
- * already has work asks first, since the form holds one station.
+ * Reads a station mod (its .zip, or its folder) into the form, through whichever importer is given:
+ * a RadioXL station, or a RadioExt one. Opening over a station that already has work asks first,
+ * since the form holds one station.
  */
-export function OpenStation(props: { hasWork: boolean; onOpened: (name: string) => void }) {
+export function OpenStation(props: {
+  hasWork: boolean
+  onOpened: (name: string) => void
+  /** What the drop zone says before the zip and folder buttons. */
+  prompt?: string
+  busyLabel?: string
+  importer?: (entries: Awaited<ReturnType<typeof entriesFromDrop>>) => Promise<ImportedStation>
+}) {
   const openStation = useStation((s) => s.openStation)
   const zipPicker = useRef<HTMLInputElement>(null)
   const folderPicker = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [notes, setNotes] = useState<string[]>([])
   const [pending, setPending] = useState<ImportedStation | null>(null)
 
   const apply = (station: ImportedStation) => {
     openStation(station)
-    setNotes(station.notes)
     setPending(null)
     props.onOpened([station.frequency, station.stationName].filter(Boolean).join(' ') || station.cname)
   }
@@ -27,9 +33,8 @@ export function OpenStation(props: { hasWork: boolean; onOpened: (name: string) 
   const read = async (load: () => Promise<Parameters<typeof importStation>[0]>) => {
     setBusy(true)
     setError(null)
-    setNotes([])
     try {
-      const station = await importStation(await load())
+      const station = await (props.importer ?? importStation)(await load())
       if (props.hasWork) setPending(station)
       else apply(station)
     } catch (e) {
@@ -55,7 +60,11 @@ export function OpenStation(props: { hasWork: boolean; onOpened: (name: string) 
           read(() => entriesFromDrop(items))
         }}
       >
-        <span>{busy ? 'Reading the station...' : 'Edit a RadioXL station: drop its .zip or folder here, or choose a'}</span>
+        <span>
+          {busy
+            ? (props.busyLabel ?? 'Reading the station...')
+            : (props.prompt ?? 'Edit a RadioXL station: drop its .zip or folder here, or choose a')}
+        </span>
         {!busy && (
           <>
             <button type="button" className="link" onClick={() => zipPicker.current?.click()}>
@@ -105,13 +114,6 @@ export function OpenStation(props: { hasWork: boolean; onOpened: (name: string) 
             Cancel
           </button>
         </div>
-      )}
-      {notes.length > 0 && (
-        <ul className="open-notes">
-          {notes.map((n) => (
-            <li key={n}>{n}</li>
-          ))}
-        </ul>
       )}
     </div>
   )

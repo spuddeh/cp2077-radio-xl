@@ -54,6 +54,8 @@ interface StationState {
   folder: string | null
   /** Files from an opened station that go back into the zip unchanged. */
   extras: { path: string; source: Blob }[]
+  /** What the last open or conversion could not bring across, kept while the station is in the form. */
+  notes: string[]
   set: (patch: Partial<StationState>) => void
   addFiles: (files: File[]) => void
   /** A stream track. A station with one plays that stream only, so it replaces the track list. */
@@ -112,6 +114,7 @@ export const useStation = create<StationState>((set) => ({
   tracks: [],
   folder: null,
   extras: [],
+  notes: [],
   set: (patch) =>
     set((s) => {
       const next = { ...s, ...patch }
@@ -158,5 +161,6 @@ export const useStation = create<StationState>((set) => ({
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
       folder: st.folder || null,
       extras: st.extras,
+      notes: st.notes,
     }),
 }))

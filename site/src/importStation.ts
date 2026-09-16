@@ -40,7 +40,7 @@ export interface ImportedStation {
   notes: string[]
 }
 
-type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
+export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
 const KNOWN = new Set(['name', 'displayName', 'news', 'gain', 'icon', 'atlas', 'tracks'])
 const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident'])

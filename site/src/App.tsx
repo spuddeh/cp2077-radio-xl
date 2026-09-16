@@ -8,6 +8,7 @@ import { Tracks } from './components/Tracks'
 import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
+import { importRadioExt } from './importRadioExt'
 import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
@@ -287,10 +288,29 @@ export function App() {
       <main className="workspace">
         <section className="form">
           {s.source !== 'new' ? (
-            <p className="pending">Converting a RadioExt station is not built yet.</p>
+            <>
+              <p className="pending">
+                A RadioExt station is a folder of audio beside a metadata.json. Its name, frequency, volume, icon and
+                order come across; its own archive is carried into the zip untouched.
+              </p>
+              <OpenStation
+                hasWork={hasWork}
+                onOpened={(name) => notify('Station converted', name)}
+                importer={importRadioExt}
+                prompt="Convert a RadioExt station: drop its folder, or the mod that holds it, here, or choose a"
+                busyLabel="Reading the RadioExt station..."
+              />
+            </>
           ) : (
             <>
               <OpenStation hasWork={hasWork} onOpened={(name) => notify('Station opened', name)} />
+              {s.notes.length > 0 && (
+                <ul className="open-notes">
+                  {s.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              )}
               <h2 className="section">Station</h2>
               <Row label="Frequency" note="Decides the station's place on the dial." fault={s.frequency ? faultFor('frequency') : undefined}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
