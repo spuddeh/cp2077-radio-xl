@@ -9,7 +9,7 @@ import { BuildProgress, ToastView, type BuildPhase, type Toast } from './compone
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
 import { importRadioExt } from './importRadioExt'
-import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget } from './build'
+import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 
 const SOURCES: { value: Source; label: string }[] = [
@@ -194,7 +194,7 @@ export function App() {
   const startBuild = async () => {
     if (faults.length > 0 || build) return
     const folder = s.folder ?? modFolder(s.stationName, s.cname)
-    const file = `${folder}.zip`
+    const file = zipName(folder)
     let target = null
     try {
       // The save dialog has to open straight from the click, before any other work.

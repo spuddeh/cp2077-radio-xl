@@ -88,6 +88,11 @@ export interface BuildProgress {
   total: number
 }
 
+/** The zip's name, which says what the download is once it is among other mods' downloads. */
+export function zipName(folder: string): string {
+  return `${folder} - RadioXL.zip`
+}
+
 /** The mod folder name: the station's name with anything outside letters and digits removed. */
 export function modFolder(stationName: string, cname: string): string {
   const words = stationName.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').match(/[A-Za-z0-9]+/g)
@@ -164,7 +169,7 @@ export async function buildZip(opts: {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${opts.folder}.zip`
+  link.download = zipName(opts.folder)
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
