@@ -11,7 +11,7 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
-import { Fault } from './Controls'
+import { Fault, Notice } from './Controls'
 import { Tooltip } from './Tooltip'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
@@ -29,6 +29,16 @@ export function Tracks() {
     addStream(stream.trim())
     setStream('')
   }
+  // The host a player has to allow, taken from the stream the station carries.
+  const streamHost = (() => {
+    const url = tracks.find((t) => t.url)?.url
+    if (!url) return ''
+    try {
+      return new URL(url).hostname
+    } catch {
+      return ''
+    }
+  })()
   const sensors = useSensors(
     // A small travel before a drag starts, so a click on the handle is still a click.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -110,6 +120,15 @@ export function Tracks() {
         </div>
         {stream.trim() !== '' && !streamOk && <Fault>A stream URL starts with http:// or https://</Fault>}
       </div>
+      {streamHost && (
+        <Notice>
+          A stream plays only once the player allows it: AudioXL fetches nothing unless{' '}
+          <code>red4ext\plugins\AudioXL\AudioXL.ini</code> carries{' '}
+          <code>allowHttpConnections = true</code> and <code>allowedHost = {streamHost}</code>. No mod can set that,
+          so say it on the station&apos;s own page. AudioXL writes that file on first start with everything off; under
+          Mod Organizer 2 it is in Overwrite.
+        </Notice>
+      )}
 
       {tracks.length > 0 && (
         <>
