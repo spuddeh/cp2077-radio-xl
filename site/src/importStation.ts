@@ -117,8 +117,8 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
   const field = typeof m.frequency === 'number' && Number.isFinite(m.frequency) ? m.frequency : null
   const frequency = field !== null ? String(field) : leading ? leading[1] : ''
   const stationName = leading ? leading[2].trim() : display.trim()
-  if (field === null && leading) notes.push(`The frequency ${leading[1]} was read from the front of the name; RadioXL now takes it as its own field, which Build .zip writes.`)
-  if (field !== null && leading) notes.push(`The name started with ${leading[1]} and the manifest also had frequency ${field}. The field was kept; the number was taken off the name.`)
+  if (field === null && leading) notes.push(`The frequency ${leading[1]} was moved from the front of the name into its own field, which RadioXL requires. Build .zip writes it that way.`)
+  if (field !== null && leading) notes.push(`The name started with ${leading[1]} and the manifest also had frequency ${field}. The field was kept and the number taken off the name; RadioXL refuses a name that carries one.`)
   const icon = typeof m.icon === 'string' ? m.icon : ''
   const atlas = typeof m.atlas === 'string' ? m.atlas : ''
   const vanilla = VANILLA_STATIONS.find((v) => v.icon === icon)

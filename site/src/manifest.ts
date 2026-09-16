@@ -61,7 +61,8 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   const m: Record<string, unknown> = { name: s.cname }
   const frequency = Number.parseFloat(s.frequency.trim())
   if (Number.isFinite(frequency)) m.frequency = frequency
-  if (s.stationName.trim()) m.displayName = s.stationName.trim()
+  const name = s.stationName.trim().replace(/\s+/g, ' ')
+  if (name) m.displayName = name
   if (s.news) m.news = true
   if (s.gain < 1) m.gain = Math.round(s.gain * 100) / 100
   if (s.iconMode === 'record') {
@@ -88,8 +89,18 @@ export function checkManifest(s: ManifestInput): Fault[] {
   if (!s.cname) faults.push({ field: 'cname', message: 'A station needs an ID.' })
   else if (!/^[A-Za-z0-9_]+$/.test(s.cname))
     faults.push({ field: 'cname', message: 'Letters, digits and underscores only.' })
-  if (!/^\d{2,3}(\.\d{1,2})?$/.test(s.frequency.trim()))
-    faults.push({ field: 'frequency', message: 'A station needs a frequency, such as 90.5. It decides the place on the dial, and RadioXL refuses a station without one.' })
+  const frequency = s.frequency.trim()
+  if (!/^\d{2,3}(\.\d{1,2})?$/.test(frequency) || Number.parseFloat(frequency) < 10)
+    faults.push({ field: 'frequency', message: 'A station needs a frequency from 10 to 999, such as 90.5. It decides the place on the dial, and RadioXL refuses a station without one.' })
+  // The label is "<frequency> <name>", the same for every station, so the name is the name alone.
+  const name = s.stationName.trim().replace(/\s+/g, ' ')
+  if (!name) faults.push({ field: 'stationName', message: 'A station needs a name. The game shows it after the frequency.' })
+  else if (/^\d{2,3}(\.\d+)?(\s|$)/.test(name))
+    faults.push({ field: 'stationName', message: 'The name starts with a number. The frequency has its own field; the name is the name alone.' })
+  else if (/(^|\s)\d{2,3}(\.\d+)?$/.test(name))
+    faults.push({ field: 'stationName', message: 'The name ends with a number. The frequency has its own field.' })
+  else if (frequency && name.includes(frequency))
+    faults.push({ field: 'stationName', message: 'The name contains the frequency. The label shows it in front already.' })
   if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
   else if (s.tracks.every((t) => t.ident))
     faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })

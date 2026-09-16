@@ -42,17 +42,19 @@
   drops it.
 
 ### Added
-- `frequency` is its own manifest field, a number, required (#40). `displayName` is the name alone
-  and the plugin composes the label (`Label`, `FrequencyText`: one decimal, two when written).
-  `Manifest.hpp` reads the field, refuses a manifest that has neither it nor a number at the front
-  of `displayName`, and for a 0.3.0 manifest takes the leading number as the frequency, strips it
-  from the name and logs a line asking for the field; with both, the field places the station and
-  the number is dropped from the name. The check runs last so an earlier fault stays the first
-  logged. `BuildDial` orders by the field and logs a shared frequency. `stations/README.md` gained
-  a section. The builder page writes the field and reads either form (`manifest.ts`,
-  `importStation.ts`; `importRadioExt.ts` maps `fm` straight across), a missing frequency is a
-  shown fault, and `manifest-rules.test.ts` carries the new accepted and refused cases. Tool FM and
-  Hangouts FM manifests moved to the field.
+- `frequency` is its own manifest field, a number from 10 to 999, required, and `displayName` is
+  the name alone, required (#40). The plugin composes the label (`Label`, `FrequencyText`: one
+  decimal, two when written), so every station reads the same way on the dial, and `Manifest.hpp`
+  refuses a name that starts or ends with a number reading as a frequency, contains the
+  frequency, is empty, or has a space at an end, two in a row or a control character
+  (`ReadsAsFrequency`, `NameIsUntidy`). A 0.3.0 manifest with the number at the front of the name
+  is refused, and the log says to move it. The checks run last so an earlier fault stays the first
+  logged; every test manifest gained both fields on lines it already had. `BuildDial` orders by the
+  field and logs a shared frequency. `stations/README.md` states the rules. The builder page writes
+  the field, faults a missing or badly formed name, opens a 0.3.0 manifest by moving the number into
+  the field with a note (`importStation.ts`), maps RadioExt's `fm` straight across, and
+  `manifest-rules.test.ts` carries the refused and accepted cases. Tool FM and Hangouts FM manifests
+  moved to the field.
 - The catalog follows a station whose track list the engine changes during a session (#38).
   Body Heat's metadata entry is swapped for `radio_station_05_pop_completed_sq017` (the same 13
   tracks plus `off_the_leash` and `user_friendly`) once `sq017_enable_kerry_usc_radio_songs` is

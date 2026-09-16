@@ -80,24 +80,43 @@ inline std::string Label(const Station& aStation)
     return aStation.frequency >= 0.0f ? FrequencyText(aStation.frequency) + " " + name : name;
 }
 
-// A number at the front of a display name, as written for 0.3.0 manifests, and the name after it.
-// False when the text does not start with one.
-inline bool LeadingFrequency(const std::string& aText, double& aFrequency, std::string& aRest)
+// Whether a word reads as a frequency: a number of 10 or more standing on its own, so "104.9" and
+// "88" do and "2Pac" and "3" do not.
+inline bool ReadsAsFrequency(const std::string& aWord)
 {
-    const char* text = aText.c_str();
+    const char* text = aWord.c_str();
     char* end = nullptr;
     const double v = std::strtod(text, &end);
-    if (!end || end == text || v < 10.0 || (*end != '\0' && *end != ' '))
+    return end && end != text && *end == '\0' && v >= 10.0;
+}
+
+inline std::string FirstWord(const std::string& aText)
+{
+    return aText.substr(0, aText.find(' '));
+}
+
+inline std::string LastWord(const std::string& aText)
+{
+    const size_t at = aText.rfind(' ');
+    return at == std::string::npos ? aText : aText.substr(at + 1);
+}
+
+// The name rules: the label is composed as "<frequency> <name>", so the name carries no
+// frequency of its own, at either end or inside, and is tidy enough to show as it is.
+inline bool NameIsUntidy(const std::string& aName)
+{
+    if (aName.empty() || aName.front() == ' ' || aName.back() == ' ' || aName.find("  ") != std::string::npos)
     {
-        return false;
+        return true;
     }
-    aFrequency = v;
-    aRest = end;
-    while (!aRest.empty() && aRest.front() == ' ')
+    for (const unsigned char c : aName)
     {
-        aRest.erase(aRest.begin());
+        if (c < 0x20 || c == 0x7f)
+        {
+            return true;
+        }
     }
-    return true;
+    return false;
 }
 
 // A depot path uses backslashes. A manifest may write either.
@@ -351,41 +370,52 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     }
 
-    // The frequency decides the dial position, so a station must have one. A 0.3.0 manifest wrote
-    // it at the front of the display name; that still loads, with a line asking for the field.
+    // The frequency places the station and the name is the name alone; the label is composed
+    // from the two. Both are required, and a name that carries a frequency is refused, so every
+    // station reads the same way on the dial. Checked last, so an earlier fault is the first logged.
     {
         const JsonValue* frequency = expect(root, "frequency", JsonValue::Kind::Number, false);
         if (frequency)
         {
-            if (frequency->number <= 0.0 || frequency->number >= 1000.0)
+            if (frequency->number < 10.0 || frequency->number >= 1000.0)
             {
-                fail(frequency->line, "\"frequency\" must be a number above 0, e.g. 104.9");
+                fail(frequency->line, "\"frequency\" must be a number from 10 to 999, e.g. 104.9");
             }
             else
             {
                 aOut.frequency = static_cast<float>(frequency->number);
             }
         }
-        double leading = 0.0;
-        std::string rest;
-        if (displayName && LeadingFrequency(displayName->string, leading, rest))
+        else
         {
-            if (!frequency)
+            fail(root.line, "\"frequency\" is missing - the number that places the station on the dial, e.g. 104.9");
+        }
+        if (!displayName)
+        {
+            fail(root.line, "\"displayName\" is missing - the station's name, without the frequency");
+        }
+        else
+        {
+            const std::string& name = displayName->string;
+            if (NameIsUntidy(name))
             {
-                aOut.frequency = static_cast<float>(leading);
-                at(displayName->line, "\"frequency\" is missing - read " + FrequencyText(leading) +
-                                          " from the front of \"displayName\"; write it as its own field");
+                fail(displayName->line, "\"displayName\" is empty, or has a space at an end, two spaces in a row, or a control character");
             }
             else
             {
-                at(displayName->line, "\"displayName\" starts with a number and \"frequency\" is set - the field "
-                                      "places the station, and the label shows the name without the number");
+                if (ReadsAsFrequency(FirstWord(name)))
+                {
+                    fail(displayName->line, "\"displayName\" starts with a number - the frequency goes in \"frequency\", the name is the name alone");
+                }
+                else if (ReadsAsFrequency(LastWord(name)))
+                {
+                    fail(displayName->line, "\"displayName\" ends with a number - the frequency goes in \"frequency\"");
+                }
+                else if (aOut.frequency >= 0.0f && name.find(FrequencyText(aOut.frequency)) != std::string::npos)
+                {
+                    fail(displayName->line, "\"displayName\" contains the frequency - the label shows it in front already");
+                }
             }
-            aOut.displayName = rest;
-        }
-        else if (!frequency)
-        {
-            fail(root.line, "\"frequency\" is missing - the number that places the station on the dial, e.g. 104.9");
         }
     }
 

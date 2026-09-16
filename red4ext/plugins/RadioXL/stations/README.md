@@ -29,8 +29,8 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | Field | What it is |
 | --- | --- |
 | `name` | The station's own CName: letters, digits and underscores only. It must be unique across every installed station mod. |
-| `frequency` | The station's place on the dial, as a number: `104.9`. Required. See [The frequency](#the-frequency). |
-| `displayName` | The station's name. The game shows it after the frequency: `104.9 Your Station`. |
+| `frequency` | The station's place on the dial, as a number from 10 to 999: `104.9`. Required. See [The frequency and the name](#the-frequency-and-the-name). |
+| `displayName` | The station's name, without the frequency. Required. The game shows it after the frequency: `104.9 Your Station`. |
 | `news` | Optional. `true` lets the news reach the station: Stanley's bulletins and greetings, and N54 News. Defaults to `false`. See [News](#news). |
 | `gain` | Optional. A level trim on every track, `0` to `1`. Defaults to `1`, the audio as recorded. |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
@@ -62,17 +62,23 @@ the Radioport, the vanilla stations read -16 to -20 LUFS and a loud web stream a
 Lower it for material that plays louder than the vanilla stations. It cannot go above `1`, so a
 quiet recording stays quiet.
 
-## The frequency
+## The frequency and the name
 
 **`frequency` decides where the station sits on the dial**: in the vehicle list, and in the order
 every receiver steps through when you press next. A `93.7` lands between Night FM at 92.9 and
-Samizdat at 95.2. Two stations on one frequency sit next to each other, the game's own first. A
-manifest with no frequency is refused, and the log says so.
+Samizdat at 95.2. Two stations on one frequency sit next to each other, the game's own first.
 
-A manifest written for 0.3.0 put the number at the front of `displayName` (`"104.9 Your Station"`).
-That still loads: the number becomes the frequency, the name loses it, and the log asks for the
-field. If both are given, the field places the station and the number at the front of the name is
-dropped from the label.
+**The label is built from the two**, `104.9 Your Station`, the same way for every station, so the
+name is the name alone. A manifest is refused, and the log says which line, when:
+
+- `frequency` or `displayName` is missing, or `frequency` is outside 10 to 999;
+- the name starts or ends with a number that reads as a frequency (`104.9 Your Station`,
+  `Your Station 104.9`), or contains the frequency anywhere (`Your 104.9 Station`);
+- the name is empty, has a space at either end or two in a row, or holds a control character.
+
+A band's own number is fine: `30H!3 Radio` and `3 Doors Down FM` read. A manifest written for a
+0.3.0 beta, with the number at the front of the name, is refused: move the number into
+`frequency`. Opening the station on the builder page does that.
 
 ## When the manifest is wrong
 

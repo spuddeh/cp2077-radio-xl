@@ -315,7 +315,7 @@ export function App() {
               <Row label="Frequency" note="Decides the station's place on the dial. Required." fault={faultFor('frequency')}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
               </Row>
-              <Row label="Name">
+              <Row label="Name" note="Without the frequency; the game shows that in front." fault={faultFor('stationName')}>
                 <TextInput value={s.stationName} onChange={(v) => s.set({ stationName: v })} placeholder="Hangouts FM" spellCheck />
               </Row>
               <Row

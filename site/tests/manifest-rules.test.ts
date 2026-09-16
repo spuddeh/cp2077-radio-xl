@@ -80,6 +80,9 @@ const REFUSED: [name: string, manifest: Record<string, unknown>][] = [
   ['name with a space', like({ name: 'my station' })],
   ['no frequency anywhere', like({ frequency: undefined, displayName: 'Tool FM' })],
   ['frequency of zero', like({ frequency: 0 })],
+  ['no name', like({ displayName: undefined })],
+  ['a name ending with a number', like({ displayName: 'Tool FM 104.9' })],
+  ['a name containing the frequency', like({ displayName: 'Tool 104.9 FM' })],
   ['tracks empty', like({ tracks: [] })],
   ['track file empty', like({ tracks: [{ file: '' }] })],
   ['every track an ident', like({ tracks: [{ file: 'a.mp3', ident: true }] })],
@@ -91,9 +94,8 @@ const REFUSED: [name: string, manifest: Record<string, unknown>][] = [
 
 const ACCEPTED: [name: string, manifest: Record<string, unknown>][] = [
   ['the good manifest', GOOD],
-  ['a 0.3.0 manifest, the frequency at the front of the name', like({ frequency: undefined, displayName: '104.9 Tool FM' })],
   ['a frequency with two decimals', like({ frequency: 88.85 })],
-  ['a frequency and no name', like({ displayName: undefined })],
+  ["a name starting with a band's number", like({ displayName: '30H!3 Radio' })],
   ['an icon record and no atlas', like({ icon: 'UIIcon.RadioHipHop', atlas: '' })],
   ['no icon at all', like({ icon: '', atlas: '' })],
   ['a stream as the one track', like({ tracks: [{ url: 'https://ice1.somafm.com/groovesalad-128-mp3' }] })],
@@ -147,8 +149,11 @@ test('an ident is written without a title', () => {
   assert.deepEqual(written.tracks, [{ file: 'a.mp3', title: 'A' }, { file: 'ad.mp3', ident: true }])
 })
 
+// RadioXL refuses a name that starts with the frequency; opening such a station on the page moves
+// the number into the field, so what the page writes back is a manifest RadioXL takes.
 test('a 0.3.0 manifest opened on the page is written back with the field', () => {
   const written = buildManifest(asFormState(like({ frequency: undefined, displayName: '104.9 Tool FM' })))
   assert.equal(written.frequency, 104.9)
   assert.equal(written.displayName, 'Tool FM')
+  assert.deepEqual(checkManifest(asFormState(written)), [])
 })
