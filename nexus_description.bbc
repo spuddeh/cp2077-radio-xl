@@ -32,7 +32,7 @@ Drop the archive into your mod manager. The plugin and the scripts always travel
 Remove RadioXL and every station built on it. RadioXL keeps nothing in your saves.
 
 [b]Source and documentation[/b]
-RadioXL is open source, MIT: [url=https://github.com/spuddeh/cp2077-radio-xl]github.com/spuddeh/cp2077-radio-xl[/url]. The manifest reference is [url=https://github.com/spuddeh/cp2077-radio-xl/blob/main/red4ext/plugins/RadioXL/stations/README.md]stations/README.md[/url], and [url=https://github.com/spuddeh/cp2077-radio-xl/tree/main/docs]docs/[/url] holds the notes on how the game's radio works underneath. Bugs and requests go to the [url=https://github.com/spuddeh/cp2077-radio-xl/issues]issues[/url].
+RadioXL is open source, MIT: [url=https://github.com/spuddeh/cp2077-radio-xl]github.com/spuddeh/cp2077-radio-xl[/url]. The manifest reference is [url=https://github.com/spuddeh/cp2077-radio-xl/blob/main/red4ext/plugins/RadioXL/stations/README.md]stations/README.md[/url], and [url=https://github.com/spuddeh/cp2077-radio-xl/tree/main/docs]docs/[/url] holds the notes on how the game's radio works underneath.
 
 [b]Coming from RadioXL 0.1.0[/b]
 A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does not play on this release. Its script still compiles, and the log says the station was seen. The station's author writes the station.json below instead; the songs and the icon are reused as they are. If you had Simple Radio Control installed, remove it: its keys and settings are part of RadioXL now.
