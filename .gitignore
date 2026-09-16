@@ -16,3 +16,6 @@ audio-tests/
 # WolvenKit build output of the icon project under tools/; the shipped archive is DV's copy
 tools/wolvenkit/
 __pycache__/
+
+# The example station package is built by tools/make-example-station.py; the zip is not committed
+example-station/build/
