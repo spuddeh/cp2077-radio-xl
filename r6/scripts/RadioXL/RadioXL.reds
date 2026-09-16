@@ -73,6 +73,11 @@ public native func RadioXL_StationKeyHash(index: Int32) -> Uint64;
 public native func RadioXL_StationTrackKeyHash(index: Int32, track: Int32) -> Uint64;
 public native func RadioXL_StationKeyHash64(index: Int32) -> Uint64;
 public native func RadioXL_StationTrackKeyHash64(index: Int32, track: Int32) -> Uint64;
+// The station's own schedule, by station and track NAME, vanilla stations included. Remaining is
+// the tracks not yet picked this cycle, empty when the plugin cannot see the station; Consume
+// takes a track out of that list and, when `countPick` is set, counts it toward the next ident.
+public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
+public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool) -> Bool;
 
 // A station is assembled out of the systems the game already has, in this order:
 //

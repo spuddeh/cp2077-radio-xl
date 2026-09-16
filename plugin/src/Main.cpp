@@ -24,6 +24,7 @@
 #include "Clock.hpp"
 #include "Duration.hpp"
 #include "Manifest.hpp"
+#include "Schedule.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -1244,6 +1245,27 @@ void RegisterNatives()
     reg("RadioXL_StationTrackKeyHash", &RadioXL_StationTrackKeyHash, "Uint64", 2);
     reg("RadioXL_StationKeyHash64", &RadioXL_StationKeyHash64, "Uint64", 1);
     reg("RadioXL_StationTrackKeyHash64", &RadioXL_StationTrackKeyHash64, "Uint64", 2);
+
+    // The schedule natives take station and track NAMES, not roster indices: the song keys ask
+    // about vanilla stations as often as custom ones.
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationRemaining", "RadioXL_StationRemaining",
+                                                    &RadioXL_StationRemaining);
+        fn->flags.isNative = true;
+        fn->AddParam("CName", "station");
+        fn->SetReturnType("array:CName");
+        rtti->RegisterFunction(fn);
+    }
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationConsume", "RadioXL_StationConsume",
+                                                    &RadioXL_StationConsume);
+        fn->flags.isNative = true;
+        fn->AddParam("CName", "station");
+        fn->AddParam("CName", "track");
+        fn->AddParam("Bool", "countPick");
+        fn->SetReturnType("Bool");
+        rtti->RegisterFunction(fn);
+    }
 }
 } // namespace
 

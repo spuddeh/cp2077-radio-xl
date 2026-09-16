@@ -10,11 +10,15 @@
 //              lags a request by a moment, so the key just asked for stands in as "current" until
 //              the receiver catches up or a short window passes.
 //
-//              NEXT DRAWS FROM A BAG, THE WAY THE STATION DOES. The engine keeps a remaining list
-//              per station, draws from it, and refills it only when it is empty, so every song
-//              plays once before any repeats. The deck keeps a bag of its own per station, shuffled
-//              from the songs the player has left on, and a song the station plays by itself
-//              leaves the bag too. The automatic skip past a switched-off song draws the same way.
+//              NEXT DRAWS FROM THE STATION'S OWN LIST. The engine keeps a remaining list per
+//              station, draws from it, and refills it only when it is empty, so every song plays
+//              once before any repeats. A requested song never leaves that list by itself, so the
+//              deck reads the list through the plugin, draws among the songs in it that the player
+//              has left on, and takes what it plays out of the list, counting a key press as a
+//              pick toward the next ident. The automatic skip past a switched-off song draws and
+//              consumes the same way without counting: the engine counted the song it skipped
+//              past. When the plugin cannot see the station, a shuffled bag of the deck's own
+//              stands in.
 //
 //              PREVIOUS AND NEXT WALK A HISTORY WITH A CURSOR. Every song that played on the
 //              station, by key or by the station itself, is on the history in order. Previous
@@ -58,8 +62,8 @@ public class RadioXLDeck extends ScriptableService {
   private let m_pendingAt: Float;
 
   // The history of the current station, oldest first, capped; `m_cursor` is the song playing
-  // now, as an index into it, or -1 when the history is empty. The bag holds the songs not yet
-  // drawn in this cycle.
+  // now, as an index into it, or -1 when the history is empty. The bag is the fallback pool for
+  // a station whose own list the plugin cannot see.
   private let m_historyStation: CName;
   private let m_history: array<Int32>;
   private let m_cursor: Int32;
@@ -150,7 +154,7 @@ public class RadioXLDeck extends ScriptableService {
     let streamer = this.IsStreamerMode(gi);
     let target: Int32 = this.Seek(gi, r.station, current, streamer, forward);
     if target >= 0 {
-      this.Play(gi, r, target);
+      this.Play(gi, r, target, true);
       return;
     }
     if !forward {
@@ -172,7 +176,7 @@ public class RadioXLDeck extends ScriptableService {
     }
     if picked < 0 || picked == current { return; }
     this.Record(picked);
-    this.Play(gi, r, picked);
+    this.Play(gi, r, picked, true);
   }
 
   // A station key press. Moves the receiver one place along the dial, through the game's own
@@ -327,7 +331,7 @@ public class RadioXLDeck extends ScriptableService {
     if picked < 0 || picked == index { return; }
     RadioXLLog(s"\(r.station.name): \(r.station.tracks[index].event) is switched off, moving on");
     this.Record(picked);
-    this.Play(gi, r, picked);
+    this.Play(gi, r, picked, false);
   }
 
   // --- the history and the bag ------------------------------------------------------------------
@@ -375,11 +379,44 @@ public class RadioXLDeck extends ScriptableService {
     return -1;
   }
 
-  // A fresh song from the bag. The bag is refilled, shuffled, from every track other than
-  // `current` that is playable and, when `enabledOnly`, switched on, whenever it runs dry or
-  // holds nothing that still qualifies. Returns -1 when no other track qualifies at all.
+  // A fresh song from the station's own remaining list: at random among the entries other than
+  // `current` that are playable and, when `enabledOnly`, switched on. -1 when the plugin cannot
+  // see the station, the list is empty, or nothing in it qualifies; the bag decides then.
+  private func DrawFromStation(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
+                               streamer: Bool, enabledOnly: Bool) -> Int32 {
+    let controls = RadioXLControls.Get();
+    let remaining: array<CName> = RadioXL_StationRemaining(station.name);
+    let listed: Int32 = ArraySize(remaining);
+    if listed == 0 { return -1; }
+    let count: Int32 = ArraySize(station.tracks);
+    let pool: array<Int32>;
+    for event in remaining {
+      let index: Int32 = 0;
+      while index < count && NotEquals(station.tracks[index].event, event) { index += 1; }
+      if index < count && index != current && this.IsPlayable(gi, station.tracks[index], streamer)
+        && (!enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(station.tracks[index].event)) {
+        ArrayPush(pool, index);
+      }
+    }
+    let n: Int32 = ArraySize(pool);
+    if n == 0 {
+      RadioXLLog(s"\(station.name): \(listed) left on the station's list, none playable here");
+      return -1;
+    }
+    let j: Int32 = RandRange(0, n);
+    if j >= n { j = n - 1; }
+    RadioXLLog(s"\(station.name): drew from the station's list (\(n) of \(listed) qualify)");
+    return pool[j];
+  }
+
+  // A fresh song: from the station's own list when the plugin can see it, else from the bag. The
+  // bag is refilled, shuffled, from every track other than `current` that is playable and, when
+  // `enabledOnly`, switched on, whenever it runs dry or holds nothing that still qualifies.
+  // Returns -1 when no other track qualifies at all.
   private func Draw(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
                     streamer: Bool, enabledOnly: Bool) -> Int32 {
+    let fromStation: Int32 = this.DrawFromStation(gi, station, current, streamer, enabledOnly);
+    if fromStation >= 0 { return fromStation; }
     let controls = RadioXLControls.Get();
     let count = ArraySize(station.tracks);
     let i: Int32 = ArraySize(this.m_bag) - 1;
@@ -445,12 +482,17 @@ public class RadioXLDeck extends ScriptableService {
     return count;
   }
 
-  private func Play(gi: GameInstance, r: ref<RadioXLReceiver>, index: Int32) -> Void {
+  // Requests the track and tells the station's schedule, so the song leaves the station's own
+  // remaining list. A key press counts as a pick toward the next ident; the automatic skip does
+  // not, because the engine counted the song it is skipping past.
+  private func Play(gi: GameInstance, r: ref<RadioXLReceiver>, index: Int32, countPick: Bool) -> Void {
     let track = r.station.tracks[index];
     GameInstance.GetAudioSystem(gi).RequestSongOnRadioStation(r.station.name, track.event);
     this.m_pendingKey = track.key;
     this.m_pendingAt = this.Now(gi);
-    RadioXLLog(s"\(r.station.name): requested track \(index) \(track.event)");
+    let told: Bool = RadioXL_StationConsume(r.station.name, track.event, countPick);
+    let note: String = told ? (countPick ? "off the station's list, counted" : "off the station's list") : "the station's list is out of reach";
+    RadioXLLog(s"\(r.station.name): requested track \(index) \(track.event) (\(note))");
   }
 
   // The same lookup the popup makes: the receiver reports the track as a CName built from
