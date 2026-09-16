@@ -1,6 +1,7 @@
 import { readZip, type ZipEntry } from './readZip'
 import { VANILLA_STATIONS } from './vanilla'
 import type { IconMode } from './store'
+import { iconFromArchive } from './readArchive'
 
 export interface ImportedTrack {
   file: string
@@ -28,6 +29,9 @@ export interface ImportedStation {
   iconRecord: string
   iconPart: string
   iconAtlas: string
+  /** The icon read back out of the station's own archive, for the preview. */
+  iconImage: string | null
+  iconImageSize: [number, number] | null
   tracks: ImportedTrack[]
   extras: ExtraFile[]
   /** What the import could not bring across, for the page to say. */
@@ -147,6 +151,18 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
   }
   if (extras.length) notes.push(`Carried over unchanged: ${extras.map((x) => x.path).join(', ')}.`)
 
+  // An archive this page wrote stores its icon uncompressed, so the preview can show it again.
+  let iconPreview: { url: string; size: [number, number] } | null = null
+  const archive = atlas ? extras.find((x) => /\.archive$/i.test(x.path)) : undefined
+  if (archive) {
+    iconPreview = await iconFromArchive(await archive.source, atlas)
+    notes.push(
+      iconPreview
+        ? 'The preview icon was read from that archive.'
+        : 'The icon archive is compressed, so the preview cannot read it. Choose an image to see the icon.',
+    )
+  }
+
   return {
     folder: folderName,
     frequency: freq ? freq[1] : '',
@@ -159,6 +175,8 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     iconRecord: !vanilla && !atlas ? icon : '',
     iconPart: atlas ? icon : '',
     iconAtlas: atlas,
+    iconImage: iconPreview?.url ?? null,
+    iconImageSize: iconPreview?.size ?? null,
     tracks,
     extras,
     notes,

@@ -31,8 +31,9 @@ export function About() {
         <p>
           Drop a RadioXL station&apos;s zip or its installed folder on Edit a RadioXL station. The form fills from its{' '}
           <code>station.json</code>, each track is matched to its audio, and every other file in the mod, such as an
-          icon archive, goes back into the zip unchanged. Choosing a new icon image replaces the old icon archive. The
-          station keeps its folder name, so the new zip installs over the old one.
+          icon archive, goes back into the zip unchanged. An icon archive this page wrote is read back, so the station
+          previews its own icon; one from WolvenKit is compressed, and the page says so. Choosing a new icon image
+          replaces the old icon archive. The station keeps its folder name, so the new zip installs over the old one.
         </p>
       </section>
 
