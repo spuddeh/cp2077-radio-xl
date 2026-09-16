@@ -1,4 +1,5 @@
 import { readZip, type ZipEntry } from './readZip'
+import { isArchiveName, readArchiveFile } from './readAnyArchive'
 import { VANILLA_STATIONS } from './vanilla'
 import type { IconMode } from './store'
 import { iconFromArchive } from './readArchive'
@@ -59,9 +60,9 @@ export function entriesFromFiles(files: File[]): Entry[] {
 /** Everything under the dropped items, walking folders. A single .zip is opened. */
 export async function entriesFromDrop(items: DataTransferItemList): Promise<Entry[]> {
   const roots = [...items].map((i) => i.webkitGetAsEntry()).filter((e): e is FileSystemEntry => !!e)
-  if (roots.length === 1 && roots[0].isFile && roots[0].name.toLowerCase().endsWith('.zip')) {
+  if (roots.length === 1 && roots[0].isFile && isArchiveName(roots[0].name)) {
     const file = await new Promise<File>((ok, fail) => (roots[0] as FileSystemFileEntry).file(ok, fail))
-    return readZip(file)
+    return readArchiveFile(file)
   }
   const out: Entry[] = []
   const walk = async (entry: FileSystemEntry, prefix: string): Promise<void> => {
@@ -83,6 +84,7 @@ export async function entriesFromDrop(items: DataTransferItemList): Promise<Entr
 }
 
 export { readZip }
+export { readArchiveFile } from './readAnyArchive'
 
 /**
  * Reads a RadioXL station mod: the first station.json found, its fields into the form, each track

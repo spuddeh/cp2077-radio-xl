@@ -102,6 +102,7 @@
 .drop.over { --edge: var(--blue); --edge-opacity: 1; --fill: var(--faint-blue); --fill-opacity: 0.6; }
 .drop-formats { margin-left: auto; font-size: var(--font-readable-x-small); opacity: 0.5; }
 
+.track-stream { padding: 2px 0; word-break: break-all; }
 .stream-add { margin-top: 10px; display: grid; gap: 6px; }
 .stream-add label { font-size: var(--font-readable-x-small); opacity: 0.6; }
 .stream-row { display: flex; gap: 10px; align-items: stretch; }

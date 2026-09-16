@@ -163,13 +163,16 @@ function TrackRow(props: { track: Track; index: number }) {
         {String(props.index + 1).padStart(2, '0')}
       </button>
       <div className="cell ink-frame track-title">
-        {t.ident ? (
+        {t.url ? (
+          // A stream is its URL: the row is the address, which is the whole track.
+          <span className="track-stream">{t.url}</span>
+        ) : t.ident ? (
           <span className="track-ident">No title - plays between songs</span>
         ) : (
           <input type="text" value={t.title} spellCheck={false} onChange={(e) => updateTrack(t.id, { title: e.target.value })} />
         )}
         <span className={!t.url && !t.source ? 'track-file missing' : 'track-file'}>
-          {t.url ? `Stream: ${t.url}` : t.source ? t.file : `${t.file} (no audio file)`}
+          {t.url ? 'Stream' : t.source ? t.file : `${t.file} (no audio file)`}
         </span>
       </div>
       {t.url ? null : (

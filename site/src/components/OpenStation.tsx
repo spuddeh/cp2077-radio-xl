@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { entriesFromDrop, entriesFromFiles, importStation, readZip, type ImportedStation } from '../importStation'
+import { entriesFromDrop, entriesFromFiles, importStation, readArchiveFile, type ImportedStation } from '../importStation'
+import { ARCHIVE_ACCEPT } from '../readAnyArchive'
 import { useStation } from '../store'
 import { Fault } from './Controls'
 
@@ -63,12 +64,12 @@ export function OpenStation(props: {
         <span>
           {busy
             ? (props.busyLabel ?? 'Reading the station...')
-            : (props.prompt ?? 'Edit a RadioXL station: drop its .zip or folder here, or choose a')}
+            : (props.prompt ?? 'Edit a RadioXL station: drop its download or folder here, or choose a')}
         </span>
         {!busy && (
           <>
             <button type="button" className="link" onClick={() => zipPicker.current?.click()}>
-              zip
+              zip or rar
             </button>
             <span>or</span>
             <button type="button" className="link" onClick={() => folderPicker.current?.click()}>
@@ -79,12 +80,12 @@ export function OpenStation(props: {
         <input
           ref={zipPicker}
           type="file"
-          accept=".zip,application/zip"
+          accept={ARCHIVE_ACCEPT}
           hidden
           onChange={(e) => {
             const f = e.target.files?.[0]
             e.target.value = ''
-            if (f) read(() => readZip(f))
+            if (f) read(() => readArchiveFile(f))
           }}
         />
         <input

@@ -297,7 +297,7 @@ export function App() {
                 hasWork={hasWork}
                 onOpened={(name) => notify('Station converted', name)}
                 importer={importRadioExt}
-                prompt="Convert a RadioExt station: drop its folder, or the mod that holds it, here, or choose a"
+                prompt="Convert a RadioExt station: drop its download or folder here, or choose a"
                 busyLabel="Reading the RadioExt station..."
               />
             </>
