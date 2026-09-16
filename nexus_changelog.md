@@ -1,4 +1,4 @@
-### [Unreleased - v0.3.0]
+### v0.3.0
 
 - RadioXL is now a real engine station: custom stations play on the Radioport, in every vehicle and on the radios placed around Night City, with their own name, icon and song titles.
 - A station is one station.json and a folder of audio. No yaml, no script. The frequency is its own field in it, and the name is the name alone; the game shows the two together.

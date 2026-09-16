@@ -1,6 +1,6 @@
 # Changelog - RadioXL
 
-## [0.3.0] - 2026-09-11
+## [0.3.0] - 2026-09-16
 
 ### Changed
 - The manifest's `speaker` is replaced by `news` (#16). `news: true` writes the station's
