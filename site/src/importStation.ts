@@ -32,6 +32,8 @@ export interface ImportedStation {
   /** The icon read back out of the station's own archive, for the preview. */
   iconImage: string | null
   iconImageSize: [number, number] | null
+  /** True when the station carries an icon archive the page cannot read. */
+  iconArchiveUnreadable: boolean
   tracks: ImportedTrack[]
   extras: ExtraFile[]
   /** What the import could not bring across, for the page to say. */
@@ -177,6 +179,7 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     iconAtlas: atlas,
     iconImage: iconPreview?.url ?? null,
     iconImageSize: iconPreview?.size ?? null,
+    iconArchiveUnreadable: !!archive && !iconPreview,
     tracks,
     extras,
     notes,

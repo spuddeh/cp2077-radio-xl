@@ -160,6 +160,12 @@ export function App() {
       {textureSize[0]} x {textureSize[1]} px.
     </>
   )
+  const archiveNotice = s.iconArchiveUnreadable && !s.iconImage && (
+    <>
+      This station&apos;s icon archive is compressed, which this page cannot read. Choose an image to see the icon in
+      the previews; the archive itself goes back into the zip untouched.
+    </>
+  )
   const previewCapNotice = s.iconImageSize &&
     (s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h) && (
       <>
@@ -378,7 +384,7 @@ export function App() {
                   </Row>
                   <Row
                     label="Preview image"
-                    notice={previewCapNotice || undefined}
+                    notice={archiveNotice || previewCapNotice || undefined}
                     note={
                       <>
                         Shows your icon in the previews, tinted the way the game tints it. The zip does not include it.

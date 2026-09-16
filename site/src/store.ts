@@ -5,9 +5,13 @@ import type { ImportedStation } from './importStation'
 export type Source = 'new' | 'radioext' | 'radioxl010'
 export type IconMode = 'glyph' | 'record' | 'image' | 'atlas'
 
+/** The name a generated icon takes before the station has an ID. */
+export const ICON_TARGET_FALLBACK = 'my_station'
+
 /** The part and atlas a generated icon takes from the station ID. */
 export function defaultIconTarget(cname: string): { part: string; atlas: string } {
-  return cname ? { part: cname, atlas: `${cname}\\gui\\${cname}.inkatlas` } : { part: '', atlas: '' }
+  const name = cname || ICON_TARGET_FALLBACK
+  return { part: name, atlas: `${name}\\gui\\${name}.inkatlas` }
 }
 
 export interface Track {
@@ -43,6 +47,8 @@ interface StationState {
   iconImageHasPixels: boolean
   /** Set once the atlas or part is typed in, so the station ID stops filling them. */
   iconTargetEdited: boolean
+  /** An opened station's icon archive that the page cannot read, so the preview has no icon. */
+  iconArchiveUnreadable: boolean
   tracks: Track[]
   /** The mod folder to write, kept from an opened station so a rebuild replaces it. */
   folder: string | null
@@ -100,6 +106,7 @@ export const useStation = create<StationState>((set) => ({
   iconImageSize: null,
   iconImageHasPixels: true,
   iconTargetEdited: false,
+  iconArchiveUnreadable: false,
   tracks: [],
   folder: null,
   extras: [],
@@ -144,6 +151,7 @@ export const useStation = create<StationState>((set) => ({
       iconImageSize: st.iconImageSize,
       iconImageHasPixels: true,
       iconTargetEdited: true,
+      iconArchiveUnreadable: st.iconArchiveUnreadable,
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
       folder: st.folder || null,
       extras: st.extras,
