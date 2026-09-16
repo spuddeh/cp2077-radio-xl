@@ -14,8 +14,9 @@ hardcoded RVA, and **the plugin verifies every byte before writing any of them a
 whole patch on a single mismatch.** That is the design working, and it is silent from the player's
 side: every station is absent.
 
-**Check:** the redscript log for `roster patched to N stations`. If it reads
-`slot N is empty - too early to patch, abandoned` or does not appear, the patterns have moved.
+**Check:** the plugin's log, `red4ext/logs/radioxl-*.log`, for `roster patched to N stations`. If it
+reads `roster slot N is empty - too early to patch, abandoned`, `bounds are not the expected ...` or
+`nothing patched`, or the line does not appear, the patterns have moved.
 
 The detour has one more thing to move: the stub calls the two dial-order switches by the targets it
 reads from the block it replaces, so a patch that changes what those functions take or return breaks
@@ -110,12 +111,13 @@ is the number to move.
 
 ## 7. The vanilla frequencies
 
-The dial order is by frequency, and the game stores no frequency: it is the number at the front of
-each display name. The plugin carries the fourteen vanilla ones in `kVanillaFrequency`
-(`plugin/src/Main.cpp`) to decide where a custom station is inserted. The fourteen's own order is
-asked of the game's switch at patch time, so it cannot drift; only a custom station's place can.
+The dial order is by frequency, and the game stores no frequency for its own stations: a custom
+station's comes from its manifest, and the plugin carries the fourteen vanilla ones in
+`kVanillaFrequency` (`plugin/src/Main.cpp`) to decide where a custom station is inserted. The
+fourteen's own order is asked of the game's switch at patch time, so it cannot drift; only a custom
+station's place can.
 
-**Check:** the redscript log line `dial order ...` lists `ERadioStationList` values in dial order.
+**Check:** the plugin's log line `dial order: ...` lists `ERadioStationList` values in dial order.
 The fourteen must read `4 0 11 10 1 9 8 6 13 2 3 7 5 12` with the custom stations (14 and up)
 between the right neighbours. If CDPR retunes a station, its number in `kVanillaFrequency` moves
 with it; the station names are `docs/compiled-station-roster.md`'s frequency table.

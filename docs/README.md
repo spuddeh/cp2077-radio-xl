@@ -31,6 +31,6 @@ Every claim carries one of two marks:
   roster was found by searching for the hash of `radio_station_12_growl_fm`.
 - **The RTTI dump** (NativeDB) for every class and enum named here.
 - **SoundDB** (<https://sounddb.redmodding.org>) for what a Wwise event does.
-- **AudioXL's source** (<https://github.com/DigitalVixen/cp2077-audio-xl>) for what its renderer does.
+- **AudioXL's source** (<https://github.com/DigitalVixenSWE/cp2077-audio-xl>) for what its renderer does.
 - **A probe mod**: a `ScriptableService` with every write behind its own flag, so one variable moved per
   game launch. The nine-variant table on the station-set page came out of it.

@@ -9,8 +9,7 @@ the MIT licence grants no rights to it. It appears in these files:
 - `site/src/assets/radioxl-glyph.png`
 - `site/public/favicon.png`
 
-To use the glyph anywhere else, ask DigitalVixen through the
-[RadioXL Nexus page](https://www.nexusmods.com/cyberpunk2077/mods/33488).
+To use the glyph anywhere else, ask [DigitalVixen](https://www.nexusmods.com/profile/DigitalVixen).
 
 **Cyberpunk 2077 material is not covered either.** It belongs to CD PROJEKT RED and is used under
 their [fan content guidelines](https://www.cdprojektred.com/en/fan-content):

@@ -487,6 +487,14 @@ void BuildDial(DialSwitch aIndexToDial)
     {
         g_position[order[p]] = static_cast<int32_t>(p);
     }
+    // The order every receiver steps through, as ERadioStationList values: the fourteen, then each
+    // custom station (14 and up) at its frequency. MAINTAINING.md reads this line after a patch.
+    std::string line = "dial order:";
+    for (const int32_t station : order)
+    {
+        line += " " + std::to_string(station);
+    }
+    Log(line);
 }
 
 // A rip-relative displacement is 32 bits signed, so the new roster has to land within 2 GB of the

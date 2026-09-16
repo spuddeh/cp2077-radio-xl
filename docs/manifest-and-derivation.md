@@ -8,13 +8,14 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 
 ```json
 {
-  "name": "radio_station_20_tool",
-  "displayName": "104.9 Tool FM",
-  "icon": "tool_fm",
-  "atlas": "toolfm\\gui\\tool_fm.inkatlas",
+  "name": "radio_station_yourstation",
+  "frequency": 104.9,
+  "displayName": "Your Station",
+  "icon": "yourstation",
+  "atlas": "yourmod\\gui\\yourstation.inkatlas",
   "news": true,
   "tracks": [
-    { "file": "audio/Tool - Vicarious.mp3", "title": "Tool - Vicarious" }
+    { "file": "audio/first.mp3", "title": "Artist - First Song" }
   ]
 }
 ```
@@ -22,8 +23,9 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | Field | What it is |
 | --- | --- |
 | `name` | the station's `CName`, letters, digits and underscores only, because it is also an event-name prefix and a TweakDB record id. Unique across every installed station mod; first found wins, the log names the loser |
-| `displayName` | plain text. **The frequency at the front**, because the game has no field for it: the number decides the station's place on the dial, in the vehicle list and in every receiver's next/previous order. A name with no number at the front puts the station after every station that has one |
-| `news` | optional, default `false`. `true` writes the station's `speaker` as `Stanley`, so Stanley's news and greetings can reach it under the engine's own rules; `false` writes `None`, which receives no announcement. No other speaker is offered: Mike's lines name Morro Rock and Ash is bound to Growl FM by name. A `speaker` key is logged as replaced by `news` and ignored |
+| `frequency` | a number from 10 to 999, required. The game has no field for a frequency, so this is the one place it is written: it decides the station's place on the dial, in the vehicle list and in every receiver's next/previous order. Two stations on one frequency keep slot order, the game's own first, and the tie is logged |
+| `displayName` | plain text, required: the station's name alone. The label the game shows is composed as `<frequency> <name>` (`Label` in `Manifest.hpp`, one decimal, two when written), so every station reads the same way. A name that starts or ends with a number reading as a frequency, contains the frequency, is empty or is untidy (a space at an end, two in a row, a control character) refuses the manifest; a band's own number (`30H!3 Radio`) passes |
+| `news` | optional, default `false`. `true` writes the station's `speaker` as `Stanley`, so Stanley's news and greetings can reach it under the engine's own rules; `false` writes `None`, which receives no announcement. No other speaker is offered: Mike's lines name Morro Rock and Ash is bound to Growl FM by name. A `speaker` key is an unknown key, logged and ignored |
 | `gain` | optional level trim on the samples, 0 to 1, clamped. Default 1: the framework's `radioxl_radio` type cites a vanilla station's Broadcast Sends, so the level stages are vanilla's. Only when the routing bank fails to load and a station falls back to `mod_sfx_radio` is it multiplied by 0.56 (-5 dB), which keeps that type's hotter sends inside the vanilla range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
 | `icon` / `atlas` | optional inkatlas part and the atlas holding it, or `icon` alone naming an existing `UIIcon.` record (no atlas, no record of the station's own; a record that does not exist falls back to the glyph). Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
@@ -49,6 +51,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | Refused | Logged and ignored |
 | --- | --- |
 | `name` missing, not a string, or holding a character outside `[A-Za-z0-9_]` | a key the framework does not know, at top level or in a track |
+| `frequency` missing, not a number, or outside 10 to 999; `displayName` missing, empty, untidy, or carrying a frequency at either end or inside (checked last, so an earlier fault is the first logged) | |
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 1, clamped |
 | a track with both `file` and `url`; a `url` not starting `http://` or `https://`; a `url` track beside any other track | |
 | `ident` not a boolean; an `ident` on a `url` track; every track an ident | |
@@ -70,7 +73,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | station label key | `Gameplay-Devices-Radio-RadioXL-<name>` | the engine's name table holds a key, and a key resolves by string only under `Gameplay-`, `UI-` or `Common-`; see [localization](localization-keys.md) |
 | title key | `Gameplay-Devices-Radio_tracks-RadioXL-<name>-NN` | `audioRadioTrack` holds a key, in the same namespace as vanilla track keys |
 | both hashes of each key | FNV1a32 keeping the key text, FNV1a64 with it cleared | how `onscreens` rows are found; see [localization](localization-keys.md) |
-| `RadioStation` record | `RadioStation.RadioXL_<name>` with `displayName`, `icon`, `index` = dial position | `index` is a UI index, not the enum: the popup hands `record.Index()` to `SendRadioEvent`, which converts it through `GetRadioStationByUIIndex`. Vanilla carries 0 for 88.9 to 13 for 107.5 as fixed numbers, so **the fourteen vanilla records are rewritten to their new positions** whenever a custom station is installed; otherwise two records share an index, both light up, and either plays the station now at that position |
+| `RadioStation` record | `RadioStation.RadioXL_<name>` with the composed label as `displayName`, `icon`, `index` = dial position | `index` is a UI index, not the enum: the popup hands `record.Index()` to `SendRadioEvent`, which converts it through `GetRadioStationByUIIndex`. Vanilla carries 0 for 88.9 to 13 for 107.5 as fixed numbers, so **the fourteen vanilla records are rewritten to their new positions** whenever a custom station is installed; otherwise two records share an index, both light up, and either plays the station now at that position |
 | `UIIcon` record | `UIIcon.RadioXL_<name>` with `atlasPartName`, `atlasResourcePath`, unless `icon` names a record | the selector and the device logo load atlas and part from it |
 
 `[M]` TweakDB records must be created from `ScriptableTweak.OnApply`, never from a
@@ -121,5 +124,5 @@ widget that already has the vanilla atlas. A custom station needs both atlas and
 `[M]` The vanilla station atlas is 1008x1184, `TEXG_Generic_UI` / `TRF_TrueColor` /
 `TCM_QualityColor`, no mipchain, parts roughly 240 to 400 px wide. `inkatlas.textureResolution` is an
 enum string (`UltraHD_3840_2160`), not a number. A station mod's icon archive uses paths with no
-`base\` prefix (`toolfm\gui\tool_fm.xbm`); WolvenKit warns about this, and the warning is wrong for a
+`base\` prefix (`yourmod\gui\yourstation.xbm`); WolvenKit warns about this, and the warning is wrong for a
 UI asset referenced by depot path from a TweakDB record.

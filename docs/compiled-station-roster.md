@@ -157,8 +157,8 @@ the `jmp`.
 order is asked of the game's own switch at patch time, through the `call` target read from the
 verified block, so it cannot drift; each custom station is then inserted before the first station
 whose frequency is above its own, using the fourteen vanilla frequencies the plugin carries
-(`kVanillaFrequency`) and the number at the front of its display name. A custom station with no
-number at the front sits after every station that has one, in slot order. The same two tables are
+(`kVanillaFrequency`) and the manifest's own `frequency`. Two stations on one frequency keep slot
+order, the vanilla one first. The same two tables are
 handed to the script-side receivers through `RadioXL_DialPosition` and `RadioXL_DialStation`, so a car, a
 world device and the pocket radio step through one dial.
 

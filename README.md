@@ -1,22 +1,21 @@
 # RadioXL
 
 A custom radio station for Cyberpunk 2077 that is a **real engine station**, not a mod-authored music
-player. The engine's station roster is a fixed 14-slot array compiled into the binary. RadioExt
-ships FMOD and RadioXL 0.1.0 recreated the radio in script, and both reach only the receivers they
-wrap. This framework extends that array instead, so a custom station plays on the Radioport, the
-vehicle radio and world device radios through the game's own radio system, with nothing wrapped
-around them.
+player. The engine's station roster is a fixed 14-slot array compiled into the binary. Earlier
+station mods each brought a player of their own, and reached only the receivers they wrapped. This
+framework extends that array instead, so a custom station plays on the Radioport, the vehicle radio
+and world device radios through the game's own radio system, with nothing wrapped around them.
 
-**This is RadioXL from 0.3.0 on.** DigitalVixen's RadioXL 0.1.0, the script player on the same
-[Nexus page](https://www.nexusmods.com/cyberpunk2077/mods/33488), is what it replaces; the name and
-the page carry over, the audio side stays DigitalVixen's in AudioXL, and a station written for
-0.1.0 is converted to the manifest below (its script still compiles and the log names it).
+**This is RadioXL from 0.3.0 on.** DigitalVixen's RadioXL 0.1.0, the script player, is what it
+replaces: the name carries over to a new Nexus page, the audio side stays DigitalVixen's in AudioXL,
+and a station written for 0.1.0 is rewritten as the manifest below (its script still compiles and
+the log names it).
 
 **Status: beta.** Stations play on every receiver with their own names, icons and song titles;
 tuning back in lands mid-song on the station's own clock; a vehicle radio survives being switched
-off and on; twelve "Mute radio when" switches are in. What is still open is
-in the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), with what has been measured on
-each. Not on Nexus yet.
+off and on; the settings panel carries the keys, the per-song switches, My station and the mutes.
+What is still open is in the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), the
+working board, with what has been measured on each. Not on Nexus yet.
 
 ## What a station mod ships
 
@@ -30,17 +29,21 @@ archive/pc/mod/<YourMod>.archive          (optional - the station icon)
 
 ```json
 {
-  "name": "radio_station_20_tool",
-  "displayName": "104.9 Tool FM",
-  "icon": "tool_fm",
-  "atlas": "toolfm\\gui\\tool_fm.inkatlas",
+  "name": "radio_station_yourstation",
+  "frequency": 104.9,
+  "displayName": "Your Station",
+  "icon": "yourstation",
+  "atlas": "yourmod\\gui\\yourstation.inkatlas",
   "news": true,
   "tracks": [
-    { "file": "audio/Tool - Vicarious.mp3", "title": "Tool - Vicarious" },
-    { "file": "audio/Tool - Jambi.mp3",     "title": "Tool - Jambi" }
+    { "file": "audio/first.mp3",   "title": "Artist - First Song" },
+    { "file": "audio/second.flac", "title": "Artist - Second Song" }
   ]
 }
 ```
+
+The frequency is its own field and the name is the name alone; the framework composes the label the
+game shows, `104.9 Your Station`, and refuses a name that carries a frequency.
 
 A track can also be a `url`, a live MP3 stream, as a station's only track; the player allows its
 host in AudioXL's `AudioXL.ini`. No durations, event names, Wwise ids, indices, TweakDB records,
@@ -71,11 +74,20 @@ writes what it registered to `r6/logs/mods/`; without it the logging compiles aw
 
 ## Settings
 
-**Mute radio when...** - twelve switches, all on by default, one per situation in which the game
-silences the pocket radio (a scene, a phone call, a club, fast travel and so on). On, a custom
-station goes quiet there as a vanilla station does. Off, a custom station keeps playing through it.
-The game's own stations are never affected. Combat and police heat have no switch: they are Wwise
-mix states on the radio buses and reach every station on the game's radio route alike.
+Four tabs in the Redscript Configuration Framework panel, every station and song on them read from
+the game when a save loads.
+
+- **Controls** - next and previous song, next and previous station, show what is playing, never
+  play this song again, jump to my station, each on a key of the player's own with an optional
+  modifier and an optional Radioport set; the song popup and an on-screen line for the Radioport.
+- **My station** - the station the radio comes on to, at any of three moments.
+- **Stations** - every station in dial order, the game's own included: a step-over switch, and
+  On / Off / Off while streaming per song.
+- **Mute** - station idents, DJ announcements, and **Mute the radio when...**: twelve switches,
+  all on by default, one per situation in which the game silences the Radioport (a scene, a phone
+  call, a club, fast travel and so on). They apply to every station on the Radioport, the game's
+  own included. Combat and police heat have no switch: they are Wwise mix states on the radio
+  buses and reach every station on the game's radio route alike.
 
 ## How it works
 
@@ -126,8 +138,11 @@ Every label the game shows is a localization key, never text. The framework mint
 and per title and registers the text against it, so the UI resolves a custom station the way it
 resolves a vanilla one.
 
-`Audio.reds` is the only place the framework talks to AudioXL: it registers each file on the game's
-`mod_sfx_radio` route, the type CDPR built for custom radio audio, and asks AudioXL for the Wwise id.
+`Audio.reds` is the only place the framework talks to AudioXL: it registers each file on the
+framework's own custom-sound type, `radioxl_radio` in `radioxl_routing.bnk`, which carries copies of
+a vanilla station's Broadcast Sends so a station sits at vanilla's level on every receiver, and asks
+AudioXL for the Wwise id. The game's own `mod_sfx_radio` type is the fallback when that bank is not
+loaded.
 
 ### `Dial.reds` - records and the script-side dial
 
@@ -156,7 +171,8 @@ The SDK's exports are version-qualified (`RED4ext::v1::PluginInfo`, `RED4EXT_V1_
 objects and logs what changes. It writes nothing into the game. It logs:
 
 - each station's listeners, active flag and voice handles
-- each station's schedule: state, current song, picks since the last ident, the RNG state
+- each station's schedule: state, current song, the remaining list, picks since the last ident, the
+  RNG state, and the track list again whenever the engine changes it
 - the station array order, and the DJ table the engine picks announcement stations from
 - a station's queued and playing announcement
 - the engine's custom-sound voice slots
@@ -184,24 +200,41 @@ from `probe/plugin`.
 ## Repository layout
 
 ```text
-plugin/src/Main.cpp          the binary patch, the natives
-plugin/src/Json.hpp          a strict JSON reader, every fault by line and column
+plugin/src/Main.cpp          the binary patch, the dial, the natives
+plugin/src/Clock.hpp         the engine's station clock, handed to AudioXL as each track's start
+plugin/src/Schedule.hpp      a station's remaining-tracks list, read and consumed for the song keys
 plugin/src/Manifest.hpp      the manifest checks, every fault by file and line
+plugin/src/Json.hpp          a strict JSON reader, every fault by line and column
 plugin/src/Duration.hpp      a track's length from its file headers
 plugin/tests/                the manifest reader's tests, run by ctest
 probe/                       RadioStationProbe, a development tool, never shipped
 r6/scripts/RadioXL/
-  RadioXL.reds  the three resource patches
+  RadioXL.reds               the three resource patches, and the natives' declarations
   Audio.reds                 the AudioXL bridge
   Dial.reds                  TweakDB records and the script-side dial
+  Restrictions.reds          the "Mute the radio when..." switches
+  Controls.reds, Input.reds, Deck.reds, Catalog.reds, MyStation.reds, Notifications.reds, State.reds
+                             the keys, the song deck, the station list, My station, the popups
+  Settings.reds              the settings panel, one provider, four tabs
+  Localization.reds, translations/
+                             the station names and titles, and the panel's strings
+  API.reds                   the 0.1.0 compatibility call
+r6/storages/RedscriptConfigFramework/
+                             the panel's card and the in-game docs page
 red4ext/plugins/RadioXL/
-  RadioXL.dll   the built plugin
+  RadioXL.dll                the built plugin
+  radioxl_routing.bnk        the framework's custom-sound type
   stations/README.md         the manifest reference, ships with the framework
+archive/pc/mod/RadioXL.archive
+                             the RadioXL glyph, the fallback station icon
+docs/                        what was measured about the engine
+example-station/, tools/make-example-station.py
+                             the Nexus optional download, a working station with generated audio
+tools/                       the routing bank builder, the loudness meter, the RadioExt converter
+site/                        the station builder page
 ```
 
-The worked example, Tool FM, is a manifest and eleven MP3s. Its audio is a personal copy of a
-commercial album and is never distributed, so that repository stays private; the manifest above is
-its manifest.
+The example station package is the worked example: `python tools/make-example-station.py` builds it.
 
 ## License
 
@@ -212,7 +245,9 @@ The RadioXL glyph is the exception: it is DigitalVixen's artwork and not covered
 
 ## Credits
 
-RED4ext by WopsS. AudioXL and RadioXL by DigitalVixen. Codeware, TweakXL and ArchiveXL by psiberx.
+RED4ext by WopsS. AudioXL and RadioXL 0.1.0 by DigitalVixen. Codeware and TweakXL by psiberx.
+Always My Radio Station by CozmiNU and Better Vehicle Radio by infinitY0369, which the keys, My
+station and the per-song switches grew from. RadioExt by keanuWheeze, for getting there first.
 
 ## Disclaimer
 

@@ -94,8 +94,9 @@ string, an `icon` part name with no `atlas` - each names its line in the RED4ext
 [RadioXL] YourMod/station.json: skipped
 ```
 
-A key the framework does not know is logged the same way and ignored, so a typo in `displayName`
-shows up rather than quietly leaving the station nameless.
+A key the framework does not know is logged the same way and ignored, so a misspelt key shows up in
+the log rather than quietly doing nothing; a misspelt required key also refuses the manifest as
+missing.
 
 ## What the manifest does NOT carry
 
