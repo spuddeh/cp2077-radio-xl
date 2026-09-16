@@ -17,7 +17,7 @@
 // are untouched.
 //
 // The walk reads engine memory by offset, so it is wrapped in SEH like the clock: a bad read hands
-// the deck an empty list and a false, and the deck falls back to its own bag.
+// the deck an empty list and -1, and the deck falls back to its own bag.
 
 #pragma once
 
@@ -277,9 +277,10 @@ inline void RadioXL_StationRemaining(RED4ext::IScriptable*, RED4ext::CStackFrame
 }
 
 // Takes `track` out of `station`'s remaining list and, when `countPick` is set, counts it as a
-// pick toward the next ident. True when the station and the track were found, whether or not the
-// track was still in the list; false for an unknown station or track, or a faulted read.
-inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+// pick toward the next ident. 1 when the entry was erased, 0 when the track was known but not in
+// the list (the engine had cleared or already drawn it; the pick still counts), -1 for an unknown
+// station or track, or a faulted read.
+inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
 {
     RED4ext::CName station;
     RED4ext::CName track;
@@ -290,7 +291,7 @@ inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* 
     ++aFrame->code;
     if (aOut)
     {
-        *aOut = false;
+        *aOut = -1;
     }
     if (radioxl::schedule::g_failed)
     {
@@ -305,6 +306,6 @@ inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* 
     }
     if (aOut)
     {
-        *aOut = result >= 0;
+        *aOut = result;
     }
 }

@@ -1263,7 +1263,7 @@ void RegisterNatives()
         fn->AddParam("CName", "station");
         fn->AddParam("CName", "track");
         fn->AddParam("Bool", "countPick");
-        fn->SetReturnType("Bool");
+        fn->SetReturnType("Int32");
         rtti->RegisterFunction(fn);
     }
 }

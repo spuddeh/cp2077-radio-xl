@@ -490,8 +490,11 @@ public class RadioXLDeck extends ScriptableService {
     GameInstance.GetAudioSystem(gi).RequestSongOnRadioStation(r.station.name, track.event);
     this.m_pendingKey = track.key;
     this.m_pendingAt = this.Now(gi);
-    let told: Bool = RadioXL_StationConsume(r.station.name, track.event, countPick);
-    let note: String = told ? (countPick ? "off the station's list, counted" : "off the station's list") : "the station's list is out of reach";
+    let told: Int32 = RadioXL_StationConsume(r.station.name, track.event, countPick);
+    let note: String = "the station's list is out of reach";
+    if told == 1 { note = "off the station's list"; }
+    if told == 0 { note = "not on the station's list"; }
+    if told >= 0 && countPick { note += ", counted"; }
     RadioXLLog(s"\(r.station.name): requested track \(index) \(track.event) (\(note))");
   }
 
