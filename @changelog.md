@@ -55,7 +55,7 @@
   with one log line. Measured with the probe's new `remain` line: four presses on Growl FM took
   remaining 15 to 11 and picks 1 to 5 with the RNG untouched; on Body Heat a blip followed the
   third press at the next natural song end and the counter went back to 0. Also seen: Body Heat's
-  track list grew from 13 to 15 about a minute after load (the US Cracks songs, quest fact set) and
+  track list grew from 13 to 15 about a minute after load (the two songs the Kerry quest unlocks, fact set on the save) and
   the engine emptied its remaining list when it did, so the first press after that drew from the
   bag until the engine's next own pick refilled the list.
 - Simple Radio Control folded in (#35), on a four-tab panel: Controls, My station, Stations,
