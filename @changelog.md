@@ -42,6 +42,19 @@
   drops it.
 
 ### Added
+- The catalog follows a station whose track list the engine changes during a session (#38).
+  Body Heat's metadata entry is swapped for `radio_station_05_pop_completed_sq017` (the same 13
+  tracks plus `off_the_leash` and `user_friendly`) once `sq017_enable_kerry_usc_radio_songs` is
+  set, about a minute after load; the pairing is hardcoded in the exe and it is the only such
+  variant, so no other station changes. `RadioXL_StationTracks` (`Schedule.hpp`) hands the
+  catalog the live list through the station object; `Catalog.Refresh` rebuilds one station's
+  tracks in place, keeping known track objects and titling new ones from the same table as at
+  build, and runs when the deck or the never-again key meets a track it does not know and, for
+  every station, when the Stations tab draws (`RefreshAll`, the schema is rebuilt per open). The
+  swap also leaves the remaining list with no buffer, so `Consume`'s refill grows the list through
+  the SDK `DynArray` (Clear, Reserve, PushBack: the engine's own allocator by hash) instead of
+  requiring capacity. Measured: the tab lists both songs after the swap, the next key draws them,
+  and the probe's `remain` line (now with `cap=`) went 0 cap 13 to 14 cap 19 on the first press.
 - A song the keys request leaves the station's own remaining list and counts as a pick (#36).
   Two natives in `plugin/src/Schedule.hpp` on the station object the clock resolves, any state:
   `RadioXL_StationRemaining(station: CName) -> array<CName>` maps the entries of `+0x160` (count
