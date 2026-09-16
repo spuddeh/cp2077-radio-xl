@@ -7,7 +7,7 @@
   `audioRadioSpeakerType` as `Stanley`, false or absent writes `None`; the native
   `RadioXL_StationSpeaker` (String) becomes `RadioXL_StationNews` (Bool) and `RadioXLSpeaker` is
   gone. No other speaker is offered: Mike's lines name Morro Rock, Ash is bound to Growl FM by
-  name, and Stanley's name no station. A `speaker` key is logged as replaced and ignored. Traced
+  name, and Stanley's name no station. A `speaker` key is reported as an unknown key. Traced
   on 2.31: a queued announcement resolves through the token table (`0x4fe680`, last station in hash
   order with any listener), an unqueued one through `0xb44688` (first match in the nearby list);
   both require the station's speaker to match. A Stanley greeting was heard on Tool FM.

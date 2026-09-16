@@ -250,8 +250,8 @@ void TestWarnings()
     Check(r.station.gain == 1.0f, "gain clamped");
     Check(r.Logged("Mod/station.json:5: \"atlas\" without \"icon\" does nothing - ignored"), "atlas without icon named", r.Joined());
     Check(r.Logged("Mod/station.json:6: unknown track key \"titel\" - ignored"), "unknown track key named", r.Joined());
-    Check(r.Logged("Mod/station.json:7: \"speaker\" is replaced by \"news\": true - ignored"), "speaker points at news", r.Joined());
-    Check(!r.station.news, "speaker does not set news");
+    Check(r.Logged("Mod/station.json:7: unknown manifest key \"speaker\" - ignored"), "speaker named as unknown", r.Joined());
+    Check(!r.station.news, "an unknown key does not set news");
     Check(r.log.size() == 5, "exactly five warnings", r.Joined());
 }
 

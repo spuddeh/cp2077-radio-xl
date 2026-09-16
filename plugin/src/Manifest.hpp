@@ -182,7 +182,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     };
 
-    unknownKeys(root, {"name", "displayName", "icon", "atlas", "news", "speaker", "gain", "tracks"}, "manifest");
+    unknownKeys(root, {"name", "displayName", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -231,11 +231,6 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
     {
         aOut.news = news->boolean;
     }
-    if (const JsonValue* speaker = root.Find("speaker"))
-    {
-        at(speaker->line, "\"speaker\" is replaced by \"news\": true - ignored");
-    }
-
     if (const JsonValue* gain = expect(root, "gain", JsonValue::Kind::Number, false))
     {
         if (gain->number < 0.0 || gain->number > 1.0)
