@@ -38,6 +38,14 @@ export function iconTarget(s: Pick<ManifestInput, 'iconMode' | 'iconImage' | 'ic
   return { part: part || fallback.part, atlas: (atlas || fallback.atlas).toLowerCase() }
 }
 
+/**
+ * An `icon` the plugin reads as a TweakDB record rather than an atlas part: `UIIcon.` and at least
+ * one character after it (`IsIconRecord` in Manifest.hpp). Anything else is a part, which needs an atlas.
+ */
+export function isIconRecord(icon: string): boolean {
+  return /^UIIcon\..+/.test(icon.trim())
+}
+
 export interface Fault {
   field: string
   message: string
@@ -86,8 +94,18 @@ export function checkManifest(s: ManifestInput): Fault[] {
     faults.push({ field: 'tracks', message: `No audio for ${missing.map((t) => t.file).join(', ')}. Remove the track or open the station with its files.` })
   if (s.tracks.some((t) => t.url) && s.tracks.length > 1)
     faults.push({ field: 'tracks', message: 'A station with a stream plays that stream only; remove the other tracks.' })
+  // A station opened or converted can carry a track the form would not have made.
+  const badUrl = s.tracks.filter((t) => t.url && !/^https?:\/\//i.test(t.url))
+  if (badUrl.length)
+    faults.push({ field: 'tracks', message: `A stream URL starts with http:// or https://: ${badUrl.map((t) => t.url).join(', ')}` })
+  if (s.tracks.some((t) => t.url && t.ident))
+    faults.push({ field: 'tracks', message: 'A stream cannot be an ident. An ident is a file that plays between songs.' })
+  if (s.tracks.some((t) => !t.url && !t.file.trim()))
+    faults.push({ field: 'tracks', message: 'A track has no file name.' })
   if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
     faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
+  else if (s.iconMode === 'record' && s.iconChoice === 'other' && !isIconRecord(s.iconRecord))
+    faults.push({ field: 'icon', message: 'An icon record starts with UIIcon. and a name. RadioXL reads anything else as an atlas part, which needs its atlas.' })
   if (s.iconMode === 'atlas' && (!s.iconPart.trim() || !s.iconAtlas.trim()))
     faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
   if (s.iconMode === 'image' && !s.iconImage)
