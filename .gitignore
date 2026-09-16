@@ -19,3 +19,6 @@ __pycache__/
 
 # The example station package is built by tools/make-example-station.py; the zip is not committed
 example-station/build/
+
+# Release zips downloaded or built at the root are never committed
+/*.zip
