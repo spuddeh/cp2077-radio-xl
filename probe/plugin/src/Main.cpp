@@ -304,6 +304,11 @@ struct Sched
     uint8_t picks;
     uint8_t active;
     uint32_t remaining;
+    // The remaining list's first words, read 32 bits at a time: a list of 4-byte indices reads as
+    // small numbers, a list of 8-byte entries reads as pairs with a zero high half. Reading by the
+    // narrower width can never run past a 4-byte buffer.
+    uint32_t remainWords;
+    uint32_t remainRaw[64];
     uint32_t blipCursor;
     uint64_t current;
     uint64_t blip;
@@ -324,6 +329,7 @@ Sched g_snap[kMaxStations];
 std::unordered_map<uintptr_t, std::string> g_lastSched;
 std::unordered_map<uintptr_t, bool> g_listed;
 std::unordered_map<uintptr_t, std::string> g_lastAnnounce;
+std::unordered_map<uintptr_t, std::string> g_lastRemain;
 
 struct DjEntry
 {
@@ -384,6 +390,13 @@ uint32_t ReadSchedule()
         s.picks = Read<uint8_t>(station + kStationPicks);
         s.active = Read<uint8_t>(station + kStationActive);
         s.remaining = Read<uint32_t>(station + kStationRemainingCount);
+        s.remainWords = 0;
+        const auto remainingEntries = Read<uintptr_t>(station + kStationRemaining);
+        for (uint32_t w = 0; remainingEntries && w < s.remaining && w < 64; ++w)
+        {
+            s.remainRaw[w] = Read<uint32_t>(remainingEntries + w * 4);
+            ++s.remainWords;
+        }
         s.blipCursor = Read<uint32_t>(station + kStationBlipCursor);
         s.current = Read<uint64_t>(station + kStationHandle);
         s.blip = Read<uint64_t>(station + kStationBlip);
@@ -567,6 +580,23 @@ void Schedule()
                     std::snprintf(clk, sizeof(clk), " state=%d clock=%.2f ", s.state, s.clock);
                     Log("announce " + name + clk + ann);
                 }
+            }
+        }
+
+        // The remaining list's words, on every change of the list. `remain <station> <count>: w0 w1 ...`
+        {
+            std::string remain = std::to_string(s.remaining) + ":";
+            for (uint32_t w = 0; w < s.remainWords; ++w)
+            {
+                char word[16];
+                std::snprintf(word, sizeof(word), " %08x", s.remainRaw[w]);
+                remain += word;
+            }
+            auto& lastRemain = g_lastRemain[s.station];
+            if (lastRemain != remain)
+            {
+                lastRemain = remain;
+                Log("remain " + name + " " + remain);
             }
         }
 
