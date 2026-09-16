@@ -31,6 +31,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # The runner image carries Google Chrome; the browser tests skip where it is missing.
+      - run: npm run test:browser
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site/dist

@@ -10,7 +10,8 @@
     "tokens": "python scripts/ink-tokens.py",
     "prebuild": "node scripts/copy-libarchive.mjs",
     "predev": "node scripts/copy-libarchive.mjs",
-    "test": "node --import ./tests/register.mjs --test \"tests/**/*.test.ts\""
+    "test": "node --import ./tests/register.mjs --test \"tests/**/*.test.ts\"",
+    "test:browser": "node --test \"tests/browser/*.browser.test.mjs\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
