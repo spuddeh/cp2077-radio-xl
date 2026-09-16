@@ -443,7 +443,8 @@
   background: #050708;
   outline: 1px solid color-mix(in srgb, var(--blue) 12%, transparent);
 }
-.wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* The screen is a render texture, so nothing outside its bounds reaches the radio. */
+.wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
 /* World screens are emissive: the game's bloom is approximated with a glow. */
 .wr-screen { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 55%, transparent)); }
 .wr-echo { filter: none; }

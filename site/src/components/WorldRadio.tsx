@@ -55,9 +55,9 @@ const ROTATED: WorldLayout[] = ['tall']
 const MAX_HEIGHT = 520
 
 /**
- * radioLogo fits its texture, so a logo draws at its image's own size. The game's station logos are
- * at most 400 wide and 328 tall in radiostations_icons; the preview shows a larger image at that
- * size rather than letting one image fill the screen.
+ * radioLogo fits its texture, so a logo draws at its image's own size and the preview draws it the
+ * same way. These are the largest of the game's own station logos in radiostations_icons, which the
+ * page states as the sizes to aim at.
  */
 export const LOGO_MAX = { w: 400, h: 328 }
 
@@ -107,8 +107,7 @@ export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: st
       )
     }
     if (n.kind === 'image' && n.role === 'logo') {
-      const fit = Math.min(1, LOGO_MAX.w / logoSize[0], LOGO_MAX.h / logoSize[1])
-      const [lw, lh] = [logoSize[0] * fit, logoSize[1] * fit]
+      const [lw, lh] = logoSize
       return (
         <span
           key="logo"

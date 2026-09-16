@@ -148,9 +148,10 @@ export function App() {
   const imageSizeNote = s.iconImageSize && (
     <>
       {' '}
-      This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px. A world radio draws a logo at its texture&apos;s
-      size: the game&apos;s own logos are 240 to {LOGO_MAX.w} px wide and 130 to {LOGO_MAX.h} px tall, and{' '}
-      {ICON_IMAGE_RECOMMENDED} x {ICON_IMAGE_RECOMMENDED} px is as large as one is worth making.
+      This image is {s.iconImageSize[0]} x {s.iconImageSize[1]} px, and the previews draw it at that size, as a world
+      radio does. The game&apos;s own logos are 240 to {LOGO_MAX.w} px wide and 130 to {LOGO_MAX.h} px tall;{' '}
+      {ICON_IMAGE_RECOMMENDED} x {ICON_IMAGE_RECOMMENDED} px is as large as one is worth making, and a tall one covers
+      more of a world radio&apos;s screen.
     </>
   )
   const textureSize = s.iconImageSize && iconTextureSize(s.iconImageSize)
@@ -166,12 +167,7 @@ export function App() {
       the previews; the archive itself goes back into the zip untouched.
     </>
   )
-  const previewCapNotice = s.iconImageSize &&
-    (s.iconImageSize[0] > LOGO_MAX.w || s.iconImageSize[1] > LOGO_MAX.h) && (
-      <>
-        Larger than the largest logo of the game, so the preview shows it scaled to fit {LOGO_MAX.w} x {LOGO_MAX.h} px.
-      </>
-    )
+
   const hasWork = s.tracks.length > 0 || s.stationName !== '' || s.frequency !== ''
   const [about, setAbout] = useState(false)
 
@@ -384,7 +380,7 @@ export function App() {
                   </Row>
                   <Row
                     label="Preview image"
-                    notice={archiveNotice || previewCapNotice || undefined}
+                    notice={archiveNotice || undefined}
                     note={
                       <>
                         Shows your icon in the previews, tinted the way the game tints it. The zip does not include it.
