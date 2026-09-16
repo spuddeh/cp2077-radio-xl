@@ -1257,6 +1257,14 @@ void RegisterNatives()
         rtti->RegisterFunction(fn);
     }
     {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationTracks", "RadioXL_StationTracks",
+                                                    &RadioXL_StationTracks);
+        fn->flags.isNative = true;
+        fn->AddParam("CName", "station");
+        fn->SetReturnType("array:CName");
+        rtti->RegisterFunction(fn);
+    }
+    {
         auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationConsume", "RadioXL_StationConsume",
                                                     &RadioXL_StationConsume);
         fn->flags.isNative = true;

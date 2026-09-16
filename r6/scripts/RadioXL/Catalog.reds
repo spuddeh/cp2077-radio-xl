@@ -60,6 +60,7 @@ public class RadioXLCatalog extends ScriptableService {
   private let m_token: ref<ResourceToken>;
   private let m_contentToken: ref<ResourceToken>;
   private let m_stations: array<ref<RadioXLCatalogStation>>;
+  private let m_titles: ref<audioRadioTracksMetadata>;
   private let m_built: Bool;
 
   private let m_identsMuted: Bool;
@@ -123,6 +124,7 @@ public class RadioXLCatalog extends ScriptableService {
       let table = entry as audioRadioTracksMetadata;
       if IsDefined(table) { titles = table; }
     }
+    this.m_titles = titles;
     let stations: array<ref<RadioXLCatalogStation>>;
     let trackCount: Int32 = 0;
     let names: String = "";
@@ -182,6 +184,60 @@ public class RadioXLCatalog extends ScriptableService {
         return;
       }
       i += 1;
+    }
+  }
+
+  // --- keeping up with the engine -----------------------------------------------------------------
+
+  // Brings one station's track list in line with the engine's live one. The cooked resource this
+  // catalog is built from is a snapshot, and a quest can add tracks to a station during a session
+  // (Body Heat gains two once the Kerry fact is set), so the list comes from the plugin. Tracks
+  // already known keep their objects; a new one is titled from the same table as at build, and a
+  // song the game flags not streamer friendly starts Off while streaming, as at build. True when
+  // the list changed.
+  public func Refresh(name: CName) -> Bool {
+    let station = this.Station(name);
+    if !IsDefined(station) { return false; }
+    let live: array<CName> = RadioXL_StationTracks(name);
+    let n: Int32 = ArraySize(live);
+    if n == 0 { return false; }
+    if n == ArraySize(station.tracks) {
+      let same: Bool = true;
+      let i: Int32 = 0;
+      while same && i < n {
+        if NotEquals(station.tracks[i].event, live[i]) { same = false; }
+        i += 1;
+      }
+      if same { return false; }
+    }
+    let controls = RadioXLControls.Get();
+    let tracks: array<ref<RadioXLCatalogTrack>>;
+    let added: Int32 = 0;
+    for event in live {
+      let known = this.Track(station, event);
+      if IsDefined(known) {
+        ArrayPush(tracks, known);
+      } else {
+        let track = new RadioXLCatalogTrack();
+        track.event = event;
+        track.streamingFriendly = true;
+        this.FillTitle(this.m_titles, track);
+        if !track.streamingFriendly && IsDefined(controls) {
+          controls.SetSongState(track.event, RadioXL_SongStreamerOff());
+        }
+        ArrayPush(tracks, track);
+        added += 1;
+      }
+    }
+    RadioXLLog(s"\(name): track list refreshed from the engine, \(ArraySize(station.tracks)) to \(n) (\(added) new)");
+    station.tracks = tracks;
+    return true;
+  }
+
+  // Every station, for the panel: one walk of the manager per station, cheap enough per open.
+  public func RefreshAll() -> Void {
+    for station in this.m_stations {
+      this.Refresh(station.name);
     }
   }
 

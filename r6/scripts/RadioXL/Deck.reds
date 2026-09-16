@@ -263,6 +263,9 @@ public class RadioXLDeck extends ScriptableService {
     if !r.IsValid() { return; }
     let catalog = RadioXLCatalog.Get();
     let index: Int32 = catalog.IndexOf(r.station, NameToHash(r.reported));
+    if index < 0 && catalog.Refresh(r.station.name) {
+      index = catalog.IndexOf(r.station, NameToHash(r.reported));
+    }
     if index < 0 {
       RadioXLLog("never again: the playing track is not in the catalog");
       return;
@@ -316,6 +319,9 @@ public class RadioXLDeck extends ScriptableService {
     if !r.IsValid() { return; }
     let catalog = RadioXLCatalog.Get();
     let index = catalog.IndexOf(r.station, key);
+    if index < 0 && catalog.Refresh(r.station.name) {
+      index = catalog.IndexOf(r.station, key);
+    }
     if index < 0 { return; }
     // A request is answered by the receiver a moment later, and until then the game still
     // reports the old track. A second report of that old track is the lag, not a new arrival.
@@ -400,20 +406,19 @@ public class RadioXLDeck extends ScriptableService {
   private func Draw(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
                     streamer: Bool, enabledOnly: Bool) -> Int32 {
     let controls = RadioXLControls.Get();
-    let count: Int32 = ArraySize(station.tracks);
     let remaining: array<CName> = RadioXL_StationRemaining(station.name);
     let listed: Int32 = ArraySize(remaining);
-    let pool: array<Int32>;
-    for event in remaining {
-      let index: Int32 = 0;
-      while index < count && NotEquals(station.tracks[index].event, event) { index += 1; }
-      if index < count && this.Qualifies(gi, station, index, current, streamer, enabledOnly, controls) {
-        ArrayPush(pool, index);
-      }
+    let unknown: Bool = false;
+    let pool: array<Int32> = this.PoolFrom(gi, station, remaining, current, streamer, enabledOnly, controls, unknown);
+    // A name the catalog does not know is a track the engine added since the catalog was built;
+    // the catalog catches up and the pool is built again.
+    if unknown && RadioXLCatalog.Get().Refresh(station.name) {
+      pool = this.PoolFrom(gi, station, remaining, current, streamer, enabledOnly, controls, unknown);
     }
     this.m_refill = false;
     if ArraySize(pool) == 0 {
       this.m_refill = true;
+      let count: Int32 = ArraySize(station.tracks);
       let i: Int32 = 0;
       while i < count {
         if this.Qualifies(gi, station, i, current, streamer, enabledOnly, controls) { ArrayPush(pool, i); }
@@ -431,6 +436,25 @@ public class RadioXLDeck extends ScriptableService {
       RadioXLLog(s"\(station.name): drew from the station's list (\(n) of \(listed) qualify)");
     }
     return pool[j];
+  }
+
+  // The catalog indices of the named tracks that a draw may land on. `unknown` is set when a name
+  // matched no catalog track.
+  private func PoolFrom(gi: GameInstance, station: ref<RadioXLCatalogStation>, names: array<CName>, current: Int32,
+                        streamer: Bool, enabledOnly: Bool, controls: ref<RadioXLControls>, out unknown: Bool) -> array<Int32> {
+    let pool: array<Int32>;
+    let count: Int32 = ArraySize(station.tracks);
+    unknown = false;
+    for event in names {
+      let index: Int32 = 0;
+      while index < count && NotEquals(station.tracks[index].event, event) { index += 1; }
+      if index >= count {
+        unknown = true;
+      } else if this.Qualifies(gi, station, index, current, streamer, enabledOnly, controls) {
+        ArrayPush(pool, index);
+      }
+    }
+    return pool;
   }
 
   // Whether a draw may land on this track: not the one playing, one the game would play, and,

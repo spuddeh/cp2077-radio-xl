@@ -79,6 +79,9 @@ public native func RadioXL_StationTrackKeyHash64(index: Int32, track: Int32) -> 
 // `refill` first refills the list with every track, as the engine does when it runs dry. 2 refilled
 // and erased, 1 erased, 0 known but not in the list (the pick still counts), -1 unknown.
 public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
+// The station's live track list, which a quest can grow during a session; the cooked resource the
+// catalog reads is a snapshot. Empty when the plugin cannot see the station.
+public native func RadioXL_StationTracks(station: CName) -> array<CName>;
 public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool, refill: Bool) -> Int32;
 
 // A station is assembled out of the systems the game already has, in this order:

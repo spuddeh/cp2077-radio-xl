@@ -142,6 +142,35 @@ inline int ReadRemaining(uint64_t aStation, size_t aTracksOffset, uint64_t* aNam
     return n;
 }
 
+// The names in a station's live track list, in order: the metadata the station object points at,
+// which a quest can grow during a session. Returns the number written, or -1 when the station is
+// not in the manager.
+inline int ReadTracks(uint64_t aStation, size_t aTracksOffset, uint64_t* aNames, uint32_t aMax)
+{
+    const auto station = FindStation(aStation);
+    if (!station || !aTracksOffset)
+    {
+        return -1;
+    }
+    const auto metadata = clock::Read<uintptr_t>(station + kStationMetadata);
+    if (!metadata)
+    {
+        return -1;
+    }
+    const auto tracks = clock::Read<uintptr_t>(metadata + aTracksOffset);
+    const auto trackCount = clock::Read<uint32_t>(metadata + aTracksOffset + kDynArraySize);
+    if (!tracks || trackCount > kMaxTracks)
+    {
+        return trackCount == 0 ? 0 : -1;
+    }
+    int n = 0;
+    for (uint32_t i = 0; i < trackCount && static_cast<uint32_t>(n) < aMax; ++i)
+    {
+        aNames[n++] = clock::Read<uint64_t>(tracks + static_cast<size_t>(i) * 8);
+    }
+    return n;
+}
+
 // Takes a track out of a station's remaining list, the way the picker does when it draws it, and
 // when `aCount` is set adds one to the pick counter, the way the picker does on every pick. When
 // `aRefill` is set the list is first refilled with 0..n-1, the way the picker refills it when it
@@ -237,6 +266,19 @@ inline bool SafeReadRemaining(uint64_t aStation, size_t aTracksOffset, uint64_t*
     }
 }
 
+inline bool SafeReadTracks(uint64_t aStation, size_t aTracksOffset, uint64_t* aNames, uint32_t aMax, int* aOut)
+{
+    __try
+    {
+        *aOut = ReadTracks(aStation, aTracksOffset, aNames, aMax);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
 inline bool SafeConsume(uint64_t aStation, uint64_t aTrack, bool aCount, bool aRefill, size_t aTracksOffset,
                         int* aOut)
 {
@@ -284,6 +326,38 @@ inline void RadioXL_StationRemaining(RED4ext::IScriptable*, RED4ext::CStackFrame
     int n = 0;
     if (!radioxl::schedule::SafeReadRemaining(station.hash, radioxl::schedule::TracksOffset(), names,
                                               radioxl::schedule::kMaxTracks, &n))
+    {
+        radioxl::schedule::Fail("read");
+        return;
+    }
+    for (int i = 0; i < n; ++i)
+    {
+        aOut->PushBack(RED4ext::CName(names[i]));
+    }
+}
+
+// A station's live track list by event name, in the engine's order. Empty when the station is not
+// in the manager or after a faulted read. This is the list a quest grows during a session; the
+// cooked resource the catalog was built from is a snapshot.
+inline void RadioXL_StationTracks(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame,
+                                  RED4ext::DynArray<RED4ext::CName>* aOut, int64_t)
+{
+    RED4ext::CName station;
+    RED4ext::GetParameter(aFrame, &station);
+    ++aFrame->code;
+    if (!aOut)
+    {
+        return;
+    }
+    aOut->Clear();
+    if (radioxl::schedule::g_failed)
+    {
+        return;
+    }
+    uint64_t names[radioxl::schedule::kMaxTracks] = {};
+    int n = 0;
+    if (!radioxl::schedule::SafeReadTracks(station.hash, radioxl::schedule::TracksOffset(), names,
+                                           radioxl::schedule::kMaxTracks, &n))
     {
         radioxl::schedule::Fail("read");
         return;

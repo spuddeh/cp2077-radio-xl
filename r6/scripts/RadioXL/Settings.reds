@@ -351,6 +351,9 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       b.Section("RadioXL.tabStations").Label("RadioXL.noteNoCatalog");
       return;
     }
+    // The schema is rebuilt on every panel open, so this is where a track a quest added since
+    // the catalog was built gets its row.
+    catalog.RefreshAll();
     b.Section("RadioXL.tabStations");
     b.Label("RadioXL.labStations1");
     b.Label("RadioXL.labStations2");
