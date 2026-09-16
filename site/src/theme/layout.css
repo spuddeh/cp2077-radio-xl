@@ -102,6 +102,25 @@
 .drop.over { --edge: var(--blue); --edge-opacity: 1; --fill: var(--faint-blue); --fill-opacity: 0.6; }
 .drop-formats { margin-left: auto; font-size: var(--font-readable-x-small); opacity: 0.5; }
 
+.stream-add { margin-top: 10px; display: grid; gap: 6px; }
+.stream-add label { font-size: var(--font-readable-x-small); opacity: 0.6; }
+.stream-row { display: flex; gap: 10px; align-items: stretch; }
+.stream-row .cell { flex: 1; }
+.stream-button {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.4;
+  border: 0;
+  background: none;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-size: var(--font-readable-x-small);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.stream-button:hover:enabled { --edge-opacity: 1; }
+.stream-button:disabled { cursor: default; opacity: 0.35; }
+
 .tracks { list-style: none; margin: 14px 0 0; padding: 0; }
 .tracks-head,
 .track {

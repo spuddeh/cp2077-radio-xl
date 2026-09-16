@@ -17,11 +17,18 @@ import { Tooltip } from './Tooltip'
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
 
 export function Tracks() {
-  const { tracks, addFiles, set } = useStation()
+  const { tracks, addFiles, addStream, set } = useStation()
   const [confirming, setConfirming] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([])
+  const [stream, setStream] = useState('')
+  const streamOk = /^https?:\/\/\S+$/i.test(stream.trim())
+  const addStreamTrack = () => {
+    if (!streamOk) return
+    addStream(stream.trim())
+    setStream('')
+  }
   const sensors = useSensors(
     // A small travel before a drag starts, so a click on the handle is still a click.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -80,6 +87,29 @@ export function Tracks() {
         />
       </div>
       {skipped.length > 0 && <Fault>Not an audio file AudioXL reads: {skipped.join(', ')}</Fault>}
+
+      <div className="stream-add">
+        <label htmlFor="stream-url">Or a stream, which plays in place of any files:</label>
+        <div className="stream-row">
+          <div className="cell ink-frame">
+            <input
+              id="stream-url"
+              type="text"
+              value={stream}
+              spellCheck={false}
+              placeholder="https://example.com/stream.mp3"
+              onChange={(e) => setStream(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addStreamTrack()
+              }}
+            />
+          </div>
+          <button type="button" className="ink-frame stream-button" disabled={!streamOk} onClick={addStreamTrack}>
+            Add stream
+          </button>
+        </div>
+        {stream.trim() !== '' && !streamOk && <Fault>A stream URL starts with http:// or https://</Fault>}
+      </div>
 
       {tracks.length > 0 && (
         <>
@@ -142,6 +172,7 @@ function TrackRow(props: { track: Track; index: number }) {
           {t.url ? `Stream: ${t.url}` : t.source ? t.file : `${t.file} (no audio file)`}
         </span>
       </div>
+      {t.url ? null : (
       <Tooltip
         title="Ident"
         text="A station ident, jingle or ad. One plays between songs after every third song, and it shows no title."
@@ -155,6 +186,7 @@ function TrackRow(props: { track: Track; index: number }) {
           Ident
         </button>
       </Tooltip>
+      )}
       <button type="button" className="track-remove" aria-label={`Remove ${t.file}`} onClick={() => removeTrack(t.id)} />
     </li>
   )

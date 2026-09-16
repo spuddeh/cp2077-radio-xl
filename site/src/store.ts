@@ -56,6 +56,8 @@ interface StationState {
   extras: { path: string; source: Blob }[]
   set: (patch: Partial<StationState>) => void
   addFiles: (files: File[]) => void
+  /** A stream track. A station with one plays that stream only, so it replaces the track list. */
+  addStream: (url: string) => void
   updateTrack: (id: number, patch: Partial<Track>) => void
   removeTrack: (id: number) => void
   openStation: (station: ImportedStation) => void
@@ -131,6 +133,7 @@ export const useStation = create<StationState>((set) => ({
       })
       return { tracks: [...s.tracks, ...added] }
     }),
+  addStream: (url) => set({ tracks: [{ id: nextId++, file: '', title: '', ident: false, url }] }),
   updateTrack: (id, patch) => set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   removeTrack: (id) => set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
   openStation: (st) =>
