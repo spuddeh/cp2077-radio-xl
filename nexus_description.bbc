@@ -1,13 +1,13 @@
-[color=#e06666][size=6][b]- Introduction -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Introduction -[/b][/size][/color]
 
-RadioXL adds radio stations to Cyberpunk 2077 through the game's own radio. Added stations show up on the dial at their own frequency, in a car, on the Radioport and on the radios in the world, and everything that works for a vanilla station works for them: the radio popup, the dashboard readout, the equaliser icon, the radio hotkey, next and previous station, and the moments the game silences the radio. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
+RadioXL adds radio stations to Cyberpunk 2077 as stations of the game's own radio system. There is no external player and no second mixer: a station built on it is a real station inside the game's radio, its songs play through the game's own audio, and it sits on the dial at its own frequency, in a car, on the Radioport and on the radios in the world. Everything that works for a vanilla station works for it: the radio popup, the dashboard readout, the equaliser icon, the radio hotkey, next and previous station, and the moments the game silences the radio. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
 
 A station mod is one station.json and a folder of audio. RadioXL reads the rest from the files. No yaml, no script, no sound bank.
 
 [i]TL;DR - your music, on every radio in the game, through the game's own radio. (ﾉ◕ヮ◕)ﾉ[/i]
 
 
-[color=#e06666][size=6][b]- For Players -[/b][/size][/color]
+[color=#ffff00][size=6][b]- For Players -[/b][/size][/color]
 
 RadioXL is a framework. Install it, then install stations built on it, or build one yourself in the time it takes to copy a folder of songs. The [url=https://spuddeh.github.io/cp2077-radio-xl/]station builder page[/url] makes one from a form, icon included, and converts a RadioExt station.
 
@@ -35,7 +35,7 @@ Remove RadioXL and every station built on it. RadioXL keeps nothing in your save
 A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does not play on this release. Its script still compiles, and the log says the station was seen. The station's author writes the station.json below instead; the songs and the icon are reused as they are. If you had Simple Radio Control installed, remove it: its keys and settings are part of RadioXL now.
 
 
-[color=#e06666][size=6][b]- Adding a station -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Adding a station -[/b][/size][/color]
 
 A station is one folder under
 [code]red4ext\plugins\RadioXL\stations\<YourMod>\[/code]
@@ -68,7 +68,7 @@ holding a [b]station.json[/b] and the audio files it names.
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
 
 
-[color=#e06666][size=6][b]- Stations that stream -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Stations that stream -[/b][/size][/color]
 
 A station can play a live internet radio stream instead of music files. AudioXL fetches nothing from the internet until you allow it, in [b]red4ext\plugins\AudioXL\AudioXL.ini[/b]:
 [quote][code][Network]
@@ -81,7 +81,7 @@ Use the host the station's own page names; one [b]allowedHost[/b] line per host.
 A stream station joins the broadcast live when you tune in, after a second or two of buffering, and shows the station's own title rather than the song playing.
 
 
-[color=#e06666][size=6][b]- Settings -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Settings -[/b][/size][/color]
 
 Four tabs in the Redscript Configuration Framework panel. Every station and every song on them is read from the game when a save loads, so a song added by any radio mod is listed with nothing extra to install.
 
@@ -120,19 +120,19 @@ One section per station, in dial order, the game's own included.
 [/list]The two mutes are off by default, take effect straight away, and switching either back puts the sound in place exactly as it was. Combat and police heat have no switch: the game ducks and stops every station in those.
 
 
-[color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
+[color=#ffff00][size=6][b]- A key does nothing -[/b][/size][/color]
 
 Keys are ignored in menus and in photo mode, and the song and station keys only work with a radio on. Check the key is bound on the Controls tab and not only in the game's own settings, and that its modifier, if you use them, is held down. A station key does nothing while the radio plays through another mod's own player rather than the game's, which is how RadioExt stations work: pick a station from the radio itself and the keys work again. If the Stations tab says the station list has not been read, load a save and open the panel again; the list is read when a game loads, not at the main menu.
 
 
-[color=#e06666][size=6][b]- A station is not showing up -[/b][/size][/color]
+[color=#ffff00][size=6][b]- A station is not showing up -[/b][/size][/color]
 
 Install RedLogger and read r6\logs\mods\RadioXL.log after a launch. Every manifest fault is reported as [i]YourMod/station.json:<line>: what is wrong[/i], and a station with a fault is skipped whole. A station with no line in the log at all was not found: check the folder path above.
 
 If a station appears but sorts oddly against another one, check its frequency: two stations on the same number sit next to each other, the game's own first, and the log says which two.
 
 
-[color=#e06666][size=6][b]- Known Limits -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Known Limits -[/b][/size][/color]
 
 [list]
 [*]World radios and the car dashboard show no song titles for any station, the game's own included.[/*]
@@ -141,13 +141,13 @@ If a station appears but sorts oddly against another one, check its frequency: t
 [*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
 [/list]
 
-[color=#e06666][size=6][b]- Updates -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Updates -[/b][/size][/color]
 
 [i][u]0.3.0[/u][/i] - The rework: real engine stations, the station.json, streams, idents, news, the keys and the settings panel, the builder page.
-[i][u]0.1.0[/u][/i] - First release.
+[i][u]0.1.0[/u][/i] - First release, a script player, on the previous RadioXL page.
 
 
-[color=#e06666][size=6][b]- Credits -[/b][/size][/color]
+[color=#ffff00][size=6][b]- Credits -[/b][/size][/color]
 
 All my fantastic mod users who asked me to build this! I probably wouldn't have otherwise. :)
 
