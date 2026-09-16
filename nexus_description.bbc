@@ -151,7 +151,6 @@ If a station appears but sorts oddly against another one, check its frequency: t
 [color=#ffff00][size=6][b]- Known Limits -[/b][/size][/color]
 
 [list]
-[*]World radios and the car dashboard show no song titles for any station, the game's own included.[/*]
 [*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
 [*]Up to 127 stations.[/*]
 [*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
