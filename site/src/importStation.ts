@@ -127,7 +127,12 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     const title = typeof t.title === 'string' ? t.title : ''
     const ident = t.ident === true
     if (typeof t.url === 'string') {
-      tracks.push({ file: '', url: t.url, title, ident })
+      // The plugin refuses a track with both. A stream already plays on its own, so the url is the
+      // track and the file beside it goes; an ident cannot be a stream either.
+      if (typeof t.file === 'string' && t.file.trim())
+        notes.push(`A track named both a stream and a file (${t.file}). The stream was kept: a stream plays on its own.`)
+      if (ident) notes.push('A stream was marked as an ident, which RadioXL refuses. It came across as an ordinary track.')
+      tracks.push({ file: '', url: t.url, title, ident: false })
       continue
     }
     if (typeof t.file !== 'string') continue

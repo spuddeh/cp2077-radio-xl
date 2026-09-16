@@ -119,6 +119,14 @@ test('a manifest the page writes reads back the same', () => {
   assert.deepEqual(checkManifest(asFormState(written)), [])
 })
 
+test('a track with both a file and a stream keeps the stream', () => {
+  // The plugin refuses a track with both, so opening one keeps the stream and drops the file.
+  const state = asFormState(like({ tracks: [{ url: 'https://h/s.mp3', file: 'a.mp3' }] }))
+  state.tracks[0].file = 'a.mp3'
+  const written = buildManifest(state)
+  assert.deepEqual(written.tracks, [{ url: 'https://h/s.mp3' }])
+})
+
 test('a stream keeps its url and nothing else', () => {
   const written = buildManifest(asFormState(like({ tracks: [{ url: 'https://h/s.mp3' }] })))
   assert.deepEqual(written.tracks, [{ url: 'https://h/s.mp3' }])
