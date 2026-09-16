@@ -138,6 +138,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: var(--font-readable-small);
   opacity: 1;
 }
+/* One block of text beside the icon, and a path or a setting breaks rather than widening the row. */
+.row-note .note-text { min-width: 0; }
+.row-note code { overflow-wrap: anywhere; }
 .fault-icon {
   flex: none;
   width: 18px;

@@ -9,13 +9,13 @@ export function Row(props: { label: string; note?: ReactNode; fault?: string; no
       {props.notice ? (
         <div className="row-note notice">
           <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
-          {props.notice}
+          <span className="note-text">{props.notice}</span>
         </div>
       ) : null}
       {props.fault ? (
         <div className="row-note fault">
           <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
-          {props.fault}
+          <span className="note-text">{props.fault}</span>
         </div>
       ) : props.note ? (
         <div className="row-note">{props.note}</div>
@@ -28,7 +28,7 @@ export function Notice(props: { children: ReactNode }) {
   return (
     <p className="row-note notice">
       <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
-      {props.children}
+      <span className="note-text">{props.children}</span>
     </p>
   )
 }
@@ -37,7 +37,7 @@ export function Fault(props: { children: ReactNode }) {
   return (
     <p className="row-note fault">
       <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
-      {props.children}
+      <span className="note-text">{props.children}</span>
     </p>
   )
 }

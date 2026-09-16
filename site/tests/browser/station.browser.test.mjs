@@ -182,6 +182,27 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       notices.some((n) => n.includes('allowedHost = stream.example.com')),
       `the AudioXL.ini warning should name the host: ${JSON.stringify(notices)}`,
     )
+
+    // A warning row is a flex line of the icon and ONE block of text. Text left loose in it becomes a
+    // flex item per word, which is what broke the page when this warning was first written.
+    const layout = JSON.parse(
+      await page.evaluate(`(() => {
+        const form = document.querySelector('.form').getBoundingClientRect()
+        const notice = [...document.querySelectorAll('.row-note.notice')].find((e) => e.textContent.includes('AudioXL.ini'))
+        const box = notice.getBoundingClientRect()
+        return JSON.stringify({
+          formWidth: Math.round(form.width),
+          noticeWidth: Math.round(box.width),
+          items: notice.childElementCount,
+          looseText: [...notice.childNodes].filter((n) => n.nodeType === 3 && n.textContent.trim()).length,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        })
+      })()`),
+    )
+    assert.equal(layout.noticeWidth, layout.formWidth, 'the warning should fill the form column, no wider and no narrower')
+    assert.equal(layout.items, 2, 'a warning row holds the icon and one block of text')
+    assert.equal(layout.looseText, 0, 'text loose in the row becomes a flex item per word')
+    assert.equal(layout.overflow, 0, 'the page should not scroll sideways')
     assert.deepEqual(await page.errors(), [])
   })
 })
