@@ -113,7 +113,7 @@ The top of the tab says whether Streamer Mode is on right now, and while it is, 
 [*][b]Mute DJ announcements.[/b] Everything that takes a slot between your songs: Stanley's news bulletins, Maximum Mike's song intros and Growl FM's Ash. Kurt Hansen is left alone: he broadcasts over Dogtown rather than through your radio. A station's own spot is the setting above, not this one, and songs are never affected.[/*]
 Both are off by default, both take effect straight away, and switching either back puts the sound in place exactly as it was.
 [*][b]Mute the radio when...[/b] Twelve switches, all on by default, and they apply to every station on the Radioport, the game's own included. Each is a situation in which the game silences the radio: a scene, a phone call, a club, fast travel and so on. On, the Radioport goes quiet there exactly as the game does. Off, it keeps playing through it. A switch stands for a situation: turning off the holo call switch also lifts the locks a call brings with it, and the same for a scene and a vehicle scene.[/*]
-Combat and police heat have no switch. The game ducks and stops every station in those.
+More is planned here.
 
 
 [color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
