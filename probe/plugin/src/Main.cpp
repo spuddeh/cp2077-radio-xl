@@ -557,7 +557,7 @@ void Schedule()
     {
         const Sched& s = g_snap[i];
         const std::string name = Text(s.name);
-        // The track list is logged at first sight and again whenever its count changes: a quest can
+        // The track list is logged when a station is first seen and again whenever its count changes: a quest can
         // add tracks to a live station. The metadata pointer rides along, so a grown list and a
         // swapped object are told apart.
         if (s.metadata && g_tracksOffset)
