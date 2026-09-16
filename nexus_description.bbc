@@ -159,22 +159,21 @@ If a station appears but sorts oddly against another one, check its frequency: t
 [color=#ffff00][size=6][b]- Updates -[/b][/size][/color]
 
 [i][u]0.3.0[/u][/i] - The rework: real engine stations, the station.json, streams, idents, news, the keys and the settings panel, the builder page.
+[i][u]0.2.0[/u][/i] - Spuddeh's first attempt at a native radio framework, never released, and is what v0.3.0 turned into.
 [i][u]0.1.0[/u][/i] - First release, a script player, on the previous RadioXL page.
 
 
 [color=#ffff00][size=6][b]- Credits -[/b][/size][/color]
 
-All my fantastic mod users who asked me to build this! I probably wouldn't have otherwise. :)
-
-[url=https://www.nexusmods.com/profile/DigitalVixen]DigitalVixen[/url], for RadioXL 0.1.0, the groundwork this rework stands on, and for [url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url], which plays every song.
+[url=https://www.nexusmods.com/profile/DigitalVixen]DigitalVixen[/url], for RadioXL 0.1.0, the groundwork this rework stands on, and for [url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url], which plays every song and does all the heavy lifting!
 
 [url=https://www.nexusmods.com/cyberpunk2077/users/25354714]CozmiNU[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/16767]Always My Radio Station[/url] and [url=https://www.nexusmods.com/cyberpunk2077/users/129937823]infinitY0369[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/8864]Better Vehicle Radio[/url]: My station, the keys and the per-song switches grew from what those two mods do.
 
-[url=https://www.nexusmods.com/cyberpunk2077/mods/4591]RadioExt[/url] for getting there first and showing that people want their own stations.
+[url=https://www.nexusmods.com/cyberpunk2077/users/77476393]keanuWheeze[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/4591]RadioExt[/url]: he got there first and showed us all that people want their own stations.
 
 [url=https://www.nexusmods.com/profile/psiberx]psiberx[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url] and [url=https://www.nexusmods.com/cyberpunk2077/mods/4197]TweakXL[/url], and [url=https://www.nexusmods.com/profile/WopsS]WopsS[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/2380]RED4ext[/url], without which none of this suite exists.
 
 Thank you to all the wonderful mod authors who continue to create content for us all to enjoy for free!
 
-[center][size=2]Part of the DigitalVixen mod suite.[/size][/center]
-[center][size=2]You can now find me on Discord [url=https://discord.gg/TRuuDSrGWJ]here![/url][/size][/center]
+[center][size=2]Part of the DigitalVixen mod suite. With a bit of Spuddeh love. <3[/size][/center]
+[center][size=2]You can now find us on Discord [url=https://discord.gg/TRuuDSrGWJ]here![/url][/size][/center]
