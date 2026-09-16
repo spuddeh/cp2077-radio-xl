@@ -21,6 +21,7 @@ import type { Track } from '../src/store.ts'
 function asFormState(manifest: Record<string, unknown>): ManifestInput {
   const display = typeof manifest.displayName === 'string' ? manifest.displayName : ''
   const parts = display.match(/^\s*(\d{2,3}(?:\.\d+)?)\s*(.*)$/)
+  const field = typeof manifest.frequency === 'number' ? manifest.frequency : null
   const icon = typeof manifest.icon === 'string' ? manifest.icon : ''
   const atlas = typeof manifest.atlas === 'string' ? manifest.atlas : ''
   const tracks: Track[] = (Array.isArray(manifest.tracks) ? manifest.tracks : []).map((raw, i) => {
@@ -37,7 +38,7 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
     }
   })
   return {
-    frequency: parts ? parts[1] : '',
+    frequency: field !== null ? String(field) : parts ? parts[1] : '',
     stationName: parts ? parts[2].trim() : display,
     cname: typeof manifest.name === 'string' ? manifest.name : '',
     news: manifest.news === true,
@@ -56,7 +57,8 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
 
 const GOOD = {
   name: 'radio_station_20_tool',
-  displayName: '104.9 Tool FM',
+  frequency: 104.9,
+  displayName: 'Tool FM',
   icon: 'tool_fm',
   atlas: 'toolfm\\gui\\tool_fm.inkatlas',
   news: true,
@@ -66,14 +68,18 @@ const GOOD = {
   ],
 }
 
-/** A copy of the good manifest with one thing changed. */
+/** A copy of the good manifest with one thing changed; a key set to undefined is left out. */
 function like(patch: Record<string, unknown>): Record<string, unknown> {
-  return { ...structuredClone(GOOD), ...patch }
+  const out: Record<string, unknown> = { ...structuredClone(GOOD), ...patch }
+  for (const key of Object.keys(out)) if (out[key] === undefined) delete out[key]
+  return out
 }
 
 const REFUSED: [name: string, manifest: Record<string, unknown>][] = [
   ['name missing', like({ name: '' })],
   ['name with a space', like({ name: 'my station' })],
+  ['no frequency anywhere', like({ frequency: undefined, displayName: 'Tool FM' })],
+  ['frequency of zero', like({ frequency: 0 })],
   ['tracks empty', like({ tracks: [] })],
   ['track file empty', like({ tracks: [{ file: '' }] })],
   ['every track an ident', like({ tracks: [{ file: 'a.mp3', ident: true }] })],
@@ -85,6 +91,9 @@ const REFUSED: [name: string, manifest: Record<string, unknown>][] = [
 
 const ACCEPTED: [name: string, manifest: Record<string, unknown>][] = [
   ['the good manifest', GOOD],
+  ['a 0.3.0 manifest, the frequency at the front of the name', like({ frequency: undefined, displayName: '104.9 Tool FM' })],
+  ['a frequency with two decimals', like({ frequency: 88.85 })],
+  ['a frequency and no name', like({ displayName: undefined })],
   ['an icon record and no atlas', like({ icon: 'UIIcon.RadioHipHop', atlas: '' })],
   ['no icon at all', like({ icon: '', atlas: '' })],
   ['a stream as the one track', like({ tracks: [{ url: 'https://ice1.somafm.com/groovesalad-128-mp3' }] })],
@@ -111,6 +120,7 @@ test('a manifest the page writes reads back the same', () => {
   const state = asFormState(GOOD)
   const written = buildManifest(state)
   assert.equal(written.name, GOOD.name)
+  assert.equal(written.frequency, GOOD.frequency)
   assert.equal(written.displayName, GOOD.displayName)
   assert.equal(written.icon, GOOD.icon)
   assert.equal(written.atlas, GOOD.atlas)
@@ -135,4 +145,10 @@ test('a stream keeps its url and nothing else', () => {
 test('an ident is written without a title', () => {
   const written = buildManifest(asFormState(like({ tracks: [{ file: 'a.mp3', title: 'A' }, { file: 'ad.mp3', title: 'x', ident: true }] })))
   assert.deepEqual(written.tracks, [{ file: 'a.mp3', title: 'A' }, { file: 'ad.mp3', ident: true }])
+})
+
+test('a 0.3.0 manifest opened on the page is written back with the field', () => {
+  const written = buildManifest(asFormState(like({ frequency: undefined, displayName: '104.9 Tool FM' })))
+  assert.equal(written.frequency, 104.9)
+  assert.equal(written.displayName, 'Tool FM')
 })

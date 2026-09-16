@@ -51,13 +51,17 @@ export interface Fault {
   message: string
 }
 
+/** The label the game shows: the frequency, then the name, as the plugin composes it. */
 export function displayName(s: Pick<ManifestInput, 'frequency' | 'stationName'>): string {
   return [s.frequency.trim(), s.stationName.trim()].filter(Boolean).join(' ')
 }
 
 /** The station.json the plugin reads. Keys at their defaults are left out. */
 export function buildManifest(s: ManifestInput): Record<string, unknown> {
-  const m: Record<string, unknown> = { name: s.cname, displayName: displayName(s) }
+  const m: Record<string, unknown> = { name: s.cname }
+  const frequency = Number.parseFloat(s.frequency.trim())
+  if (Number.isFinite(frequency)) m.frequency = frequency
+  if (s.stationName.trim()) m.displayName = s.stationName.trim()
   if (s.news) m.news = true
   if (s.gain < 1) m.gain = Math.round(s.gain * 100) / 100
   if (s.iconMode === 'record') {
@@ -84,8 +88,8 @@ export function checkManifest(s: ManifestInput): Fault[] {
   if (!s.cname) faults.push({ field: 'cname', message: 'A station needs an ID.' })
   else if (!/^[A-Za-z0-9_]+$/.test(s.cname))
     faults.push({ field: 'cname', message: 'Letters, digits and underscores only.' })
-  if (!/^\d{2,3}(\.\d)?$/.test(s.frequency.trim()))
-    faults.push({ field: 'frequency', message: 'Without a number at the front, the station goes after every station that has one.' })
+  if (!/^\d{2,3}(\.\d{1,2})?$/.test(s.frequency.trim()))
+    faults.push({ field: 'frequency', message: 'A station needs a frequency, such as 90.5. It decides the place on the dial, and RadioXL refuses a station without one.' })
   if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
   else if (s.tracks.every((t) => t.ident))
     faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })

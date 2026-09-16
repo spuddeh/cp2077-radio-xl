@@ -312,7 +312,7 @@ export function App() {
                 </ul>
               )}
               <h2 className="section">Station</h2>
-              <Row label="Frequency" note="Decides the station's place on the dial." fault={s.frequency ? faultFor('frequency') : undefined}>
+              <Row label="Frequency" note="Decides the station's place on the dial. Required." fault={faultFor('frequency')}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
               </Row>
               <Row label="Name">

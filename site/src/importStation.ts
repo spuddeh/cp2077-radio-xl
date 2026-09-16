@@ -43,7 +43,7 @@ export interface ImportedStation {
 
 export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
-const KNOWN = new Set(['name', 'displayName', 'news', 'gain', 'icon', 'atlas', 'tracks'])
+const KNOWN = new Set(['name', 'frequency', 'displayName', 'news', 'gain', 'icon', 'atlas', 'tracks'])
 const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident'])
 /** Mod manager and OS files that are not part of a mod. */
 const JUNK = /(^|\/)(meta\.ini|desktop\.ini|thumbs\.db|\.ds_store)$/i
@@ -110,8 +110,15 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
   const ignored = Object.keys(m).filter((k) => !KNOWN.has(k))
   if (ignored.length) notes.push(`Keys RadioXL does not read were left out: ${ignored.join(', ')}.`)
 
+  // The frequency is its own field; a manifest written for 0.3.0 carried it at the front of the
+  // display name, and the plugin still reads it from there, so the page does too.
   const display = typeof m.displayName === 'string' ? m.displayName : ''
-  const freq = display.match(/^\s*(\d{2,3}(?:\.\d+)?)\s*(.*)$/)
+  const leading = display.match(/^\s*(\d{2,3}(?:\.\d+)?)\s*(.*)$/)
+  const field = typeof m.frequency === 'number' && Number.isFinite(m.frequency) ? m.frequency : null
+  const frequency = field !== null ? String(field) : leading ? leading[1] : ''
+  const stationName = leading ? leading[2].trim() : display.trim()
+  if (field === null && leading) notes.push(`The frequency ${leading[1]} was read from the front of the name; RadioXL now takes it as its own field, which Build .zip writes.`)
+  if (field !== null && leading) notes.push(`The name started with ${leading[1]} and the manifest also had frequency ${field}. The field was kept; the number was taken off the name.`)
   const icon = typeof m.icon === 'string' ? m.icon : ''
   const atlas = typeof m.atlas === 'string' ? m.atlas : ''
   const vanilla = VANILLA_STATIONS.find((v) => v.icon === icon)
@@ -174,8 +181,8 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
 
   return {
     folder: folderName,
-    frequency: freq ? freq[1] : '',
-    stationName: freq ? freq[2].trim() : display.trim(),
+    frequency,
+    stationName,
     cname: typeof m.name === 'string' ? m.name : '',
     news: m.news === true,
     gain: typeof m.gain === 'number' ? Math.max(0, Math.min(1, m.gain)) : 1,

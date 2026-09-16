@@ -39,12 +39,15 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
   const ignored = Object.keys(m).filter((k) => !KNOWN.has(k))
   if (ignored.length) notes.push(`RadioExt keys with nothing to map to were left out: ${ignored.join(', ')}.`)
 
+  // RadioExt's "fm" maps straight onto the manifest's frequency; the number RadioExt authors also
+  // put at the front of the display name is taken off the name and used only when "fm" is absent.
   const display = typeof m.displayName === 'string' ? m.displayName.trim() : ''
   const parts = display.match(/^\s*(\d{2,3}(?:\.\d+)?)\s*(.*)$/)
-  const fm = typeof m.fm === 'number' ? m.fm : null
-  const frequency = parts ? parts[1] : fm !== null ? String(fm) : ''
+  const fm = typeof m.fm === 'number' && Number.isFinite(m.fm) ? m.fm : null
+  const frequency = fm !== null ? String(fm) : parts ? parts[1] : ''
   const stationName = parts ? parts[2].trim() : display
-  if (!parts && fm !== null) notes.push(`The display name carries no frequency, so ${fm} came from "fm".`)
+  if (fm === null && parts) notes.push(`The station has no "fm", so the frequency ${parts[1]} came from the front of its name.`)
+  if (fm !== null && parts && Number.parseFloat(parts[1]) !== fm) notes.push(`The name started with ${parts[1]} but "fm" is ${fm}. The frequency is ${fm}; the number was taken off the name.`)
 
   // RadioExt's volume is a multiplier like the manifest's gain, and neither goes above 1.
   const volume = typeof m.volume === 'number' ? m.volume : 1
