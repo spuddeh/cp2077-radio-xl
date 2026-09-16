@@ -42,6 +42,17 @@
   drops it.
 
 ### Added
+- `frequency` is its own manifest field, a number, required (#40). `displayName` is the name alone
+  and the plugin composes the label (`Label`, `FrequencyText`: one decimal, two when written).
+  `Manifest.hpp` reads the field, refuses a manifest that has neither it nor a number at the front
+  of `displayName`, and for a 0.3.0 manifest takes the leading number as the frequency, strips it
+  from the name and logs a line asking for the field; with both, the field places the station and
+  the number is dropped from the name. The check runs last so an earlier fault stays the first
+  logged. `BuildDial` orders by the field and logs a shared frequency. `stations/README.md` gained
+  a section. The builder page writes the field and reads either form (`manifest.ts`,
+  `importStation.ts`; `importRadioExt.ts` maps `fm` straight across), a missing frequency is a
+  shown fault, and `manifest-rules.test.ts` carries the new accepted and refused cases. Tool FM and
+  Hangouts FM manifests moved to the field.
 - The catalog follows a station whose track list the engine changes during a session (#38).
   Body Heat's metadata entry is swapped for `radio_station_05_pop_completed_sq017` (the same 13
   tracks plus `off_the_leash` and `user_friendly`) once `sq017_enable_kerry_usc_radio_songs` is

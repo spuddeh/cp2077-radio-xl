@@ -160,8 +160,8 @@ using radioxl::Station;
 using radioxl::Track;
 
 // --- the dial ----------------------------------------------------------------------------------
-// The order a receiver steps through stations is by FREQUENCY, the number at the front of a
-// station's display name, and the game has no field for it: the fourteen's order is compiled into
+// The order a receiver steps through stations is by FREQUENCY, the manifest's own field, and the
+// game has no field for it: the fourteen's order is compiled into
 // two switches for the vehicle and two script maps for everything else. The plugin builds one
 // table of every station in that order and hands it to both. The fourteen's order comes from the
 // game's own switch at patch time; their frequencies, which decide where a custom station is
@@ -401,9 +401,9 @@ void LoadManifests()
         if (!duplicate)
         {
             Log(station.source + ": '" + station.name + "' with " +
-                std::to_string(station.tracks.size()) + " track(s), " + Clock(total) +
-                (station.displayName.empty() ? ", NO displayName - it will show its CName"
-                                             : ", '" + station.displayName + "'"));
+                std::to_string(station.tracks.size()) + " track(s), " + Clock(total) + ", '" +
+                radioxl::Label(station) + "'" +
+                (station.displayName.empty() ? " (NO displayName - the CName stands in)" : ""));
             g_stations.push_back(std::move(station));
         }
     }
@@ -412,19 +412,10 @@ void LoadManifests()
 std::vector<int32_t> g_dial;      // dial position -> ERadioStationList value
 std::vector<int32_t> g_position;  // ERadioStationList value -> dial position
 
-// The number at the front of a display name, or -1 when there is none. A station with no
-// frequency sits after every station that has one.
-float Frequency(const std::string& aDisplayName)
-{
-    const char* text = aDisplayName.c_str();
-    char* end = nullptr;
-    const double v = std::strtod(text, &end);
-    return (end && end != text && v >= 0.0) ? static_cast<float>(v) : -1.0f;
-}
-
 // Every station in dial order. The fourteen come first in the order the game's own switch gives
 // them; each custom station is then inserted before the first station whose frequency is above
-// its own, so a 93.7 lands between 92.9 and 95.2. Two customs on one frequency keep slot order.
+// its own, so a 93.7 lands between 92.9 and 95.2. Two stations on one frequency keep slot order,
+// the vanilla one first, and the tie is logged.
 using DialSwitch = uint32_t (*)(uint32_t);
 
 void BuildDial(DialSwitch aIndexToDial)
@@ -457,7 +448,12 @@ void BuildDial(DialSwitch aIndexToDial)
     auto frequencyOf = [](int32_t aStation)
     {
         return aStation < kVanillaCount ? kVanillaFrequency[aStation]
-                                        : Frequency(g_stations[aStation - kVanillaCount].displayName);
+                                        : g_stations[aStation - kVanillaCount].frequency;
+    };
+    auto nameOf = [](int32_t aStation) -> std::string
+    {
+        return aStation < kVanillaCount ? "vanilla station " + std::to_string(aStation)
+                                        : g_stations[aStation - kVanillaCount].name;
     };
 
     std::vector<int32_t> customs;
@@ -476,6 +472,11 @@ void BuildDial(DialSwitch aIndexToDial)
         {
             at = std::find_if(order.begin(), order.end(),
                               [&](int32_t other) { return frequencyOf(other) > f; });
+            if (at != order.begin() && frequencyOf(*(at - 1)) == f)
+            {
+                Log(nameOf(station) + " shares " + radioxl::FrequencyText(f) + " with " + nameOf(*(at - 1)) +
+                    " - it sits after it on the dial");
+            }
         }
         order.insert(at, station);
     }
@@ -959,7 +960,7 @@ void RadioXL_StationDisplayName(RED4ext::IScriptable*, RED4ext::CStackFrame* aFr
     RED4ext::GetParameter(aFrame, &index);
     ++aFrame->code;
     const Station* s = At(index);
-    OutString(aOut, s ? (s->displayName.empty() ? s->name : s->displayName) : std::string());
+    OutString(aOut, s ? radioxl::Label(*s) : std::string());
 }
 
 void RadioXL_StationIcon(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)

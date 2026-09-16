@@ -14,6 +14,8 @@
 #include "Json.hpp"
 
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -46,7 +48,8 @@ constexpr float kDefaultGain = 1.0f;
 struct Station
 {
     std::string name;          // the station CName, e.g. radio_station_20_tool
-    std::string displayName;   // the label the UI shows, plain text
+    float frequency = -1.0f;   // the station's place on the dial, e.g. 104.9; always set once a manifest is accepted
+    std::string displayName;   // the station's name alone, plain text; the label shown is Label()
     std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
     bool news = false;         // Stanley's news and greetings may reach the station
@@ -55,6 +58,47 @@ struct Station
     std::string source;        // which manifest it came from, for logging
     std::string folder;        // the manifest's own directory, which track files are relative to
 };
+
+// A frequency as the dial shows it: one decimal, two when the number has them (104.9, 101.0, 88.85).
+inline std::string FrequencyText(double aFrequency)
+{
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%.2f", aFrequency);
+    std::string text = buf;
+    if (text.size() > 1 && text.back() == '0' && text[text.size() - 2] != '.')
+    {
+        text.pop_back();
+    }
+    return text;
+}
+
+// The label every receiver shows: the frequency, then the name, the CName standing in for a
+// station that gave no name.
+inline std::string Label(const Station& aStation)
+{
+    const std::string& name = aStation.displayName.empty() ? aStation.name : aStation.displayName;
+    return aStation.frequency >= 0.0f ? FrequencyText(aStation.frequency) + " " + name : name;
+}
+
+// A number at the front of a display name, as written for 0.3.0 manifests, and the name after it.
+// False when the text does not start with one.
+inline bool LeadingFrequency(const std::string& aText, double& aFrequency, std::string& aRest)
+{
+    const char* text = aText.c_str();
+    char* end = nullptr;
+    const double v = std::strtod(text, &end);
+    if (!end || end == text || v < 10.0 || (*end != '\0' && *end != ' '))
+    {
+        return false;
+    }
+    aFrequency = v;
+    aRest = end;
+    while (!aRest.empty() && aRest.front() == ' ')
+    {
+        aRest.erase(aRest.begin());
+    }
+    return true;
+}
 
 // A depot path uses backslashes. A manifest may write either.
 inline std::string DepotPath(std::string aPath)
@@ -182,7 +226,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     };
 
-    unknownKeys(root, {"name", "displayName", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
+    unknownKeys(root, {"name", "frequency", "displayName", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -193,7 +237,8 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         aOut.name = name->string;
     }
 
-    if (const JsonValue* displayName = expect(root, "displayName", JsonValue::Kind::String, false))
+    const JsonValue* displayName = expect(root, "displayName", JsonValue::Kind::String, false);
+    if (displayName)
     {
         aOut.displayName = displayName->string;
     }
@@ -303,6 +348,44 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         if (!aOut.tracks.empty() && !songs)
         {
             fail(tracks->line, "every track is an ident - a station needs at least one song");
+        }
+    }
+
+    // The frequency decides the dial position, so a station must have one. A 0.3.0 manifest wrote
+    // it at the front of the display name; that still loads, with a line asking for the field.
+    {
+        const JsonValue* frequency = expect(root, "frequency", JsonValue::Kind::Number, false);
+        if (frequency)
+        {
+            if (frequency->number <= 0.0 || frequency->number >= 1000.0)
+            {
+                fail(frequency->line, "\"frequency\" must be a number above 0, e.g. 104.9");
+            }
+            else
+            {
+                aOut.frequency = static_cast<float>(frequency->number);
+            }
+        }
+        double leading = 0.0;
+        std::string rest;
+        if (displayName && LeadingFrequency(displayName->string, leading, rest))
+        {
+            if (!frequency)
+            {
+                aOut.frequency = static_cast<float>(leading);
+                at(displayName->line, "\"frequency\" is missing - read " + FrequencyText(leading) +
+                                          " from the front of \"displayName\"; write it as its own field");
+            }
+            else
+            {
+                at(displayName->line, "\"displayName\" starts with a number and \"frequency\" is set - the field "
+                                      "places the station, and the label shows the name without the number");
+            }
+            aOut.displayName = rest;
+        }
+        else if (!frequency)
+        {
+            fail(root.line, "\"frequency\" is missing - the number that places the station on the dial, e.g. 104.9");
         }
     }
 
