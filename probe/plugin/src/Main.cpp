@@ -327,7 +327,7 @@ struct Sched
 constexpr uint32_t kMaxStations = 128;
 Sched g_snap[kMaxStations];
 std::unordered_map<uintptr_t, std::string> g_lastSched;
-std::unordered_map<uintptr_t, bool> g_listed;
+std::unordered_map<uintptr_t, uint32_t> g_listedCount;  // tracks listed per station, relisted on a change
 std::unordered_map<uintptr_t, std::string> g_lastAnnounce;
 std::unordered_map<uintptr_t, std::string> g_lastRemain;
 
@@ -555,11 +555,30 @@ void Schedule()
     {
         const Sched& s = g_snap[i];
         const std::string name = Text(s.name);
-        if (!g_listed[s.station] && s.metadata && g_tracksOffset)
+        // The track list is logged at first sight and again whenever its count changes: a quest can
+        // add tracks to a live station. The metadata pointer rides along, so a grown list and a
+        // swapped object are told apart.
+        if (s.metadata && g_tracksOffset)
         {
-            g_listed[s.station] = true;
-            Log("schedule: " + name + " tracks " + ListNames(s.metadata, g_tracksOffset));
-            Log("schedule: " + name + " blips " + ListNames(s.metadata, g_blipsOffset));
+            uint32_t trackCount = 0;
+            uint64_t scratch[1] = {};
+            if (SafeReadList(s.metadata, g_tracksOffset, scratch, 0, &trackCount))
+            {
+                auto found = g_listedCount.find(s.station);
+                if (found == g_listedCount.end() || found->second != trackCount)
+                {
+                    const bool first = found == g_listedCount.end();
+                    g_listedCount[s.station] = trackCount;
+                    char meta[48];
+                    std::snprintf(meta, sizeof(meta), " metadata=%016llx", static_cast<unsigned long long>(s.metadata));
+                    Log(std::string("schedule: ") + name + (first ? " tracks " : " tracks CHANGED ") +
+                        ListNames(s.metadata, g_tracksOffset) + meta);
+                    if (first)
+                    {
+                        Log("schedule: " + name + " blips " + ListNames(s.metadata, g_blipsOffset));
+                    }
+                }
+            }
         }
         // An announcement: logged on every change of the queued or playing scene, the request mode or
         // its flags. The scene is a resource path hash, resolved offline.
