@@ -14,7 +14,6 @@ import { stationLogo, VANILLA_STATIONS } from './vanilla'
 const SOURCES: { value: Source; label: string }[] = [
   { value: 'new', label: 'New station' },
   { value: 'radioext', label: 'From RadioExt' },
-  { value: 'radioxl010', label: 'From RadioXL 0.1.0' },
 ]
 
 const ICON_RECORDS = [
@@ -288,7 +287,7 @@ export function App() {
       <main className="workspace">
         <section className="form">
           {s.source !== 'new' ? (
-            <p className="pending">Converting a {s.source === 'radioext' ? 'RadioExt' : 'RadioXL 0.1.0'} station is not built yet.</p>
+            <p className="pending">Converting a RadioExt station is not built yet.</p>
           ) : (
             <>
               <OpenStation hasWork={hasWork} onOpened={(name) => notify('Station opened', name)} />

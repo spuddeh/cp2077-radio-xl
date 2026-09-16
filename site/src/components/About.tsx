@@ -75,8 +75,7 @@ export function About() {
       <section>
         <h2 className="section">Not built yet</h2>
         <p>
-          Converting a RadioExt station or a RadioXL 0.1.0 station. A station with its own icon archive has to add that
-          archive to the zip by hand.
+          Converting a RadioExt station.
         </p>
       </section>
     </main>

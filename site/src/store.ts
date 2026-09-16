@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 import type { ImportedStation } from './importStation'
 
-export type Source = 'new' | 'radioext' | 'radioxl010'
+export type Source = 'new' | 'radioext'
 export type IconMode = 'glyph' | 'record' | 'image' | 'atlas'
 
 /** The name a generated icon takes before the station has an ID. */
