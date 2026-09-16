@@ -17,7 +17,7 @@
 // are untouched.
 //
 // The walk reads engine memory by offset, so it is wrapped in SEH like the clock: a bad read hands
-// the deck an empty list and -1, and the deck falls back to its own bag.
+// the deck an empty list and -1, and the deck draws among every song instead.
 
 #pragma once
 
@@ -36,6 +36,7 @@ namespace radioxl::schedule
 // A station object's schedule, as the 2.31 picker (0x6bcdfc) reads and writes it.
 constexpr size_t kStationMetadata = 0x110;        // the station's audioRadioStationMetadata
 constexpr size_t kStationRemaining = 0x160;       // DynArray of track indices: entries, size at +0xc
+constexpr size_t kStationRemainingCapacity = 0x168;
 constexpr size_t kStationRemainingCount = 0x16c;
 constexpr size_t kStationPicks = 0x170;           // byte: picks since the last blip
 constexpr size_t kDynArraySize = 0xc;             // a DynArray is { entries, capacity, size }
@@ -142,10 +143,14 @@ inline int ReadRemaining(uint64_t aStation, size_t aTracksOffset, uint64_t* aNam
 }
 
 // Takes a track out of a station's remaining list, the way the picker does when it draws it, and
-// when `aCount` is set adds one to the pick counter, the way the picker does on every pick.
-// Returns -1 when the station is not in the manager or names no such track, 1 when the entry
-// was erased, 0 when the track was not in the list (the counter still moves when asked).
-inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, size_t aTracksOffset)
+// when `aCount` is set adds one to the pick counter, the way the picker does on every pick. When
+// `aRefill` is set the list is first refilled with 0..n-1, the way the picker refills it when it
+// runs dry or holds nothing it can play; the refill needs the list's buffer to hold n entries and
+// is skipped otherwise, leaving the engine to refill with its own allocator on its next pick.
+// Returns -1 when the station is not in the manager or names no such track, 2 when the list was
+// refilled and the entry erased, 1 when the entry was erased, 0 when the track was not in the
+// list (the counter still moves when asked).
+inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, bool aRefill, size_t aTracksOffset)
 {
     const auto station = FindStation(aStation);
     if (!station || !aTracksOffset)
@@ -178,7 +183,19 @@ inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, size_t aTrac
     }
     int erased = 0;
     const auto entries = clock::Read<uintptr_t>(station + kStationRemaining);
-    const auto count = clock::Read<uint32_t>(station + kStationRemainingCount);
+    const auto capacity = clock::Read<uint32_t>(station + kStationRemainingCapacity);
+    auto count = clock::Read<uint32_t>(station + kStationRemainingCount);
+    if (aRefill && entries && trackCount > 0 && capacity >= trackCount)
+    {
+        auto* list = reinterpret_cast<Entry*>(entries);
+        for (uint32_t i = 0; i < trackCount; ++i)
+        {
+            list[i] = static_cast<Entry>(i);
+        }
+        *reinterpret_cast<uint32_t*>(station + kStationRemainingCount) = trackCount;
+        count = trackCount;
+        erased = 2;
+    }
     if (entries && count <= kMaxTracks)
     {
         for (uint32_t i = 0; i < count; ++i)
@@ -192,7 +209,7 @@ inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, size_t aTrac
             auto* at = reinterpret_cast<Entry*>(entries + i * sizeof(Entry));
             std::memmove(at, at + 1, (count - i - 1) * sizeof(Entry));
             *reinterpret_cast<uint32_t*>(station + kStationRemainingCount) = count - 1;
-            erased = 1;
+            erased = erased == 2 ? 2 : 1;
             break;
         }
     }
@@ -220,11 +237,12 @@ inline bool SafeReadRemaining(uint64_t aStation, size_t aTracksOffset, uint64_t*
     }
 }
 
-inline bool SafeConsume(uint64_t aStation, uint64_t aTrack, bool aCount, size_t aTracksOffset, int* aOut)
+inline bool SafeConsume(uint64_t aStation, uint64_t aTrack, bool aCount, bool aRefill, size_t aTracksOffset,
+                        int* aOut)
 {
     __try
     {
-        *aOut = Consume(aStation, aTrack, aCount, aTracksOffset);
+        *aOut = Consume(aStation, aTrack, aCount, aRefill, aTracksOffset);
         return true;
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
@@ -277,17 +295,20 @@ inline void RadioXL_StationRemaining(RED4ext::IScriptable*, RED4ext::CStackFrame
 }
 
 // Takes `track` out of `station`'s remaining list and, when `countPick` is set, counts it as a
-// pick toward the next ident. 1 when the entry was erased, 0 when the track was known but not in
-// the list (the engine had cleared or already drawn it; the pick still counts), -1 for an unknown
-// station or track, or a faulted read.
+// pick toward the next ident; when `refill` is set the list is refilled with every track first.
+// 2 when the list was refilled and the entry erased, 1 when the entry was erased, 0 when the
+// track was known but not in the list (the pick still counts), -1 for an unknown station or
+// track, or a faulted read.
 inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
 {
     RED4ext::CName station;
     RED4ext::CName track;
     bool countPick = true;
+    bool refill = false;
     RED4ext::GetParameter(aFrame, &station);
     RED4ext::GetParameter(aFrame, &track);
     RED4ext::GetParameter(aFrame, &countPick);
+    RED4ext::GetParameter(aFrame, &refill);
     ++aFrame->code;
     if (aOut)
     {
@@ -298,8 +319,8 @@ inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* 
         return;
     }
     int result = -1;
-    if (!radioxl::schedule::SafeConsume(station.hash, track.hash, countPick, radioxl::schedule::TracksOffset(),
-                                        &result))
+    if (!radioxl::schedule::SafeConsume(station.hash, track.hash, countPick, refill,
+                                        radioxl::schedule::TracksOffset(), &result))
     {
         radioxl::schedule::Fail("write");
         return;

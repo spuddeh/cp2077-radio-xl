@@ -77,7 +77,8 @@
 - Next draws from the station's own remaining list and takes what it plays out of it, counting a
   key press toward the next ident (#36). Measured: four presses on Growl FM took the list from 15
   to 11 and the pick counter from 1 to 5; on Body Heat an ident followed the third press at the
-  next natural song end. The deck's own bag stands in while the engine has the list empty.
+  next natural song end. A list the keys drain is refilled by the next request, as the engine
+  refills it on its own pick.
 
 ## Awaiting in-game verification
 

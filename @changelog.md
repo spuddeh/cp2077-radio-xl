@@ -56,8 +56,14 @@
   remaining 15 to 11 and picks 1 to 5 with the RNG untouched; on Body Heat a blip followed the
   third press at the next natural song end and the counter went back to 0. Also seen: Body Heat's
   track list grew from 13 to 15 about a minute after load (the two songs the Kerry quest unlocks, fact set on the save) and
-  the engine emptied its remaining list when it did, so the first press after that drew from the
-  bag until the engine's next own pick refilled the list.
+  the engine emptied its remaining list when it did.
+  A third run then showed a list the keys drained staying empty for good (Tool FM at 0 through 25
+  presses: the engine refills only on its own pick), and the history jumbling under sub-second
+  presses. So `Consume` gained `refill`: the deck draws among every song when the list is empty
+  or holds nothing switched on, and the request writes `0..n-1` back first (capacity `+0x168`
+  permitting) before erasing its pick, as the picker does; the script bag is gone. And the one
+  pending key became a set of the keys requested in the last two seconds, so a late report of an
+  older request reads as a request answered, not as an engine pick that truncates the history.
 - Simple Radio Control folded in (#35), on a four-tab panel: Controls, My station, Stations,
   Mute. `Controls.reds` holds every setting and the bind table (one set of keys for both radios,
   ids `nextKey`..`myStationKey`; the Radioport set `pocket*` and the `mod:<id>` modifiers exist

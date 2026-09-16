@@ -8,7 +8,9 @@
 //              A RECEIVER REPORTS THE PLAYING TRACK AS A CNAME BUILT FROM THE TRACK'S
 //              primaryLocKey, so the catalog's key is matched through NameToHash. The report
 //              lags a request by a moment, so the key just asked for stands in as "current" until
-//              the receiver catches up or a short window passes.
+//              the receiver catches up or a short window passes. Presses can outrun the reports,
+//              so every key requested in the last two seconds is remembered, and a late report of
+//              one of them is a request answered, not a song the station chose.
 //
 //              NEXT DRAWS FROM THE STATION'S OWN LIST. The engine keeps a remaining list per
 //              station, draws from it, and refills it only when it is empty, so every song plays
@@ -17,8 +19,9 @@
 //              has left on, and takes what it plays out of the list, counting a key press as a
 //              pick toward the next ident. The automatic skip past a switched-off song draws and
 //              consumes the same way without counting: the engine counted the song it skipped
-//              past. When the plugin cannot see the station, a shuffled bag of the deck's own
-//              stands in.
+//              past. When the list is empty, or holds nothing the player has left on, the draw is
+//              among every song and the request refills the list first, the way the engine
+//              refills it when it runs dry. There is no list of the deck's own.
 //
 //              PREVIOUS AND NEXT WALK A HISTORY WITH A CURSOR. Every song that played on the
 //              station, by key or by the station itself, is on the history in order. Previous
@@ -58,16 +61,20 @@ public class RadioXLReceiver {
 }
 
 public class RadioXLDeck extends ScriptableService {
-  private let m_pendingKey: Uint64;
+  // The keys requested in the last two seconds, oldest first; the newest is what counts as
+  // playing until the receiver reports it.
+  private let m_pending: array<Uint64>;
   private let m_pendingAt: Float;
 
   // The history of the current station, oldest first, capped; `m_cursor` is the song playing
-  // now, as an index into it, or -1 when the history is empty. The bag is the fallback pool for
-  // a station whose own list the plugin cannot see.
+  // now, as an index into it, or -1 when the history is empty.
   private let m_historyStation: CName;
   private let m_history: array<Int32>;
   private let m_cursor: Int32;
-  private let m_bag: array<Int32>;
+
+  // Set by `Draw` when the station's list had nothing to give, so the request that follows
+  // refills it.
+  private let m_refill: Bool;
 
   public final static func Get() -> ref<RadioXLDeck> {
     return GameInstance.GetScriptableServiceContainer()
@@ -106,11 +113,12 @@ public class RadioXLDeck extends ScriptableService {
   private func CurrentIndex(gi: GameInstance, r: ref<RadioXLReceiver>) -> Int32 {
     let catalog = RadioXLCatalog.Get();
     let now = this.Now(gi);
-    if this.m_pendingKey != 0ul && now - this.m_pendingAt < 2.0 {
-      let pending = catalog.IndexOf(r.station, this.m_pendingKey);
+    let n: Int32 = ArraySize(this.m_pending);
+    if n > 0 && now - this.m_pendingAt < 2.0 {
+      let pending = catalog.IndexOf(r.station, this.m_pending[n - 1]);
       if pending >= 0 { return pending; }
     }
-    this.m_pendingKey = 0ul;
+    ArrayClear(this.m_pending);
     return catalog.IndexOf(r.station, NameToHash(r.reported));
   }
 
@@ -154,7 +162,7 @@ public class RadioXLDeck extends ScriptableService {
     let streamer = this.IsStreamerMode(gi);
     let target: Int32 = this.Seek(gi, r.station, current, streamer, forward);
     if target >= 0 {
-      this.Play(gi, r, target, true);
+      this.Play(gi, r, target, true, false);
       return;
     }
     if !forward {
@@ -176,7 +184,7 @@ public class RadioXLDeck extends ScriptableService {
     }
     if picked < 0 || picked == current { return; }
     this.Record(picked);
-    this.Play(gi, r, picked, true);
+    this.Play(gi, r, picked, true, this.m_refill);
   }
 
   // A station key press. Moves the receiver one place along the dial, through the game's own
@@ -311,10 +319,17 @@ public class RadioXLDeck extends ScriptableService {
     if index < 0 { return; }
     // A request is answered by the receiver a moment later, and until then the game still
     // reports the old track. A second report of that old track is the lag, not a new arrival.
+    // Reports come in the order the requests were made, so the newest request's report means
+    // nothing older is still on its way; an older request's report is one overtaken by a newer
+    // press, and is a request answered all the same.
     let requested: Bool = false;
-    if this.m_pendingKey != 0ul {
-      if key == this.m_pendingKey {
-        this.m_pendingKey = 0ul;
+    let n: Int32 = ArraySize(this.m_pending);
+    if n > 0 {
+      if key == this.m_pending[n - 1] {
+        ArrayClear(this.m_pending);
+        requested = true;
+      } else if ArrayContains(this.m_pending, key) {
+        ArrayRemove(this.m_pending, key);
         requested = true;
       } else if this.Now(gi) - this.m_pendingAt < 2.0 {
         return;
@@ -331,22 +346,21 @@ public class RadioXLDeck extends ScriptableService {
     if picked < 0 || picked == index { return; }
     RadioXLLog(s"\(r.station.name): \(r.station.tracks[index].event) is switched off, moving on");
     this.Record(picked);
-    this.Play(gi, r, picked, false);
+    this.Play(gi, r, picked, false, this.m_refill);
   }
 
   // --- the history and the bag ------------------------------------------------------------------
 
-  // A station change starts fresh; the history and the bag of another dial are worthless here.
+  // A station change starts fresh; the history of another dial is worthless here.
   private func KeepHistoryFor(station: CName) -> Void {
     if Equals(station, this.m_historyStation) { return; }
     this.m_historyStation = station;
     ArrayClear(this.m_history);
-    ArrayClear(this.m_bag);
     this.m_cursor = -1;
   }
 
   // A song is playing that was not reached by moving the cursor: it goes on the history after
-  // the cursor, the forward part is dropped, and it leaves the bag.
+  // the cursor, and the forward part is dropped.
   private func Record(index: Int32) -> Void {
     if this.m_cursor >= 0 && this.m_cursor < ArraySize(this.m_history) && this.m_history[this.m_cursor] == index {
       return;
@@ -357,7 +371,6 @@ public class RadioXLDeck extends ScriptableService {
     ArrayPush(this.m_history, index);
     while ArraySize(this.m_history) > 32 { ArrayErase(this.m_history, 0); }
     this.m_cursor = ArraySize(this.m_history) - 1;
-    ArrayRemove(this.m_bag, index);
   }
 
   // The song the cursor lands on one step back or forward, skipping any it can no longer play;
@@ -379,83 +392,55 @@ public class RadioXLDeck extends ScriptableService {
     return -1;
   }
 
-  // A fresh song from the station's own remaining list: at random among the entries other than
-  // `current` that are playable and, when `enabledOnly`, switched on. -1 when the plugin cannot
-  // see the station, the list is empty, or nothing in it qualifies; the bag decides then.
-  private func DrawFromStation(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
-                               streamer: Bool, enabledOnly: Bool) -> Int32 {
+  // A fresh song, the way the station picks one: at random among the entries of the station's
+  // own remaining list other than `current` that are playable and, when `enabledOnly`, switched
+  // on. When the list is empty, or nothing in it qualifies, the pool is every such song and
+  // `m_refill` is set so the request that follows refills the list, as the engine refills it when
+  // it runs dry. Returns -1 when no other track qualifies at all.
+  private func Draw(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
+                    streamer: Bool, enabledOnly: Bool) -> Int32 {
     let controls = RadioXLControls.Get();
+    let count: Int32 = ArraySize(station.tracks);
     let remaining: array<CName> = RadioXL_StationRemaining(station.name);
     let listed: Int32 = ArraySize(remaining);
-    if listed == 0 { return -1; }
-    let count: Int32 = ArraySize(station.tracks);
     let pool: array<Int32>;
     for event in remaining {
       let index: Int32 = 0;
       while index < count && NotEquals(station.tracks[index].event, event) { index += 1; }
-      if index < count && index != current && this.IsPlayable(gi, station.tracks[index], streamer)
-        && (!enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(station.tracks[index].event)) {
+      if index < count && this.Qualifies(gi, station, index, current, streamer, enabledOnly, controls) {
         ArrayPush(pool, index);
       }
     }
-    let n: Int32 = ArraySize(pool);
-    if n == 0 {
-      RadioXLLog(s"\(station.name): \(listed) left on the station's list, none playable here");
-      return -1;
+    this.m_refill = false;
+    if ArraySize(pool) == 0 {
+      this.m_refill = true;
+      let i: Int32 = 0;
+      while i < count {
+        if this.Qualifies(gi, station, i, current, streamer, enabledOnly, controls) { ArrayPush(pool, i); }
+        i += 1;
+      }
     }
+    let n: Int32 = ArraySize(pool);
+    if n == 0 { return -1; }
+    // RandRange's upper bound is exclusive, as the game's own scripts use it.
     let j: Int32 = RandRange(0, n);
     if j >= n { j = n - 1; }
-    RadioXLLog(s"\(station.name): drew from the station's list (\(n) of \(listed) qualify)");
+    if this.m_refill {
+      RadioXLLog(s"\(station.name): \(listed) on the station's list, nothing to play there; drawing from all \(n), the list refills");
+    } else {
+      RadioXLLog(s"\(station.name): drew from the station's list (\(n) of \(listed) qualify)");
+    }
     return pool[j];
   }
 
-  // A fresh song: from the station's own list when the plugin can see it, else from the bag. The
-  // bag is refilled, shuffled, from every track other than `current` that is playable and, when
-  // `enabledOnly`, switched on, whenever it runs dry or holds nothing that still qualifies.
-  // Returns -1 when no other track qualifies at all.
-  private func Draw(gi: GameInstance, station: ref<RadioXLCatalogStation>, current: Int32,
-                    streamer: Bool, enabledOnly: Bool) -> Int32 {
-    let fromStation: Int32 = this.DrawFromStation(gi, station, current, streamer, enabledOnly);
-    if fromStation >= 0 { return fromStation; }
-    let controls = RadioXLControls.Get();
-    let count = ArraySize(station.tracks);
-    let i: Int32 = ArraySize(this.m_bag) - 1;
-    while i >= 0 {
-      let index: Int32 = this.m_bag[i];
-      if index != current && index < count && this.IsPlayable(gi, station.tracks[index], streamer)
-        && (!enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(station.tracks[index].event)) {
-        ArrayErase(this.m_bag, i);
-        return index;
-      }
-      i -= 1;
-    }
-    ArrayClear(this.m_bag);
-    i = 0;
-    while i < count {
-      let track = station.tracks[i];
-      if i != current && this.IsPlayable(gi, track, streamer)
-        && (!enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(track.event)) {
-        ArrayPush(this.m_bag, i);
-      }
-      i += 1;
-    }
-    if ArraySize(this.m_bag) == 0 { return -1; }
-    // Fisher-Yates; RandRange's upper bound is exclusive, as the game's own scripts use it.
-    let n: Int32 = ArraySize(this.m_bag);
-    let k: Int32 = n - 1;
-    while k > 0 {
-      let j: Int32 = RandRange(0, k + 1);
-      if j > k { j = k; }
-      let swap: Int32 = this.m_bag[k];
-      this.m_bag[k] = this.m_bag[j];
-      this.m_bag[j] = swap;
-      k -= 1;
-    }
-    RadioXLLog(s"\(station.name): bag refilled with \(n) song(s)");
-    let last: Int32 = ArraySize(this.m_bag) - 1;
-    let drawn: Int32 = this.m_bag[last];
-    ArrayErase(this.m_bag, last);
-    return drawn;
+  // Whether a draw may land on this track: not the one playing, one the game would play, and,
+  // when `enabledOnly`, one the player has left on.
+  private func Qualifies(gi: GameInstance, station: ref<RadioXLCatalogStation>, index: Int32, current: Int32,
+                         streamer: Bool, enabledOnly: Bool, controls: ref<RadioXLControls>) -> Bool {
+    if index == current { return false; }
+    let track = station.tracks[index];
+    if !this.IsPlayable(gi, track, streamer) { return false; }
+    return !enabledOnly || !IsDefined(controls) || controls.IsTrackEnabled(track.event);
   }
 
   // The same check against whatever the receiver reports right now.
@@ -485,13 +470,15 @@ public class RadioXLDeck extends ScriptableService {
   // Requests the track and tells the station's schedule, so the song leaves the station's own
   // remaining list. A key press counts as a pick toward the next ident; the automatic skip does
   // not, because the engine counted the song it is skipping past.
-  private func Play(gi: GameInstance, r: ref<RadioXLReceiver>, index: Int32, countPick: Bool) -> Void {
+  private func Play(gi: GameInstance, r: ref<RadioXLReceiver>, index: Int32, countPick: Bool, refill: Bool) -> Void {
     let track = r.station.tracks[index];
     GameInstance.GetAudioSystem(gi).RequestSongOnRadioStation(r.station.name, track.event);
-    this.m_pendingKey = track.key;
+    ArrayPush(this.m_pending, track.key);
+    while ArraySize(this.m_pending) > 8 { ArrayErase(this.m_pending, 0); }
     this.m_pendingAt = this.Now(gi);
-    let told: Int32 = RadioXL_StationConsume(r.station.name, track.event, countPick);
+    let told: Int32 = RadioXL_StationConsume(r.station.name, track.event, countPick, refill);
     let note: String = "the station's list is out of reach";
+    if told == 2 { note = "list refilled, then off it"; }
     if told == 1 { note = "off the station's list"; }
     if told == 0 { note = "not on the station's list"; }
     if told >= 0 && countPick { note += ", counted"; }
