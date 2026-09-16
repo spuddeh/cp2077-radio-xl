@@ -152,8 +152,8 @@ If a station appears but sorts oddly against another one, check its frequency: t
 
 [list]
 [*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
-[*]Up to 127 stations.[/*]
-[*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
+[*]Currently limited to 127 stations total stations (game's own included). This is a limitation of the game's internal handling of radio stations. We are working out the best way to lift that limit.[/*]
+[*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or another Radio Mod that also modifies station behavior.[/*]
 [/list]
 
 [color=#ffff00][size=6][b]- Updates -[/b][/size][/color]
@@ -166,9 +166,9 @@ If a station appears but sorts oddly against another one, check its frequency: t
 
 All my fantastic mod users who asked me to build this! I probably wouldn't have otherwise. :)
 
-[url=https://www.nexusmods.com/profile/Spuddeh]Spuddeh[/url], who took the radio apart and rebuilt RadioXL on top of the game's own, and built the station builder page.
+[url=https://www.nexusmods.com/profile/DigitalVixen]DigitalVixen[/url], for RadioXL 0.1.0, the groundwork this rework stands on, and for [url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url], which plays every song.
 
-[url=https://www.nexusmods.com/cyberpunk2077/mods/32248]Audioware Radio Framework[/url] which had solved several issues I too found, without which it would have taken much longer to get this done.
+[url=https://www.nexusmods.com/cyberpunk2077/users/25354714]CozmiNU[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/16767]Always My Radio Station[/url] and [url=https://www.nexusmods.com/cyberpunk2077/users/129937823]infinitY0369[/url] for [url=https://www.nexusmods.com/cyberpunk2077/mods/8864]Better Vehicle Radio[/url]: My station, the keys and the per-song switches grew from what those two mods do.
 
 [url=https://www.nexusmods.com/cyberpunk2077/mods/4591]RadioExt[/url] for getting there first and showing that people want their own stations.
 
