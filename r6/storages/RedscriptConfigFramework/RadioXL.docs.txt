@@ -42,21 +42,21 @@ A station is one folder under
 holding a [b]station.json[/b] and the audio files it names.
 
 [quote][code]{
-  "name": "radio_station_20_tool",
+  "name": "radio_station_yourstation",
   "frequency": 104.9,
-  "displayName": "Tool FM",
-  "icon": "tool_fm",
-  "atlas": "toolfm\\gui\\tool_fm.inkatlas",
+  "displayName": "Your Station",
+  "icon": "yourstation",
+  "atlas": "yourmod\\gui\\yourstation.inkatlas",
   "tracks": [
-    { "file": "audio/Tool - Vicarious.mp3", "title": "Tool - Vicarious" },
-    { "file": "audio/Tool - Jambi.mp3",     "title": "Tool - Jambi" }
+    { "file": "audio/first.mp3",   "title": "Artist - First Song" },
+    { "file": "audio/second.flac", "title": "Artist - Second Song" }
   ]
 }[/code][/quote]
 
 [list]
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
 [*][b]frequency[/b] is where the station sits on the dial, as a number from 10 to 999. The dial is sorted by it, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
-[*][b]displayName[/b] is the station's name, without the frequency: the game shows the two together, [b]104.9 Tool FM[/b]. A name that starts or ends with a number, or contains the frequency, is refused, and so is a missing one.[/*]
+[*][b]displayName[/b] is the station's name, without the frequency: the game shows the two together, [b]104.9 Your Station[/b]. A name that starts or ends with a number, or contains the frequency, is refused, and so is a missing one.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]title[/b] is optional on a track. It is the song name in the Radioport's radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
