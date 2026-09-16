@@ -14,6 +14,9 @@ To use the glyph anywhere else, ask [DigitalVixen](https://www.nexusmods.com/pro
 **Cyberpunk 2077 material is not covered either.** It belongs to CD PROJEKT RED and is used under
 their [fan content guidelines](https://www.cdprojektred.com/en/fan-content):
 
+- `red4ext/plugins/RadioXL/radioxl_routing.bnk`: a Wwise bank built by `tools/make_routing_bank.py`
+  from objects in the game's own `mod.bnk` and `radio.bnk` (the custom-sound event and its copies of
+  a station's Broadcast Sends); it holds no audio
 - `site/src/assets/stations/`: the fourteen vanilla station logos, cut from
   `radiostations_icons.inkatlas`
 - `site/src/assets/world/`: the world radio screens' parts, from `radio_ui.inkatlas` and
