@@ -74,12 +74,16 @@
   world radio and in the vehicle list, and cycling wraps at the end of the roster. World radios skip
   Samizdat as vanilla does; cars and the pocket radio reach it.
 
+- Next draws from the station's own remaining list and takes what it plays out of it, counting a
+  key press toward the next ident (#36). Measured: four presses on Growl FM took the list from 15
+  to 11 and the pick counter from 1 to 5; on Body Heat an ident followed the third press at the
+  next natural song end. The deck's own bag stands in while the engine has the list empty.
+
 ## Awaiting in-game verification
 
-- After the first run: the Radioport popup on the moment the Radioport switches on; next picks a
-  song from a per-station bag the way the station does, and previous and next walk a history
-  cursor over what played; the
-  never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line rows.
+- After the first run: the Radioport popup on the moment the Radioport switches on; previous and
+  next walk a history cursor over what played; the never-again key says "Switched off: <song>" on
+  screen; the panel's long labels are one-line rows.
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
 

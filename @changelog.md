@@ -42,6 +42,22 @@
   drops it.
 
 ### Added
+- A song the keys request leaves the station's own remaining list and counts as a pick (#36).
+  Two natives in `plugin/src/Schedule.hpp` on the station object the clock resolves, any state:
+  `RadioXL_StationRemaining(station: CName) -> array<CName>` maps the entries of `+0x160` (count
+  `+0x16c`, 4-byte track indices, measured) through the metadata's `tracks` (RTTI offset, `+0x38`
+  on 2.31) to event names; `RadioXL_StationConsume(station, track, countPick) -> Int32` erases the
+  entry (tail moved down, then the size dropped) and, when `countPick`, adds one to `+0x170`; 1
+  erased, 0 known but not listed, -1 unknown. `Deck.DrawFromStation` draws at random among the
+  list's playable, switched-on entries and `Draw` keeps the bag as the fallback for an empty or
+  unreachable list; `Play` consumes every request, a key press counting and the automatic skip not,
+  because the engine counted the song it skipped past. Both SEH-guarded; a fault disables them
+  with one log line. Measured with the probe's new `remain` line: four presses on Growl FM took
+  remaining 15 to 11 and picks 1 to 5 with the RNG untouched; on Body Heat a blip followed the
+  third press at the next natural song end and the counter went back to 0. Also seen: Body Heat's
+  track list grew from 13 to 15 about a minute after load (the US Cracks songs, quest fact set) and
+  the engine emptied its remaining list when it did, so the first press after that drew from the
+  bag until the engine's next own pick refilled the list.
 - Simple Radio Control folded in (#35), on a four-tab panel: Controls, My station, Stations,
   Mute. `Controls.reds` holds every setting and the bind table (one set of keys for both radios,
   ids `nextKey`..`myStationKey`; the Radioport set `pocket*` and the `mod:<id>` modifiers exist
