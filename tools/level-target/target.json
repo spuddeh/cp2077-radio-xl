@@ -1,0 +1,431 @@
+{
+ "fileLufsTarget": -10.9,
+ "fileLufsTargetByRoute": {
+  "stereo": -10.5,
+  "mono": -11.4
+ },
+ "chainLevelMedian": {
+  "stereo": -12.5,
+  "mono": -16.4
+ },
+ "chainLevelBand": {
+  "stereo": [
+   -18.8,
+   -8.0
+  ],
+  "mono": [
+   -25.3,
+   -10.5
+  ]
+ },
+ "routingStation": {
+  "number": "02",
+  "name": "Radio Vexelstrom",
+  "stereoTrimDb": -2.0,
+  "monoTrimDb": -5.0
+ },
+ "peakHeadroomDb": {
+  "stereo": 2.0,
+  "mono": 5.0
+ },
+ "maxGain": 4.0,
+ "vanilla": {
+  "music": {
+   "fileLufs": {
+    "min": -19.3,
+    "median": -11.0,
+    "max": -5.2,
+    "count": 188
+   },
+   "lra": {
+    "min": 0.6,
+    "median": 4.7,
+    "max": 15.4,
+    "count": 188
+   },
+   "truePeakDb": {
+    "min": -7.3,
+    "median": 0.4,
+    "max": 2.1,
+    "count": 188
+   },
+   "stereoLevel": {
+    "min": -18.8,
+    "median": -12.5,
+    "max": -8.0,
+    "count": 188
+   },
+   "monoLevel": {
+    "min": -25.3,
+    "median": -16.4,
+    "max": -10.5,
+    "count": 188
+   },
+   "stereoPeak": {
+    "min": -10.3,
+    "median": -1.9,
+    "max": 2.0,
+    "count": 188
+   },
+   "monoPeak": {
+    "min": -13.3,
+    "median": -5.3,
+    "max": -1.6,
+    "count": 188
+   }
+  },
+  "stations": {
+   "01": {
+    "name": "Morro Rock Radio",
+    "frequency": 107.3,
+    "tracks": 16,
+    "fileLufs": {
+     "min": -13.9,
+     "median": -10.1,
+     "max": -5.2,
+     "count": 16
+    },
+    "stereoLevel": {
+     "min": -16.9,
+     "median": -13.1,
+     "max": -8.2,
+     "count": 16
+    },
+    "monoLevel": {
+     "min": -19.9,
+     "median": -16.1,
+     "max": -11.2,
+     "count": 16
+    },
+    "stereoTrimDb": -3.0,
+    "monoTrimDb": -6.0
+   },
+   "02": {
+    "name": "Radio Vexelstrom",
+    "frequency": 89.3,
+    "tracks": 15,
+    "fileLufs": {
+     "min": -14.9,
+     "median": -9.9,
+     "max": -6.1,
+     "count": 15
+    },
+    "stereoLevel": {
+     "min": -16.9,
+     "median": -11.4,
+     "max": -8.0,
+     "count": 15
+    },
+    "monoLevel": {
+     "min": -19.9,
+     "median": -14.4,
+     "max": -11.0,
+     "count": 15
+    },
+    "stereoTrimDb": -2.0,
+    "monoTrimDb": -5.0
+   },
+   "03": {
+    "name": "Night FM",
+    "frequency": 92.9,
+    "tracks": 15,
+    "fileLufs": {
+     "min": -15.7,
+     "median": -11.6,
+     "max": -7.3,
+     "count": 15
+    },
+    "stereoLevel": {
+     "min": -18.7,
+     "median": -13.9,
+     "max": -10.3,
+     "count": 15
+    },
+    "monoLevel": {
+     "min": -22.7,
+     "median": -17.9,
+     "max": -14.3,
+     "count": 15
+    },
+    "stereoTrimDb": -3.0,
+    "monoTrimDb": -7.0
+   },
+   "04": {
+    "name": "The Dirge",
+    "frequency": 101.9,
+    "tracks": 23,
+    "fileLufs": {
+     "min": -15.5,
+     "median": -9.9,
+     "max": -7.8,
+     "count": 23
+    },
+    "stereoLevel": {
+     "min": -18.0,
+     "median": -12.4,
+     "max": -10.3,
+     "count": 23
+    },
+    "monoLevel": {
+     "min": -21.5,
+     "median": -15.9,
+     "max": -13.8,
+     "count": 23
+    },
+    "stereoTrimDb": -2.5,
+    "monoTrimDb": -6.0
+   },
+   "05": {
+    "name": "Body Heat Radio",
+    "frequency": 98.7,
+    "tracks": 15,
+    "fileLufs": {
+     "min": -14.4,
+     "median": -12.2,
+     "max": -7.3,
+     "count": 15
+    },
+    "stereoLevel": {
+     "min": -15.4,
+     "median": -13.2,
+     "max": -8.3,
+     "count": 15
+    },
+    "monoLevel": {
+     "min": -20.3,
+     "median": -18.1,
+     "max": -13.2,
+     "count": 15
+    },
+    "stereoTrimDb": -1.0,
+    "monoTrimDb": -5.93
+   },
+   "06": {
+    "name": "Samizdat Radio",
+    "frequency": 95.2,
+    "tracks": 4,
+    "fileLufs": {
+     "min": -13.5,
+     "median": -12.4,
+     "max": -11.7,
+     "count": 4
+    },
+    "stereoLevel": {
+     "min": -13.5,
+     "median": -12.4,
+     "max": -11.7,
+     "count": 4
+    },
+    "monoLevel": {
+     "min": -19.5,
+     "median": -18.4,
+     "max": -17.7,
+     "count": 4
+    },
+    "stereoTrimDb": 0.0,
+    "monoTrimDb": -6.0
+   },
+   "07": {
+    "name": "Radio PEBKAC",
+    "frequency": 103.5,
+    "tracks": 16,
+    "fileLufs": {
+     "min": -13.5,
+     "median": -11.8,
+     "max": -10.3,
+     "count": 16
+    },
+    "stereoLevel": {
+     "min": -13.2,
+     "median": -11.6,
+     "max": -9.4,
+     "count": 16
+    },
+    "monoLevel": {
+     "min": -18.2,
+     "median": -16.6,
+     "max": -14.4,
+     "count": 16
+    },
+    "stereoTrimDb": 0.0,
+    "monoTrimDb": -5.0
+   },
+   "08": {
+    "name": "Royal Blue Radio",
+    "frequency": 91.9,
+    "tracks": 12,
+    "fileLufs": {
+     "min": -19.3,
+     "median": -16.6,
+     "max": -11.0,
+     "count": 12
+    },
+    "stereoLevel": {
+     "min": -18.8,
+     "median": -16.1,
+     "max": -10.5,
+     "count": 12
+    },
+    "monoLevel": {
+     "min": -25.3,
+     "median": -22.6,
+     "max": -17.0,
+     "count": 12
+    },
+    "stereoTrimDb": 0.47,
+    "monoTrimDb": -6.0
+   },
+   "09": {
+    "name": "Pacific Dreams",
+    "frequency": 88.9,
+    "tracks": 17,
+    "fileLufs": {
+     "min": -18.5,
+     "median": -13.8,
+     "max": -9.5,
+     "count": 17
+    },
+    "stereoLevel": {
+     "min": -17.6,
+     "median": -12.9,
+     "max": -8.6,
+     "count": 17
+    },
+    "monoLevel": {
+     "min": -23.5,
+     "median": -18.8,
+     "max": -14.5,
+     "count": 17
+    },
+    "stereoTrimDb": 0.9,
+    "monoTrimDb": -5.0
+   },
+   "10": {
+    "name": "30 Principales",
+    "frequency": 106.9,
+    "tracks": 11,
+    "fileLufs": {
+     "min": -13.5,
+     "median": -11.7,
+     "max": -8.9,
+     "count": 11
+    },
+    "stereoLevel": {
+     "min": -15.0,
+     "median": -13.2,
+     "max": -10.4,
+     "count": 11
+    },
+    "monoLevel": {
+     "min": -19.5,
+     "median": -17.7,
+     "max": -14.9,
+     "count": 11
+    },
+    "stereoTrimDb": -1.5,
+    "monoTrimDb": -6.0
+   },
+   "11": {
+    "name": "Ritual FM",
+    "frequency": 96.1,
+    "tracks": 14,
+    "fileLufs": {
+     "min": -11.6,
+     "median": -8.7,
+     "max": -5.6,
+     "count": 14
+    },
+    "stereoLevel": {
+     "min": -14.6,
+     "median": -11.7,
+     "max": -8.6,
+     "count": 14
+    },
+    "monoLevel": {
+     "min": -16.6,
+     "median": -13.7,
+     "max": -10.6,
+     "count": 14
+    },
+    "stereoTrimDb": -3.0,
+    "monoTrimDb": -5.0
+   },
+   "12": {
+    "name": "Growl FM",
+    "frequency": 89.7,
+    "tracks": 13,
+    "fileLufs": {
+     "min": -9.7,
+     "median": -7.3,
+     "max": -5.5,
+     "count": 13
+    },
+    "stereoLevel": {
+     "min": -13.7,
+     "median": -11.3,
+     "max": -9.5,
+     "count": 13
+    },
+    "monoLevel": {
+     "min": -14.7,
+     "median": -12.3,
+     "max": -10.5,
+     "count": 13
+    },
+    "stereoTrimDb": -4.0,
+    "monoTrimDb": -5.0
+   },
+   "13": {
+    "name": "Dark Star",
+    "frequency": 107.5,
+    "tracks": 13,
+    "fileLufs": {
+     "min": -11.1,
+     "median": -9.1,
+     "max": -7.6,
+     "count": 13
+    },
+    "stereoLevel": {
+     "min": -15.1,
+     "median": -13.1,
+     "max": -11.6,
+     "count": 13
+    },
+    "monoLevel": {
+     "min": -16.1,
+     "median": -14.1,
+     "max": -12.6,
+     "count": 13
+    },
+    "stereoTrimDb": -4.0,
+    "monoTrimDb": -5.0
+   },
+   "14": {
+    "name": "Impulse",
+    "frequency": 99.9,
+    "tracks": 4,
+    "fileLufs": {
+     "min": -8.7,
+     "median": -8.7,
+     "max": -8.7,
+     "count": 4
+    },
+    "stereoLevel": {
+     "min": -11.7,
+     "median": -11.7,
+     "max": -11.7,
+     "count": 4
+    },
+    "monoLevel": {
+     "min": -13.7,
+     "median": -13.7,
+     "max": -13.7,
+     "count": 4
+    },
+    "stereoTrimDb": -3.0,
+    "monoTrimDb": -5.0
+   }
+  },
+  "tracks": 188
+ }
+}

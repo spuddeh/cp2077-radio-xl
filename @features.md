@@ -40,8 +40,13 @@
   bank, defining the `radioxl_radio` custom-sound type carrying copies of a vanilla station's two
   Broadcast Sends. No game file is replaced, and the game's own `mod_sfx_radio` type remains the
   fallback if the bank does not load.
-- An optional level trim per station (`gain`, 0..1), applied in the samples through AudioXL on top of
-  the send trim.
+- An optional level trim per station (`gain`, 0..4), applied in the samples through AudioXL on top of
+  the send trim. Above 1 it must keep the file's peak under full scale, because AudioXL wraps a
+  16-bit sample past it (#41); the builder is where that is checked.
+- The level target a track aims at is derived offline from the game's own files
+  (`tools/level-target.py`, #44): every vanilla radio track measured and put on the broadcast chain
+  with its station's send trim. A file at about -11 LUFS lands on the game's median through
+  `radioxl_radio`.
 - A manifest is read by a strict JSON parser and checked field by field. Every fault is logged with
   the file and the line, and a manifest with one is skipped whole. Covered by `plugin/tests/`.
 - One dial on every receiver: a custom station sits at the frequency at the front of its display
@@ -91,6 +96,10 @@
   rows. (The Radioport popup on switch-on is measured: it shows the moment the Radioport comes on.)
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
+- The offline level model against one capture: two vanilla stations and one RadioXL station on the
+  Radioport, `measure-loudness.py report --json`, then `level-target.py check`. The predicted gaps
+  must match the measured ones within about 1 LU before the builder suggests a level from it (#44).
+- A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
 
 ## Planned
 

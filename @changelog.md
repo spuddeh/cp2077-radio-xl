@@ -1,5 +1,30 @@
 # Changelog - RadioXL
 
+## [Unreleased]
+
+### Changed
+- The manifest's `gain` runs 0 to 4 instead of 0 to 1 (#41). `Manifest.hpp` gains `kMaxGain`; the
+  clamp message reads `"gain" is 0 to 4 - clamped`; a raised gain is read as written and tested.
+  The station README grows a Level section stating the rule a raise must obey: AudioXL scales
+  16-bit samples with a bare cast on the unity-rate path (`AudioFeed.cpp`), so peak + gain past
+  0 dBFS wraps rather than clips. The plugin reads headers only, so the check lives in the builder.
+- Builder: the Volume slider runs 0 to 400 % with the dB shown either side of 100 %;
+  `buildManifest` writes any gain other than 1; a RadioExt `volume` above 1 imports as written up to
+  4 with a note that RadioExt's value was tuned against its own player; an opened manifest's gain is
+  clamped to 4, not 1. `manifest-rules.test.ts` accepts a gain above 1.
+
+### Added
+- `tools/level-target.py` (#44): the offline level target. Reads `audio_2_soundbanks.archive`
+  directly (every entry is stored uncompressed), dumps `radio.bnk`, `cp_music.bnk` and `init.bnk`
+  with wwiser, walks every `mus_radio_*` event from `eventsmetadata.json` to its segment, track and
+  `.wem`, decodes each through `wwtools.dll` by ctypes, measures it with ffmpeg `ebur128`, and puts
+  it on the chain with the station's send trim. `report` writes `tools/level-target/vanilla-levels.{json,md}`
+  and `target.json`; `check` compares a capture against the model; `file` measures any audio the
+  way the builder will and prints the peak-bounded gain. Result: 188 music tracks at -19.3 to -5.2
+  LUFS (median -11.0), a file target of -10.9 LUFS on `radioxl_radio`, no dynamics on either radio
+  bus, and `3803692087` is the master bus itself.
+- `tools/measure-loudness.py report --json <file>` writes the capture in the shape `check` reads.
+
 ## [0.3.0] - 2026-09-16
 
 ### Changed

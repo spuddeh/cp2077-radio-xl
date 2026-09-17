@@ -2,7 +2,7 @@
 
 usage:
   python measure-loudness.py record <out.wav> [--seconds 900] [--device "Game ("]
-  python measure-loudness.py report <out.wav> <radiostationprobe log> [--settle 4] [--min 20] [--world]
+  python measure-loudness.py report <out.wav> <radiostationprobe log> [--settle 4] [--min 20] [--world] [--json <capture.json>]
   python measure-loudness.py devices
 
 record   captures a WASAPI loopback device to a 16-bit WAV. The file's start time is written beside it
@@ -12,7 +12,8 @@ record   captures a WASAPI loopback device to a 16-bit WAV. The file's start tim
 report   splits the recording into the stretches where one station was on the Radioport or a vehicle
          radio, drops the first --settle seconds of each (tune-in, buffering), and measures every
          station's integrated loudness (EBU R128, LUFS) and true peak with ffmpeg's ebur128 filter.
-         Stations with less than --min seconds in total are listed but not measured.
+         Stations with less than --min seconds in total are listed but not measured. --json also
+         writes the table in the shape level-target.py check compares against the offline model.
 
 The probe (MyMods/RadioXL/probe) logs a station line with a timestamp whenever its state changes.
 The station whose listeners include `pocket_radio_emitter:on` or `vehicle_radio_emitter:on` is the one
@@ -149,7 +150,7 @@ def repair_header(wav):
         f.write(struct.pack("<I", size - data - 8))
 
 
-def report(wav, log, settle, minimum):
+def report(wav, log, settle, minimum, json_out=None):
     repair_header(wav)
     start = float(open(wav + ".start").read())
     with wave.open(wav) as w:
@@ -193,6 +194,20 @@ def report(wav, log, settle, minimum):
     if reference is not None:
         print(f"\nvanilla median {reference:.1f} LUFS over {len(measured)} station(s). A gain change of "
               f"N dB is a factor of 10^(N/20): -3 dB is x0.71, +3 dB is x1.41.")
+    if json_out:
+        # The shape level-target.py check reads. The route is the receiver the capture was made on:
+        # the Radioport is the mono send, a vehicle or world device the stereo one. A RadioXL
+        # station needs its file loudness added by hand (level-target.py file <its audio>), and its
+        # manifest gain if not 1, before the check can predict it.
+        import json
+        payload = {
+            "route": "stereo" if "radio:on" in HEARD else "mono",
+            "stations": [{"station": st, "seconds": round(sec), "lufs": round(l, 1), "peak": round(p, 1)}
+                         for st, sec, l, p in rows if l is not None and l != float("-inf")],
+        }
+        with open(json_out, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=1)
+        print(f"wrote {json_out}")
 
 
 def main():
@@ -212,6 +227,7 @@ def main():
     device = option("--device", "Game (")
     settle = float(option("--settle", "4"))
     minimum = float(option("--min", "20"))
+    json_out = option("--json", None)
     if "--world" in args:
         args.remove("--world")
         global HEARD
@@ -224,7 +240,7 @@ def main():
         if not os.path.exists(args[1] + ".start"):
             print(f"{args[1]}.start is missing - the report needs the recording's start time")
             sys.exit(1)
-        report(args[1], args[2], settle, minimum)
+        report(args[1], args[2], settle, minimum, json_out)
     else:
         print(__doc__)
         sys.exit(2)

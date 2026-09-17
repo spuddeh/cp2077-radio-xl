@@ -22,3 +22,6 @@ example-station/build/
 
 # Release zips downloaded or built at the root are never committed
 /*.zip
+
+# level-target.py scratch: extracted banks, wwiser dumps and decoded vanilla audio, hundreds of MB
+tools/level-target/work/

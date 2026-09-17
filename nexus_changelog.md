@@ -1,3 +1,8 @@
+### [Unreleased - v0.4.0]
+
+- New: a station's `gain` can go above 1, up to 4, so a quiet recording can be brought up to the level of the game's own stations. A raised gain must leave the loudest sample under full scale or it crackles; the station README says how much a file can take.
+- Station builder: the Volume slider goes up to 400 %, and a RadioExt station's volume above 1 is kept as written instead of being brought down to 1.
+
 ### v0.3.0
 
 - RadioXL is now a real engine station: custom stations play on the Radioport, in every vehicle and on the radios placed around Night City, with their own name, icon and song titles.
