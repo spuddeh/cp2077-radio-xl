@@ -185,7 +185,7 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     stationName,
     cname: typeof m.name === 'string' ? m.name : '',
     news: m.news === true,
-    gain: typeof m.gain === 'number' ? Math.max(0, Math.min(1, m.gain)) : 1,
+    gain: typeof m.gain === 'number' ? Math.max(0, Math.min(4, m.gain)) : 1,
     iconMode: atlas ? 'atlas' : icon ? 'record' : 'glyph',
     iconChoice: vanilla ? vanilla.icon : icon && !atlas ? 'other' : 'UIIcon.RadioDowntempo',
     iconRecord: !vanilla && !atlas ? icon : '',

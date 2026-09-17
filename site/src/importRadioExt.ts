@@ -49,10 +49,16 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
   if (fm === null && parts) notes.push(`The station has no "fm", so the frequency ${parts[1]} came from the front of its name.`)
   if (fm !== null && parts && Number.parseFloat(parts[1]) !== fm) notes.push(`The name started with ${parts[1]} but "fm" is ${fm}. The frequency is ${fm}; the number was taken off the name.`)
 
-  // RadioExt's volume is a multiplier like the manifest's gain, and neither goes above 1.
+  // RadioExt's volume is a multiplier like the manifest's gain. RadioExt plays through its own
+  // renderer, so a value tuned there says nothing about the level on RadioXL's chain, where a
+  // station mastered like commercial music already sits among the game's own at 1.
   const volume = typeof m.volume === 'number' ? m.volume : 1
-  const gain = Math.max(0, Math.min(1, volume))
-  if (volume > 1) notes.push(`Volume ${volume} was brought down to 1, which is the loudest a station plays.`)
+  const gain = Math.max(0, Math.min(4, volume))
+  if (volume > 4) notes.push(`Volume ${volume} was brought down to 4, the most RadioXL allows.`)
+  if (volume > 1)
+    notes.push(
+      `Volume ${volume} came from RadioExt's own player. On RadioXL a station plays at the game's own level at 100%, so check this one against a vanilla station before keeping it above that.`,
+    )
 
   const stream = (m.streamInfo ?? {}) as Record<string, unknown>
   const streamUrl = stream.isStream === true && typeof stream.streamURL === 'string' ? stream.streamURL.trim() : ''

@@ -101,6 +101,7 @@ const ACCEPTED: [name: string, manifest: Record<string, unknown>][] = [
   ['a stream as the one track', like({ tracks: [{ url: 'https://ice1.somafm.com/groovesalad-128-mp3' }] })],
   ['idents beside songs', like({ tracks: [{ file: 'a.mp3', title: 'A' }, { file: 'ad.mp3', ident: true }] })],
   ['a gain below 1', like({ gain: 0.5 })],
+  ['a gain above 1', like({ gain: 2.5 })],
   ['news off', like({ news: false })],
 ]
 

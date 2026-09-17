@@ -33,8 +33,9 @@ const ICON_MODES: { value: IconMode; label: string }[] = [
 function volumeLabel(gain: number): string {
   const pct = `${Math.round(gain * 100)}%`
   if (gain <= 0) return `${pct} (silent)`
-  if (gain >= 1) return pct
-  return `${pct} (${(20 * Math.log10(gain)).toFixed(1)} dB)`
+  if (Math.abs(gain - 1) < 0.001) return pct
+  const db = 20 * Math.log10(gain)
+  return `${pct} (${db > 0 ? '+' : ''}${db.toFixed(1)} dB)`
 }
 
 const ICON_GUIDE = 'https://github.com/spuddeh/cp2077-radio-xl/blob/main/red4ext/plugins/RadioXL/stations/README.md#the-icon'
@@ -328,8 +329,11 @@ export function App() {
               <Row label="News" note="Stanley's bulletins and greetings, and N54 News.">
                 <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
               </Row>
-              <Row label="Volume" note="100% plays the files as recorded. Turn it down if the station sounds louder than the game's own stations.">
-                <Slider value={s.gain} min={0} max={1} step={0.05} onChange={(v) => s.set({ gain: v })} format={volumeLabel} />
+              <Row
+                label="Volume"
+                note="100% plays the files as recorded. Turn it down if the station sounds louder than the game's own stations, up if quieter. Above 100% the loudest sample must stay under full scale or it crackles: a file mastered to 0 dBFS cannot go up at all."
+              >
+                <Slider value={s.gain} min={0} max={4} step={0.05} onChange={(v) => s.set({ gain: v })} format={volumeLabel} />
               </Row>
               <Row label="Icon" fault={faultFor('icon')}>
                 <Stepper options={ICON_MODES} value={s.iconMode} onChange={(v) => s.set({ iconMode: v })} />

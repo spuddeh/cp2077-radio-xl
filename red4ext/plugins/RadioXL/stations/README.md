@@ -32,7 +32,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `frequency` | The station's place on the dial, as a number from 10 to 999: `104.9`. Required. See [The frequency and the name](#the-frequency-and-the-name). |
 | `displayName` | The station's name, without the frequency. Required. The game shows it after the frequency: `104.9 Your Station`. |
 | `news` | Optional. `true` lets the news reach the station: Stanley's bulletins and greetings, and N54 News. Defaults to `false`. See [News](#news). |
-| `gain` | Optional. A level trim on every track, `0` to `1`. Defaults to `1`, the audio as recorded. |
+| `gain` | Optional. A level trim on every track, `0` to `4`. Defaults to `1`, the audio as recorded. See [Level](#level). |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
@@ -56,11 +56,20 @@ same rules:
 Leave `news` out and the station gets no DJ lines of any kind. Other DJs are not offered: Maximum
 Mike's lines name Morro Rock and Ash's name Growl FM.
 
-`gain` is the station's level trim. RadioXL routes a station through the same level stages as the
-game's own stations, so audio mastered like commercial music plays among them at `1`: measured on
-the Radioport, the vanilla stations read -16 to -20 LUFS and a loud web stream at `1` read -18.
-Lower it for material that plays louder than the vanilla stations. It cannot go above `1`, so a
-quiet recording stays quiet.
+## Level
+
+`gain` is the station's level trim, a multiplier on the samples: `0.5` is -6 dB, `2` is +6 dB, `4`
+is +12 dB. RadioXL routes a station through the same level stages as the game's own stations, so
+audio mastered like commercial music plays among them at `1`: the game's own radio files measure
+-5 to -19 LUFS, most of them near -11, and a loud web stream at `1` read within the vanilla band on
+the Radioport. Lower it for material that plays louder than the vanilla stations; raise it for a
+quiet recording.
+
+**A gain above `1` must leave the loudest sample under full scale.** The samples are scaled as
+16-bit integers and a value past the top wraps rather than clips, which is heard as crackle on the
+loud beats. A file mastered to 0 dBFS, which is most modern music, cannot be raised at all; a file
+peaking at -6 dBFS can take up to `2`. The station builder measures each file and keeps the value
+inside that limit.
 
 ## The frequency and the name
 

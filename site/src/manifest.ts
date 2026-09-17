@@ -64,7 +64,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   const name = s.stationName.trim().replace(/\s+/g, ' ')
   if (name) m.displayName = name
   if (s.news) m.news = true
-  if (s.gain < 1) m.gain = Math.round(s.gain * 100) / 100
+  if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
   if (s.iconMode === 'record') {
     const record = s.iconChoice === 'other' ? s.iconRecord.trim() : s.iconChoice
     if (record) m.icon = record

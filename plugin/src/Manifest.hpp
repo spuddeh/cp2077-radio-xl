@@ -45,6 +45,13 @@ struct Track
 // only on the path that uses that object.
 constexpr float kDefaultGain = 1.0f;
 
+// The most a manifest may ask for: +12 dB. The game's own radio files span 14 dB of loudness, and
+// the quietest is 8 dB under the median, so nothing quieter than that is a radio track. The ceiling
+// is not what keeps a raised track clean: AudioXL scales 16-bit samples and WRAPS past full scale,
+// so a track's own peak times its gain must stay under 0 dBFS. That check belongs to the tool that
+// can read the file (the station builder), not to a plugin that reads only headers.
+constexpr float kMaxGain = 4.0f;
+
 struct Station
 {
     std::string name;          // the station CName, e.g. radio_station_20_tool
@@ -53,7 +60,7 @@ struct Station
     std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
     bool news = false;         // Stanley's news and greetings may reach the station
-    float gain = kDefaultGain; // level trim applied to every track's samples, 0..1; see RadioXL_StationGain
+    float gain = kDefaultGain; // level trim applied to every track's samples, 0..kMaxGain; see RadioXL_StationGain
     std::vector<Track> tracks;
     std::string source;        // which manifest it came from, for logging
     std::string folder;        // the manifest's own directory, which track files are relative to
@@ -297,11 +304,11 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
     }
     if (const JsonValue* gain = expect(root, "gain", JsonValue::Kind::Number, false))
     {
-        if (gain->number < 0.0 || gain->number > 1.0)
+        if (gain->number < 0.0 || gain->number > kMaxGain)
         {
-            at(gain->line, "\"gain\" is 0 to 1 - clamped");
+            at(gain->line, "\"gain\" is 0 to 4 - clamped");
         }
-        aOut.gain = std::clamp(static_cast<float>(gain->number), 0.0f, 1.0f);
+        aOut.gain = std::clamp(static_cast<float>(gain->number), 0.0f, kMaxGain);
     }
 
     if (const JsonValue* tracks = expect(root, "tracks", JsonValue::Kind::Array, true))

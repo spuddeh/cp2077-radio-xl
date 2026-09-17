@@ -169,6 +169,9 @@ void TestTolerated()
     Check(r.ok, "BOM and CRLF read", r.Joined());
     Check(r.station.atlas == "mod\\gui\\a.inkatlas", "atlas forward slashes become backslashes", r.station.atlas);
     Check(r.station.gain == 0.5f, "gain read");
+    const Read raised("{ \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\", \"gain\": 2.5,\n"
+                      "  \"tracks\": [ { \"file\": \"a.mp3\" } ] }");
+    Check(raised.ok && raised.station.gain == 2.5f && !raised.Logged("clamped"), "a gain above 1 is read as written", raised.Joined());
     Check(r.station.tracks.size() == 1 && r.station.tracks[0].title == "caf\xC3\xA9 \xF0\x9F\x8E\xB5 \"quoted\" }]{",
           "escapes and brackets inside a title", r.station.tracks.empty() ? "" : r.station.tracks[0].title);
 }
@@ -284,7 +287,7 @@ void TestWarnings()
     const std::string text = R"json({
   "name": "x", "frequency": 90.5, "displayName": "Station X",
   "subtitle": "typo",
-  "gain": 1.5,
+  "gain": 4.5,
   "atlas": "m\\a.inkatlas",
   "tracks": [ { "file": "a", "titel": "typo" } ],
   "speaker": "Stanley"
@@ -292,8 +295,8 @@ void TestWarnings()
     const Read r(text);
     Check(r.ok, "warnings do not refuse the manifest", r.Joined());
     Check(r.Logged("Mod/station.json:3: unknown manifest key \"subtitle\" - ignored"), "unknown top-level key named", r.Joined());
-    Check(r.Logged("Mod/station.json:4: \"gain\" is 0 to 1 - clamped"), "gain out of range named", r.Joined());
-    Check(r.station.gain == 1.0f, "gain clamped");
+    Check(r.Logged("Mod/station.json:4: \"gain\" is 0 to 4 - clamped"), "gain out of range named", r.Joined());
+    Check(r.station.gain == radioxl::kMaxGain, "gain clamped");
     Check(r.Logged("Mod/station.json:5: \"atlas\" without \"icon\" does nothing - ignored"), "atlas without icon named", r.Joined());
     Check(r.Logged("Mod/station.json:6: unknown track key \"titel\" - ignored"), "unknown track key named", r.Joined());
     Check(r.Logged("Mod/station.json:7: unknown manifest key \"speaker\" - ignored"), "speaker named as unknown", r.Joined());
