@@ -16,6 +16,7 @@ usage:
   python level-target.py report   [--work DIR] [--out DIR]
   python level-target.py all      (the four above, in order)
   python level-target.py check    <capture.json> [--out DIR] [--tolerance 1.0]
+  python level-target.py align    <capture.wav> --route mono|stereo [--station DIR]... [--track NN=<audio>]... [--json OUT]
   python level-target.py file     <audio>... [--out DIR] [--margin 1.0]
 
 dump     pulls radio.bnk, cp_music.bnk, init.bnk and eventsmetadata.json out of the game's archives,
@@ -33,12 +34,24 @@ check    compares the model against a capture made in game with measure-loudness
          measured. The prediction only has to hold to within about 1 LU RELATIVE to the other
          stations in the same capture; the absolute offset is the player's volume settings.
          measure-loudness.py report --json writes the capture in the shape this reads.
+align    checks the model track by track, from the capture alone. It finds which track is playing
+         when by matching a spectral fingerprint of every decoded vanilla track (and every file of
+         each --station) against the recording, then measures the capture and the source over the
+         SAME stretch of the song. The difference is the chain: segment volume plus the route's
+         trim for a vanilla track, gain plus the routing trim for a RadioXL one. Station medians
+         are useless here (a station's own tracks spread 3 to 8 dB), and no probe log is needed.
+         Needs numpy and scipy. --route is the receiver: mono is the Radioport, stereo a vehicle
+         or world device. --track NN=<audio> adds a file another mod plays on vanilla station NN
+         (Hardest to Be on Growl FM is 12=<762143559.ogg>). The recording's floor (its quietest
+         second) is measured too: a passage the room would lift by more than 1 dB is reported but
+         not counted.
 file     measures any audio file the way the builder will and prints the gain that puts it on the
          target, bounded by the file's own peak: AudioXL scales 16-bit samples and a value past
          full scale wraps, so peak + gain stays under 0 dBFS by --margin.
 
 Needs: Python 3.11+, ffmpeg on PATH, wwiser (https://github.com/bnnm/wwiser, the .pyz), and a
-wwtools.dll (ships with WolvenKit). Nothing here writes into the game directory.
+wwtools.dll (ships with WolvenKit); `align` also needs numpy and scipy. Nothing here writes into
+the game directory.
 
 A file's own loudness says nothing about its level in game until the chain is applied: a track that
 measured within 1 dB of its neighbours in the file was 15 dB louder in game, and all 15 dB were in
@@ -431,8 +444,9 @@ EBUR = {
 }
 
 
-def measure_one(path: Path) -> dict:
-    cmd = ["ffmpeg", "-nostats", "-hide_banner", "-i", str(path), "-filter_complex",
+def measure_one(path: Path, start: float | None = None, length: float | None = None) -> dict:
+    excerpt = [] if start is None else ["-ss", f"{start:.3f}", "-t", f"{length:.3f}"]
+    cmd = ["ffmpeg", "-nostats", "-hide_banner", *excerpt, "-i", str(path), "-filter_complex",
            "ebur128=peak=true:framelog=quiet", "-f", "null", "-"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     text = r.stderr
@@ -631,6 +645,270 @@ def cmd_check(args) -> None:
     print(f"worst residual {worst:.1f} LU - {'within' if worst <= args.tolerance else 'OUTSIDE'} {args.tolerance} LU")
 
 
+# ---------------------------------------------------------------------------------------------
+# align: which track plays when in a capture, by fingerprint, and the chain measured per passage.
+
+ALIGN_SR = 8000          # the fingerprint works on a mono downmix at this rate
+ALIGN_FRAME = 512        # 64 ms analysis frames ...
+ALIGN_HOP = 200          # ... every 25 ms
+ALIGN_BANDS = 32         # log-spaced bands, 80 Hz to 3.8 kHz: what survives a car or a world device
+ALIGN_CHUNK_S = 20.0     # a source is matched in 20 s pieces, every 10 s, so a partial play still lands
+ALIGN_CHUNK_HOP_S = 10.0
+ALIGN_MIN_SCORE = 0.35   # normalised correlation; a wrong track sits under 0.3, a right one above 0.4
+ALIGN_ROOM_DB = 1.0      # a passage the room lifts by more than this is not counted
+
+
+def decode_pcm(path: Path, sr: int = ALIGN_SR):
+    import numpy as np
+    r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-f", "f32le", "-ac", "1", "-ar", str(sr), "-"],
+                       capture_output=True, check=True)
+    return np.frombuffer(r.stdout, dtype=np.float32)
+
+
+def fingerprint(pcm):
+    """Log band energies every 25 ms with a 2 s moving mean removed per band: the shape of the
+    music, not its level or the receiver's colour. Bands x frames."""
+    import numpy as np
+    n = (len(pcm) - ALIGN_FRAME) // ALIGN_HOP + 1
+    if n < 1:
+        return np.zeros((ALIGN_BANDS, 0))
+    idx = np.arange(ALIGN_FRAME)[None, :] + ALIGN_HOP * np.arange(n)[:, None]
+    spec = np.abs(np.fft.rfft(pcm[idx] * np.hanning(ALIGN_FRAME).astype(np.float32), axis=1)) ** 2
+    bins = np.fft.rfftfreq(ALIGN_FRAME, 1 / ALIGN_SR)
+    edges = np.geomspace(80, 3800, ALIGN_BANDS + 1)
+    bands = []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        a = int(np.searchsorted(bins, lo))
+        b = max(a + 1, int(np.searchsorted(bins, hi)))
+        bands.append(spec[:, a:b].mean(axis=1))
+    db = 10 * np.log10(np.stack(bands) + 1e-10)
+    k = int(2 * ALIGN_SR / ALIGN_HOP)
+    if db.shape[1] < k:
+        return db - db.mean(axis=1, keepdims=True)
+    kern = np.ones(k) / k
+    return (db - np.apply_along_axis(lambda r: np.convolve(r, kern, mode="same"), 1, db)).astype(np.float64)
+
+
+def find_passages(cap_fp, src_fp, label: str) -> list[dict]:
+    """Every stretch of the source that appears in the capture: 20 s chunks of the source are
+    correlated against the whole capture, and chunks that land at one lag are one passage."""
+    import numpy as np
+    from scipy.signal import fftconvolve
+    fps = ALIGN_SR / ALIGN_HOP
+    L, hop = int(ALIGN_CHUNK_S * fps), int(ALIGN_CHUNK_HOP_S * fps)
+    if cap_fp.shape[1] < L or src_fp.shape[1] < L:
+        return []
+    ce = np.concatenate([[0.0], np.cumsum((cap_fp ** 2).sum(axis=0))])
+    energy = np.sqrt(np.maximum(ce[L:] - ce[:-L], 1e-9))
+    passages: list[dict] = []
+    for s0 in range(0, src_fp.shape[1] - L + 1, hop):
+        t = src_fp[:, s0:s0 + L]
+        t = t - t.mean()
+        tn = float(np.linalg.norm(t))
+        if tn < 1e-6:
+            continue
+        score = fftconvolve(cap_fp, t[::-1, ::-1], mode="valid")[0] / (tn * energy)
+        i = int(np.argmax(score))
+        sc = float(score[i])
+        if sc < ALIGN_MIN_SCORE:
+            continue
+        src_t, cap_t = s0 / fps, i / fps
+        lag = cap_t - src_t
+        for p in passages:
+            if abs(p["lag"] - lag) < 0.15:
+                p["srcStart"] = min(p["srcStart"], src_t); p["srcEnd"] = max(p["srcEnd"], src_t + ALIGN_CHUNK_S)
+                p["capStart"] = min(p["capStart"], cap_t); p["capEnd"] = max(p["capEnd"], cap_t + ALIGN_CHUNK_S)
+                p["scores"].append(sc)
+                break
+        else:
+            passages.append({"source": label, "lag": lag, "srcStart": src_t, "srcEnd": src_t + ALIGN_CHUNK_S,
+                             "capStart": cap_t, "capEnd": cap_t + ALIGN_CHUNK_S, "scores": [sc]})
+    return [p for p in passages if len(p["scores"]) >= 2]
+
+
+def capture_floor_db(pcm) -> float:
+    """The 5th percentile of 1 s block levels: the room between and under the music."""
+    import numpy as np
+    n = len(pcm) // ALIGN_SR
+    if n < 2:
+        return float("-inf")
+    blocks = pcm[:n * ALIGN_SR].reshape(n, ALIGN_SR)
+    rms = np.sqrt((blocks ** 2).mean(axis=1) + 1e-12)
+    return float(np.percentile(20 * np.log10(rms), 5))
+
+
+def passage_rank(p: dict) -> float:
+    return p["score"] * min(1.0, len(p["scores"]) / 4)  # a long match outranks a short one
+
+
+def cmd_align(args) -> None:
+    try:
+        import numpy as np
+        import scipy  # noqa: F401
+    except ImportError:
+        raise SystemExit("align needs numpy and scipy: pip install numpy scipy")
+    work, out_dir = Path(args.work), Path(args.out)
+    levels = json.loads((out_dir / "vanilla-levels.json").read_text(encoding="utf-8"))
+    target = json.loads((out_dir / "target.json").read_text(encoding="utf-8"))
+    route = args.route
+    trim_key = "stereoTrimDb" if route == "stereo" else "monoTrimDb"
+    routing_trim = float(target["routingStation"][trim_key])
+
+    # Sources: every decoded vanilla track, with what the chain adds to it on this route.
+    sources: dict[str, dict] = {}
+    for t in levels["tracks"]:
+        ogg = work / "ogg" / f"{t['sourceId']}.ogg"
+        if not ogg.is_file():
+            continue
+        label = f"{t['station']}/{t['event']}"
+        sources[label] = {"path": ogg, "station": t["stationName"], "vanilla": True,
+                          "predicted": float(t["segmentVolumeDb"]) + float(t[trim_key])}
+    # ... and every file of each RadioXL station: manifest gain times the track's own, on the routing trim.
+    for station_dir in args.station or []:
+        sdir = Path(station_dir)
+        manifest = json.loads((sdir / "station.json").read_text(encoding="utf-8"))
+        name = manifest.get("displayName") or manifest.get("name") or sdir.name
+        station_gain = float(manifest.get("gain", 1.0))
+        for tr in manifest.get("tracks", []):
+            if "file" not in tr:
+                continue  # a stream has no file to match
+            gain = station_gain * float(tr.get("gain", 1.0))
+            label = f"{name}/{tr.get('title') or Path(tr['file']).stem}"
+            sources[label] = {"path": sdir / tr["file"], "station": name, "vanilla": False,
+                              "predicted": 20 * math.log10(gain) + routing_trim if gain > 0 else float("-inf")}
+
+    # ... and a file another mod adds to a vanilla station: that station's trim, no segment volume.
+    by_number = {t["station"]: t for t in levels["tracks"]}
+    for spec in args.track or []:
+        number, _, file = spec.partition("=")
+        if number not in by_number or not file:
+            raise SystemExit(f"--track wants NN=<audio> with NN a dial station number, not {spec!r}")
+        t = by_number[number]
+        label = f"{number}/{Path(file).stem}"
+        sources[label] = {"path": Path(file), "station": t["stationName"], "vanilla": False,
+                          "predicted": float(t[trim_key])}
+
+    # Fingerprints. The vanilla set is cached in the work folder; a station's files are done each run.
+    cache_path = work / "fingerprints.npz"
+    cache = dict(np.load(cache_path)) if cache_path.is_file() else {}
+    fresh = False
+    prints: dict[str, object] = {}
+    for label, src in sources.items():
+        key = src["path"].stem if src["vanilla"] else None
+        if key and key in cache:
+            prints[label] = cache[key]
+            continue
+        try:
+            fp = fingerprint(decode_pcm(src["path"]))
+        except subprocess.CalledProcessError:
+            print(f"  {label}: could not decode {src['path']}")
+            continue
+        prints[label] = fp
+        if key:
+            cache[key] = fp
+            fresh = True
+    if fresh:
+        np.savez(cache_path, **cache)
+        print(f"fingerprints cached -> {cache_path}")
+
+    capture = Path(args.capture)
+    pcm = decode_pcm(capture)
+    cap_fp = fingerprint(pcm)
+    floor = capture_floor_db(pcm)
+    print(f"{capture.name}: {len(pcm) / ALIGN_SR:.0f} s, route {route}, floor about {floor:.1f} dBFS; "
+          f"matching {len(prints)} tracks")
+
+    found: list[dict] = []
+    for label, fp in prints.items():
+        for p in find_passages(cap_fp, fp, label):
+            p["score"] = float(sum(p["scores"]) / len(p["scores"]))
+            p["path"] = str(sources[label]["path"])
+            p["station"] = sources[label]["station"]
+            p["predicted"] = sources[label]["predicted"]
+            found.append(p)
+
+    # One thing plays at a time: keep the best-ranked passage in any stretch. Two sources holding the
+    # same recording (a RadioXL station carrying a vanilla song) land at the same lag with the same
+    # score; that passage is ambiguous and is attributed by its neighbours, or left out.
+    kept: list[dict] = []
+    for p in sorted(found, key=lambda q: -passage_rank(q)):
+        clash = None
+        for k in kept:
+            overlap = min(p["capEnd"], k["capEnd"]) - max(p["capStart"], k["capStart"])
+            if overlap > 0.25 * min(p["capEnd"] - p["capStart"], k["capEnd"] - k["capStart"]):
+                clash = k
+                break
+        if clash is None:
+            p["alsoMatches"] = []
+            kept.append(p)
+        elif abs(clash["lag"] - p["lag"]) < 0.3 and abs(clash["score"] - p["score"]) < 0.05 and clash["station"] != p["station"]:
+            clash["alsoMatches"].append(p)
+    kept.sort(key=lambda q: q["capStart"])
+    for i, p in enumerate(kept):
+        if not p["alsoMatches"]:
+            continue
+        candidates = {p["station"]: p, **{q["station"]: q for q in p["alsoMatches"]}}
+        neighbours = [kept[j] for j in (i - 1, i + 1) if 0 <= j < len(kept) and not kept[j]["alsoMatches"]
+                      and min(abs(kept[j]["capStart"] - p["capEnd"]), abs(p["capStart"] - kept[j]["capEnd"])) < 20]
+        pick = next((candidates[n["station"]] for n in neighbours if n["station"] in candidates), None)
+        if pick is not None and pick is not p:
+            for k in ("source", "path", "station", "predicted"):
+                p[k] = pick[k]
+            p["attributedBy"] = "neighbour"
+        elif pick is None:
+            p["ambiguous"] = " or ".join(candidates)
+    for p in kept:
+        p["alsoMatches"] = [q["source"] for q in p["alsoMatches"]]
+
+    if not kept:
+        raise SystemExit("no track from the decoded set or the given stations was found in this capture")
+
+    # Measure capture and source over the same stretch of the song.
+    rows = []
+    for p in kept:
+        dur = p["capEnd"] - p["capStart"]
+        cap = measure_one(capture, p["capStart"], dur)
+        src = measure_one(Path(p["path"]), p["srcStart"], dur)
+        if cap["I"] is None or src["I"] is None:
+            continue
+        p.update({"seconds": round(dur, 1), "captureLufs": cap["I"], "capturePeakDb": cap["Peak"],
+                  "sourceLufs": src["I"], "measured": round(cap["I"] - src["I"], 1)})
+        # What the room adds to the reading if it sits under the music at the floor level.
+        p["roomDb"] = round(10 * math.log10(1 + 10 ** ((floor - cap["I"]) / 10)), 1)
+        p["counted"] = p["roomDb"] <= ALIGN_ROOM_DB and "ambiguous" not in p and p["predicted"] > float("-inf")
+        rows.append(p)
+
+    counted = [p for p in rows if p["counted"]]
+    offset = median([p["measured"] - p["predicted"] for p in counted]) if counted else 0.0
+    print(f"player offset (measured - predicted, median over {len(counted)} passage(s)) {offset:+.1f} dB" + chr(10))
+    print(f"{'capture s':>15}  {'track':44} {'score':>5} {'capture':>8} {'source':>7} {'chain':>6} {'model':>6} {'resid':>6} {'room':>5}")
+    worst = 0.0
+    for p in rows:
+        resid = p["measured"] - (p["predicted"] + offset)
+        note = ""
+        if "ambiguous" in p:
+            note = f"  ambiguous: {p['ambiguous']}"
+        elif p["roomDb"] > ALIGN_ROOM_DB:
+            note = f"  the room adds up to {p['roomDb']:.1f} dB, not counted"
+        elif p.get("attributedBy"):
+            note = "  same recording on two stations; taken from its neighbour"
+        if p["counted"]:
+            worst = max(worst, abs(resid))
+        p["residual"] = round(resid, 1)
+        print(f"{p['capStart']:7.1f}..{p['capEnd']:6.1f}  {p['source'][:44]:44} {p['score']:5.2f} {p['captureLufs']:8.1f} "
+              f"{p['sourceLufs']:7.1f} {p['measured']:+6.1f} {p['predicted'] + offset:+6.1f} {resid:+6.1f} {p['roomDb']:5.1f}{note}")
+    if counted:
+        stations = sorted({p["station"] for p in counted})
+        print(chr(10) + f"worst residual {worst:.1f} LU over {len(counted)} passage(s) on {len(stations)} station(s) - "
+              f"{'within' if worst <= args.tolerance else 'OUTSIDE'} {args.tolerance} LU"
+              + ("" if len(stations) > 1 else "; one station only, so the trims are untested"))
+    if args.json:
+        payload = {"capture": capture.name, "route": route, "floorDb": round(floor, 1), "offsetDb": round(offset, 1),
+                   "passages": [{k: v for k, v in p.items() if k not in ("scores", "lag")} for p in rows]}
+        Path(args.json).write_text(json.dumps(payload, indent=1), encoding="utf-8")
+        print(f"wrote {args.json}")
+
+
 def cmd_file(args) -> None:
     """Measure any audio file the way the builder will, and say what gain puts it on the target.
     The gain is bounded by the file's own peak: AudioXL scales 16-bit samples and a value past
@@ -677,6 +955,13 @@ def main() -> None:
     s = sub.add_parser("check"); common(s, work=False, out=True)
     s.add_argument("capture", help="JSON: {route: mono|stereo, stations: [{station, lufs[, fileLufs, gain]}]}")
     s.add_argument("--tolerance", type=float, default=1.0)
+    s = sub.add_parser("align"); common(s, out=True)
+    s.add_argument("capture", help="a loopback recording (WAV) of the game")
+    s.add_argument("--route", required=True, choices=["mono", "stereo"], help="mono = Radioport, stereo = vehicle or world device")
+    s.add_argument("--station", action="append", help="a RadioXL station folder (holds station.json); repeatable")
+    s.add_argument("--track", action="append", help="NN=<audio>: a file another mod plays on vanilla station NN; repeatable")
+    s.add_argument("--tolerance", type=float, default=1.0)
+    s.add_argument("--json", default=None, help="write every passage and its numbers here")
     s = sub.add_parser("file"); common(s, work=False, out=True)
     s.add_argument("files", nargs="+", help="audio files to measure against the target")
     s.add_argument("--margin", type=float, default=1.0, help="dB the peak stays under full scale after the gain")
@@ -686,7 +971,7 @@ def main() -> None:
         cmd_dump(args); cmd_export(args); cmd_measure(args); cmd_report(args)
     else:
         {"dump": cmd_dump, "export": cmd_export, "measure": cmd_measure, "report": cmd_report,
-         "check": cmd_check, "file": cmd_file}[args.cmd](args)
+         "check": cmd_check, "align": cmd_align, "file": cmd_file}[args.cmd](args)
 
 
 if __name__ == "__main__":

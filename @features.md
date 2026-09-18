@@ -97,8 +97,11 @@
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
 - The offline level model against one capture: two vanilla stations and one RadioXL station on the
-  Radioport, `measure-loudness.py report --json`, then `level-target.py check`. The predicted gaps
-  must match the measured ones within about 1 LU before the builder suggests a level from it (#44).
+  Radioport, two minutes each, standing still somewhere quiet, then
+  `level-target.py align <capture.wav> --route mono --station <dir>`. Each RadioXL passage must land
+  within about 1 LU of the model, or at a constant offset that then goes into `target.json`, before
+  the builder suggests a level from it (#44). The only pair on record, a world-device capture from
+  before the tool existed, has RadioXL 2 dB under the model.
 - A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
 
 ## Planned

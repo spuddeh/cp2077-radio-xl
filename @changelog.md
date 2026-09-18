@@ -24,6 +24,17 @@
   LUFS (median -11.0), a file target of -10.9 LUFS on `radioxl_radio`, no dynamics on either radio
   bus, and `3803692087` is the master bus itself.
 - `tools/measure-loudness.py report --json <file>` writes the capture in the shape `check` reads.
+- `tools/level-target.py align <capture.wav> --route mono|stereo [--station DIR] [--track NN=<audio>]`
+  (#44): the capture check done per track, because a station's own tracks spread 3 to 8 dB and a
+  median comparison cannot reach 1 LU. Finds which track plays when by spectral fingerprint (32 log
+  bands, 25 ms frames, 2 s mean removed, 20 s chunks correlated by FFT) over every decoded vanilla
+  track, each `--station`'s files and any `--track` another mod adds to a vanilla station; measures
+  capture and source over the same stretch; reports chain, model and residual per passage; measures
+  the recording's floor and does not count a passage the room lifts by more than 1 dB. Vanilla
+  fingerprints are cached in `work/fingerprints.npz`. No probe log. Needs numpy and scipy.
+  `measure_one` takes an optional excerpt. On the captures already on disk: five Growl FM tracks at
+  the Radioport put the method's own noise at about 1 LU per passage; the one RadioXL-against-vanilla
+  pair (a world device, 2026-09-09) has RadioXL 2 dB under the model, with the standing spot unrecorded.
 
 ## [0.3.0] - 2026-09-16
 
