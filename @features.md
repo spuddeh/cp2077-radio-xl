@@ -100,7 +100,7 @@
   trims within 0.3 LU and the RadioXL path at +2 dB, now in `target.json`. A parked car with the
   same three stations, `level-target.py align <capture.wav> --route stereo --station <dir>`, says
   whether the 2 dB holds on the stereo send; the one world-device capture on record pointed the
-  other way but was made with the player moving (#44).
+  other way but was made with the player moving (#47).
 - A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
 
 ## Planned

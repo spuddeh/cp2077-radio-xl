@@ -39,7 +39,10 @@
   that: `report` subtracts it from the file target (now -12.9 LUFS, stereo -12.5, mono -13.4) and
   writes it to `target.json` as `radioxlPathDb`; `check` and `align` add it to a RadioXL row's
   prediction. With it, the worst residual over both passes is 1.0 LU. The stereo route is not
-  measured and is assumed the same.
+  measured and is assumed the same. The cause was looked for in the banks and is not a static
+  value there: the Audio Input source gain is 0, the sound and its actor-mixer parent carry no
+  gain before the inserts, the Time Stretch insert's parameter block holds no gain, the copied
+  sends verify, and AudioXL copies frames unchanged at gain 1. The term stays measured.
 
 ## [0.3.0] - 2026-09-16
 
