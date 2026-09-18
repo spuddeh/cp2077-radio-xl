@@ -49,6 +49,12 @@
     and the file target is back at -10.9 LUFS. The "+2 dB" was Vexelstrom, whose own tracks play
     1 to 2 dB under its trims on every receiver and which the routing bank copies; Growl FM's
     "4 dB at a device" was 2 dB of the wrong column and the rest device scatter.
+  - **A segment's own Volume is not on the chain.** Wwise folds every Volume in the hierarchy into
+    one gain after the insert effects (the same reason the -96 dB dry mute does not silence the
+    sends), so the +1 to +4 dB on eleven segments never reaches a receiver. With it out of the sum
+    the eight-station pass is within 0.5 LU on every station, Vexelstrom included, and the file
+    target is -11.1 LUFS. This is also why a per-track level has to be in the samples: `SetGain`
+    is the only stage before the sends a framework controls.
   - Ruled out along the way: the Time Stretch insert (a bank without it measures the same), every
     static gain in the banks, Wwise loudness normalisation (none set), duplicate definitions across
     banks (none), a second station bleeding at a device (none).

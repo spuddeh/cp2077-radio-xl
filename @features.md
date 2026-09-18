@@ -98,8 +98,6 @@
 - The never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line
   rows. (The Radioport popup on switch-on is measured: it shows the moment the Radioport comes on.)
 
-- Why Vexelstrom's own tracks play 1 to 2 dB under its send trims when the other seven measured
-  stations sit on theirs. It does not touch a RadioXL station, which plays at the trims themselves.
 
 ## Planned
 
