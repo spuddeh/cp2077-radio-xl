@@ -29,10 +29,10 @@
    "segmentVolumeDb": -2.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -6.0,
-   "stereoLevel": -14.7,
-   "monoLevel": -18.7,
-   "stereoPeak": -3.5,
-   "monoPeak": -7.5
+   "stereoLevel": -12.7,
+   "monoLevel": -16.7,
+   "stereoPeak": -1.5,
+   "monoPeak": -5.5
   },
   {
    "station": "--",
@@ -437,10 +437,10 @@
    "segmentVolumeDb": 3.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -10.9,
-   "monoLevel": -13.9,
-   "stereoPeak": 1.4,
-   "monoPeak": -1.6
+   "stereoLevel": -13.9,
+   "monoLevel": -16.9,
+   "stereoPeak": -1.6,
+   "monoPeak": -4.6
   },
   {
    "station": "02",
@@ -522,10 +522,10 @@
    "segmentVolumeDb": 1.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -8.0,
-   "monoLevel": -11.0,
-   "stereoPeak": 0.3,
-   "monoPeak": -2.7
+   "stereoLevel": -9.0,
+   "monoLevel": -12.0,
+   "stereoPeak": -0.7,
+   "monoPeak": -3.7
   },
   {
    "station": "02",
@@ -539,10 +539,10 @@
    "segmentVolumeDb": 1.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -10.9,
-   "monoLevel": -13.9,
-   "stereoPeak": -0.4,
-   "monoPeak": -3.4
+   "stereoLevel": -11.9,
+   "monoLevel": -14.9,
+   "stereoPeak": -1.4,
+   "monoPeak": -4.4
   },
   {
    "station": "02",
@@ -556,10 +556,10 @@
    "segmentVolumeDb": 4.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -11.4,
-   "monoLevel": -14.4,
-   "stereoPeak": 0.5,
-   "monoPeak": -2.5
+   "stereoLevel": -15.4,
+   "monoLevel": -18.4,
+   "stereoPeak": -3.5,
+   "monoPeak": -6.5
   },
   {
    "station": "02",
@@ -641,10 +641,10 @@
    "segmentVolumeDb": 1.0,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -13.2,
-   "monoLevel": -16.2,
-   "stereoPeak": -0.7,
-   "monoPeak": -3.7
+   "stereoLevel": -14.2,
+   "monoLevel": -17.2,
+   "stereoPeak": -1.7,
+   "monoPeak": -4.7
   },
   {
    "station": "02",
@@ -675,10 +675,10 @@
    "segmentVolumeDb": 1.5,
    "stereoTrimDb": -2.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -11.8,
-   "monoLevel": -14.8,
-   "stereoPeak": -0.1,
-   "monoPeak": -3.1
+   "stereoLevel": -13.3,
+   "monoLevel": -16.3,
+   "stereoPeak": -1.6,
+   "monoPeak": -4.6
   },
   {
    "station": "03",
@@ -947,10 +947,10 @@
    "segmentVolumeDb": 3.0,
    "stereoTrimDb": -3.0,
    "monoTrimDb": -7.0,
-   "stereoLevel": -13.4,
-   "monoLevel": -17.4,
-   "stereoPeak": 0.3,
-   "monoPeak": -3.7
+   "stereoLevel": -16.4,
+   "monoLevel": -20.4,
+   "stereoPeak": -2.7,
+   "monoPeak": -6.7
   },
   {
    "station": "03",
@@ -1967,10 +1967,10 @@
    "segmentVolumeDb": 1.0,
    "stereoTrimDb": 0.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -12.5,
-   "monoLevel": -17.5,
-   "stereoPeak": -1.0,
-   "monoPeak": -6.0
+   "stereoLevel": -13.5,
+   "monoLevel": -18.5,
+   "stereoPeak": -2.0,
+   "monoPeak": -7.0
   },
   {
    "station": "07",
@@ -2001,10 +2001,10 @@
    "segmentVolumeDb": 1.0,
    "stereoTrimDb": 0.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -11.4,
-   "monoLevel": -16.4,
-   "stereoPeak": 1.4,
-   "monoPeak": -3.6
+   "stereoLevel": -12.4,
+   "monoLevel": -17.4,
+   "stereoPeak": 0.4,
+   "monoPeak": -4.6
   },
   {
    "station": "07",
@@ -2018,10 +2018,10 @@
    "segmentVolumeDb": 2.0,
    "stereoTrimDb": 0.0,
    "monoTrimDb": -5.0,
-   "stereoLevel": -9.4,
-   "monoLevel": -14.4,
-   "stereoPeak": 2.0,
-   "monoPeak": -3.0
+   "stereoLevel": -11.4,
+   "monoLevel": -16.4,
+   "stereoPeak": 0.0,
+   "monoPeak": -5.0
   },
   {
    "station": "07",
@@ -3963,20 +3963,20 @@
   }
  ],
  "target": {
-  "fileLufsTarget": -10.9,
+  "fileLufsTarget": -11.1,
   "fileLufsTargetByRoute": {
-   "stereo": -10.5,
-   "mono": -11.4
+   "stereo": -10.7,
+   "mono": -11.6
   },
   "radioxlPathDb": 0.0,
   "chainLevelMedian": {
-   "stereo": -12.5,
-   "mono": -16.4
+   "stereo": -12.7,
+   "mono": -16.6
   },
   "chainLevelBand": {
    "stereo": [
     -18.8,
-    -8.0
+    -8.1
    ],
    "mono": [
     -25.3,
@@ -4016,26 +4016,26 @@
     },
     "stereoLevel": {
      "min": -18.8,
-     "median": -12.5,
-     "max": -8.0,
+     "median": -12.7,
+     "max": -8.1,
      "count": 188
     },
     "monoLevel": {
      "min": -25.3,
-     "median": -16.4,
+     "median": -16.6,
      "max": -10.5,
      "count": 188
     },
     "stereoPeak": {
      "min": -10.3,
      "median": -1.9,
-     "max": 2.0,
+     "max": 1.5,
      "count": 188
     },
     "monoPeak": {
      "min": -13.3,
      "median": -5.3,
-     "max": -1.6,
+     "max": -2.9,
      "count": 188
     }
    },
@@ -4077,14 +4077,14 @@
      },
      "stereoLevel": {
       "min": -16.9,
-      "median": -11.4,
-      "max": -8.0,
+      "median": -11.9,
+      "max": -8.1,
       "count": 15
      },
      "monoLevel": {
       "min": -19.9,
-      "median": -14.4,
-      "max": -11.0,
+      "median": -14.9,
+      "max": -11.1,
       "count": 15
      },
      "stereoTrimDb": -2.0,
@@ -4102,13 +4102,13 @@
      },
      "stereoLevel": {
       "min": -18.7,
-      "median": -13.9,
+      "median": -14.6,
       "max": -10.3,
       "count": 15
      },
      "monoLevel": {
       "min": -22.7,
-      "median": -17.9,
+      "median": -18.6,
       "max": -14.3,
       "count": 15
      },
@@ -4201,15 +4201,15 @@
       "count": 16
      },
      "stereoLevel": {
-      "min": -13.2,
-      "median": -11.6,
-      "max": -9.4,
+      "min": -13.5,
+      "median": -11.8,
+      "max": -10.3,
       "count": 16
      },
      "monoLevel": {
-      "min": -18.2,
-      "median": -16.6,
-      "max": -14.4,
+      "min": -18.5,
+      "median": -16.9,
+      "max": -15.3,
       "count": 16
      },
      "stereoTrimDb": 0.0,

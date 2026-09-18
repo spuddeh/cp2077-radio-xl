@@ -9,7 +9,12 @@ feeds world devices, which sum the two channels into one. A custom station on `r
 one vanilla station's pair, so from the send onwards it takes the same path as that station, and
 its file can be put on the same scale:
 
-    level on a route = file loudness (LUFS) + segment volume (dB) + that route's send trim (dB)
+    level on a route = file loudness (LUFS) + that route's send trim (dB)
+
+A segment's own Volume is NOT in that sum. Wwise folds every Volume in the hierarchy into one voice
+gain applied after the insert effects, which is why the playlist's -96 dB dry mute does not silence
+the sends, and it is why a +1 to +4 dB segment Volume (Vexelstrom's six, one Night FM, three PEBKAC)
+never reaches them either: measured, those tracks land on trim alone. The table still lists it.
 
 A custom sound adds nothing of its own: measured against seven vanilla stations on the Radioport it
 lands on its cited trims within the method's noise (RADIOXL_PATH_DB below).
@@ -518,10 +523,12 @@ def cmd_report(args) -> None:
             "station": number, "stationName": name, "kind": st["kind"], "event": t["event"],
             "sourceId": t["sourceId"], "lufs": m["lufs"], "lra": m["lra"], "truePeakDb": m["truePeakDb"],
             "segmentVolumeDb": t["segmentVolumeDb"], "stereoTrimDb": stereo, "monoTrimDb": mono,
-            "stereoLevel": round(m["lufs"] + t["segmentVolumeDb"] + stereo, 1),
-            "monoLevel": round(m["lufs"] + t["segmentVolumeDb"] + mono, 1),
-            "stereoPeak": round(m["truePeakDb"] + t["segmentVolumeDb"] + stereo, 1),
-            "monoPeak": round(m["truePeakDb"] + t["segmentVolumeDb"] + mono, 1),
+            # A segment's Volume is folded into the voice gain after the inserts, so it never reaches
+            # the sends: the level on a route is the file and the trim, nothing else.
+            "stereoLevel": round(m["lufs"] + stereo, 1),
+            "monoLevel": round(m["lufs"] + mono, 1),
+            "stereoPeak": round(m["truePeakDb"] + stereo, 1),
+            "monoPeak": round(m["truePeakDb"] + mono, 1),
         })
     rows.sort(key=lambda r: (r["station"], r["kind"], r["event"]))
 
@@ -784,7 +791,7 @@ def cmd_align(args) -> None:
             continue
         label = f"{t['station']}/{t['event']}"
         sources[label] = {"path": ogg, "station": t["stationName"], "vanilla": True,
-                          "predicted": float(t["segmentVolumeDb"]) + float(t[trim_key])}
+                          "predicted": float(t[trim_key])}  # the segment's own Volume never reaches the send
     # ... and every file of each RadioXL station: manifest gain times the track's own, on the routing trim.
     for station_dir in args.station or []:
         sdir = Path(station_dir)
