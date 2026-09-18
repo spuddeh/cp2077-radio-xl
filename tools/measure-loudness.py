@@ -196,12 +196,13 @@ def report(wav, log, settle, minimum, json_out=None):
               f"N dB is a factor of 10^(N/20): -3 dB is x0.71, +3 dB is x1.41.")
     if json_out:
         # The shape level-target.py check reads. The route is the receiver the capture was made on:
-        # the Radioport is the mono send, a vehicle or world device the stereo one. A RadioXL
+        # the Radioport and a vehicle hear the send with the left/right curves (stereo), a world
+        # device the single-channel one (mono). A RadioXL
         # station needs its file loudness added by hand (level-target.py file <its audio>), and its
         # manifest gain if not 1, before the check can predict it.
         import json
         payload = {
-            "route": "stereo" if "radio:on" in HEARD else "mono",
+            "route": "mono" if "radio:on" in HEARD else "stereo",
             "stations": [{"station": st, "seconds": round(sec), "lufs": round(l, 1), "peak": round(p, 1)}
                          for st, sec, l, p in rows if l is not None and l != float("-inf")],
         }

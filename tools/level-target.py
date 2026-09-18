@@ -2,12 +2,17 @@ r"""Derive the level target for a RadioXL track from the game's own radio tracks
 
 A radio track's level at a receiver is its file's loudness, then the Wwise chain: the segment's own
 volume if it has one, and the station's send trim. Every station playlist in radio.bnk mutes its dry
-output at -96 dB and is heard only through its two CPR Voice Broadcast Sends, a stereo one for world
-devices and vehicles and a mono one for the Radioport, each with a fixed trim per station. A custom
-station on `radioxl_radio` cites one vanilla station's pair, so from the send onwards it takes the
-same path as that station, and its file can be put on the same scale:
+output at -96 dB and is heard only through its two CPR Voice Broadcast Sends, each with a fixed trim
+per station: the send with the left/right channel curves (`stereo` here) feeds the Radioport and
+vehicle radios, which pass both channels straight through; the single-channel send (`mono` here)
+feeds world devices, which sum the two channels into one. A custom station on `radioxl_radio` cites
+one vanilla station's pair, so from the send onwards it takes the same path as that station, and
+its file can be put on the same scale:
 
     level on a route = file loudness (LUFS) + segment volume (dB) + that route's send trim (dB)
+
+A custom sound adds nothing of its own: measured against seven vanilla stations on the Radioport it
+lands on its cited trims within the method's noise (RADIOXL_PATH_DB below).
 
 usage:
   python level-target.py dump     [--game DIR] [--work DIR] [--wwiser PYZ]
@@ -16,7 +21,7 @@ usage:
   python level-target.py report   [--work DIR] [--out DIR]
   python level-target.py all      (the four above, in order)
   python level-target.py check    <capture.json> [--out DIR] [--tolerance 1.0]
-  python level-target.py align    <capture.wav> --route mono|stereo [--station DIR]... [--track NN=<audio>]... [--json OUT]
+  python level-target.py align    <capture.wav> --route stereo|mono [--station DIR]... [--track NN=<audio>]... [--json OUT]
   python level-target.py file     <audio>... [--out DIR] [--margin 1.0]
 
 dump     pulls radio.bnk, cp_music.bnk, init.bnk and eventsmetadata.json out of the game's archives,
@@ -38,11 +43,10 @@ align    checks the model track by track, from the capture alone. It finds which
          when by matching a spectral fingerprint of every decoded vanilla track (and every file of
          each --station) against the recording, then measures the capture and the source over the
          SAME stretch of the song. The difference is the chain: segment volume plus the route's
-         trim for a vanilla track, gain plus the routing trim plus the RadioXL path's own
-         RADIOXL_PATH_DB for a RadioXL one (a residual there is a change in that term). Station medians
-         are useless here (a station's own tracks spread 3 to 8 dB), and no probe log is needed.
-         Needs numpy and scipy. --route is the receiver: mono is the Radioport, stereo a vehicle
-         or world device. --track NN=<audio> adds a file another mod plays on vanilla station NN
+         trim for a vanilla track, gain plus the routing trim (plus RADIOXL_PATH_DB, which is 0) for
+         a RadioXL one. Station medians are useless here (a station's own tracks spread 3 to 8 dB),
+         and no probe log is needed. Needs numpy and scipy. --route is the receiver: stereo is the
+         Radioport or a vehicle, mono a world device. --track NN=<audio> adds a file another mod plays on vanilla station NN
          (Hardest to Be on Growl FM is 12=<762143559.ogg>). The recording's floor (its quietest
          second) is measured too: a passage the room would lift by more than 1 dB is reported but
          not counted.
@@ -94,8 +98,10 @@ EVENTS_METADATA = r"base\sound\event\eventsmetadata.json"
 MEDIA = r"base\sound\soundbanks\media\{}.wem"
 
 # The CPR Voice Broadcast Send plugin ids, and the RTPC whose curve at x = 0 is the station's trim.
-SEND_STEREO = 338339   # 0x000529A3 - world devices and vehicles
-SEND_MONO = 207267     # 0x000329A3 - the Radioport
+# Which receiver hears which was measured by marking one send 12 dB down: the Radioport dropped by
+# it, a world radio did not.
+SEND_STEREO = 338339   # 0x000529A3 - left/right channel curves: the Radioport and vehicle radios
+SEND_MONO = 207267     # 0x000329A3 - one channel: world devices
 MUTE_RTPC = "1631578750"  # radio_broadcast_mute: 0 is unmuted, 1 is -96 dB
 
 # The vanilla pair `radioxl_radio` cites: Radio Vexelstrom's, mid-dial on both sends. Read from
@@ -105,13 +111,10 @@ ROUTING_STATION = "02"
 # The most a manifest may ask for: plugin/src/Manifest.hpp kMaxGain. Keep the two the same.
 MAX_GAIN = 4.0
 
-# What the RadioXL path adds on top of the send trim, in dB: a row at gain 1 on Vexelstrom's copied
-# pair lands this much above where a vanilla track on the same trim lands. Measured with `align` on
-# the Radioport, three Tool FM passages against four vanilla ones (+3.0, +1.6, +1.8; the method is
-# good to about 1 LU per passage). The cause is on the sound side of the send and is not read out of
-# the banks yet; the stereo route is not measured and is assumed the same. Re-measure after a
-# change to the routing bank or to AudioXL's feed, and after a game patch.
-RADIOXL_PATH_DB = 2.0
+# What a custom sound adds on top of its cited send trim, in dB. Zero: on the Radioport a RadioXL
+# row at gain 1 lands on Vexelstrom's copied trims to within the method's noise against seven
+# vanilla stations. Kept as a constant so `report`, `check` and `align` agree if it ever moves.
+RADIOXL_PATH_DB = 0.0
 
 # Dial names by the number in the event name. Frequencies from the game's own station list.
 DIAL = {
@@ -547,7 +550,7 @@ def cmd_report(args) -> None:
     }
     # The target: a custom track on radioxl_radio takes the routing station's trims, so the file
     # level that lands it on the game's median is the median chain level minus that trim, per route.
-    # The RadioXL path then adds RADIOXL_PATH_DB on top of the trim, so the file aims that much lower.
+    # RADIOXL_PATH_DB is what a custom sound adds on top of the trim (0 as measured); kept in the sum.
     stereo_target = round(game["stereoLevel"]["median"] - routing["stereoTrimDb"] - RADIOXL_PATH_DB, 1)
     mono_target = round(game["monoLevel"]["median"] - routing["monoTrimDb"] - RADIOXL_PATH_DB, 1)
     target = {
@@ -581,11 +584,11 @@ def write_markdown(path: Path, rows, per_station, game, target, data) -> None:
     L.append("# Vanilla radio track levels\n")
     L.append("Generated by `tools/level-target.py report`. Every station's tracks measured from the game's own files "
              "(EBU R128 through ffmpeg), then put on the chain: file loudness + the segment's own volume + the station's send trim. "
-             "`stereo` is the world-device and vehicle route, `mono` the Radioport.\n")
+             "`stereo` is the send the Radioport and vehicle radios hear, `mono` the one world devices hear.\n")
     L.append("## The target\n")
     L.append(f"A custom track on `radioxl_radio` rides {target['routingStation']['name']}'s sends "
              f"({target['routingStation']['stereoTrimDb']:+.1f} dB stereo, {target['routingStation']['monoTrimDb']:+.1f} dB mono). "
-             f"The RadioXL path adds {RADIOXL_PATH_DB:+.1f} dB on top of that trim (measured on the Radioport). "
+             f"A custom sound adds {RADIOXL_PATH_DB:+.1f} dB on top of that trim (measured on the Radioport against seven stations). "
              f"To land on the game's median it should measure **{target['fileLufsTarget']} LUFS** in the file "
              f"(stereo route {target['fileLufsTargetByRoute']['stereo']}, mono route {target['fileLufsTargetByRoute']['mono']}). "
              f"Its true peak plus its gain in dB must stay below {target['peakHeadroomDb']['stereo']:+.1f} dB on the stereo route.\n")
@@ -985,7 +988,7 @@ def main() -> None:
     s.add_argument("--tolerance", type=float, default=1.0)
     s = sub.add_parser("align"); common(s, out=True)
     s.add_argument("capture", help="a loopback recording (WAV) of the game")
-    s.add_argument("--route", required=True, choices=["mono", "stereo"], help="mono = Radioport, stereo = vehicle or world device")
+    s.add_argument("--route", required=True, choices=["stereo", "mono"], help="stereo = Radioport or vehicle, mono = world device")
     s.add_argument("--station", action="append", help="a RadioXL station folder (holds station.json); repeatable")
     s.add_argument("--track", action="append", help="NN=<audio>: a file another mod plays on vanilla station NN; repeatable")
     s.add_argument("--tolerance", type=float, default=1.0)
