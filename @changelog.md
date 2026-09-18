@@ -21,7 +21,7 @@
   it on the chain with the station's send trim. `report` writes `tools/level-target/vanilla-levels.{json,md}`
   and `target.json`; `check` compares a capture against the model; `file` measures any audio the
   way the builder will and prints the peak-bounded gain. Result: 188 music tracks at -19.3 to -5.2
-  LUFS (median -11.0), a file target of -10.9 LUFS on `radioxl_radio`, no dynamics on either radio
+  LUFS (median -11.0), a file target of -10.9 LUFS on `radioxl_radio` before the path term, no dynamics on either radio
   bus, and `3803692087` is the master bus itself.
 - `tools/measure-loudness.py report --json <file>` writes the capture in the shape `check` reads.
 - `tools/level-target.py align <capture.wav> --route mono|stereo [--station DIR] [--track NN=<audio>]`
@@ -33,8 +33,13 @@
   the recording's floor and does not count a passage the room lifts by more than 1 dB. Vanilla
   fingerprints are cached in `work/fingerprints.npz`. No probe log. Needs numpy and scipy.
   `measure_one` takes an optional excerpt. On the captures already on disk: five Growl FM tracks at
-  the Radioport put the method's own noise at about 1 LU per passage; the one RadioXL-against-vanilla
-  pair (a world device, 2026-09-09) has RadioXL 2 dB under the model, with the standing spot unrecorded.
+  the Radioport put the method's own noise at about 1 LU per passage. Then two Radioport captures
+  made for it: the vanilla passages (Vexelstrom, Growl FM, Hardest to Be) land within 0.3 LU of
+  the trim model and the RadioXL rows land +1.6 to +3.0 dB hot. `RADIOXL_PATH_DB = 2.0` carries
+  that: `report` subtracts it from the file target (now -12.9 LUFS, stereo -12.5, mono -13.4) and
+  writes it to `target.json` as `radioxlPathDb`; `check` and `align` add it to a RadioXL row's
+  prediction. With it, the worst residual over both passes is 1.0 LU. The stereo route is not
+  measured and is assumed the same.
 
 ## [0.3.0] - 2026-09-16
 

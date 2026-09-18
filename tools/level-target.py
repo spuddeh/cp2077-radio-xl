@@ -38,7 +38,8 @@ align    checks the model track by track, from the capture alone. It finds which
          when by matching a spectral fingerprint of every decoded vanilla track (and every file of
          each --station) against the recording, then measures the capture and the source over the
          SAME stretch of the song. The difference is the chain: segment volume plus the route's
-         trim for a vanilla track, gain plus the routing trim for a RadioXL one. Station medians
+         trim for a vanilla track, gain plus the routing trim plus the RadioXL path's own
+         RADIOXL_PATH_DB for a RadioXL one (a residual there is a change in that term). Station medians
          are useless here (a station's own tracks spread 3 to 8 dB), and no probe log is needed.
          Needs numpy and scipy. --route is the receiver: mono is the Radioport, stereo a vehicle
          or world device. --track NN=<audio> adds a file another mod plays on vanilla station NN
@@ -103,6 +104,14 @@ ROUTING_STATION = "02"
 
 # The most a manifest may ask for: plugin/src/Manifest.hpp kMaxGain. Keep the two the same.
 MAX_GAIN = 4.0
+
+# What the RadioXL path adds on top of the send trim, in dB: a row at gain 1 on Vexelstrom's copied
+# pair lands this much above where a vanilla track on the same trim lands. Measured with `align` on
+# the Radioport, three Tool FM passages against four vanilla ones (+3.0, +1.6, +1.8; the method is
+# good to about 1 LU per passage). The cause is on the sound side of the send and is not read out of
+# the banks yet; the stereo route is not measured and is assumed the same. Re-measure after a
+# change to the routing bank or to AudioXL's feed, and after a game patch.
+RADIOXL_PATH_DB = 2.0
 
 # Dial names by the number in the event name. Frequencies from the game's own station list.
 DIAL = {
@@ -538,11 +547,13 @@ def cmd_report(args) -> None:
     }
     # The target: a custom track on radioxl_radio takes the routing station's trims, so the file
     # level that lands it on the game's median is the median chain level minus that trim, per route.
-    stereo_target = round(game["stereoLevel"]["median"] - routing["stereoTrimDb"], 1)
-    mono_target = round(game["monoLevel"]["median"] - routing["monoTrimDb"], 1)
+    # The RadioXL path then adds RADIOXL_PATH_DB on top of the trim, so the file aims that much lower.
+    stereo_target = round(game["stereoLevel"]["median"] - routing["stereoTrimDb"] - RADIOXL_PATH_DB, 1)
+    mono_target = round(game["monoLevel"]["median"] - routing["monoTrimDb"] - RADIOXL_PATH_DB, 1)
     target = {
         "fileLufsTarget": round((stereo_target + mono_target) / 2, 1),
         "fileLufsTargetByRoute": {"stereo": stereo_target, "mono": mono_target},
+        "radioxlPathDb": RADIOXL_PATH_DB,
         "chainLevelMedian": {"stereo": game["stereoLevel"]["median"], "mono": game["monoLevel"]["median"]},
         "chainLevelBand": {"stereo": [game["stereoLevel"]["min"], game["stereoLevel"]["max"]],
                            "mono": [game["monoLevel"]["min"], game["monoLevel"]["max"]]},
@@ -574,6 +585,7 @@ def write_markdown(path: Path, rows, per_station, game, target, data) -> None:
     L.append("## The target\n")
     L.append(f"A custom track on `radioxl_radio` rides {target['routingStation']['name']}'s sends "
              f"({target['routingStation']['stereoTrimDb']:+.1f} dB stereo, {target['routingStation']['monoTrimDb']:+.1f} dB mono). "
+             f"The RadioXL path adds {RADIOXL_PATH_DB:+.1f} dB on top of that trim (measured on the Radioport). "
              f"To land on the game's median it should measure **{target['fileLufsTarget']} LUFS** in the file "
              f"(stereo route {target['fileLufsTargetByRoute']['stereo']}, mono route {target['fileLufsTargetByRoute']['mono']}). "
              f"Its true peak plus its gain in dB must stay below {target['peakHeadroomDb']['stereo']:+.1f} dB on the stereo route.\n")
@@ -622,7 +634,7 @@ def cmd_check(args) -> None:
         name = entry["station"]
         measured = float(entry["lufs"])
         if "fileLufs" in entry:
-            predicted = float(entry["fileLufs"]) + 20 * math.log10(float(entry.get("gain", 1.0))) + trim
+            predicted = float(entry["fileLufs"]) + 20 * math.log10(float(entry.get("gain", 1.0))) + trim + target.get("radioxlPathDb", 0.0)
         else:
             # A vanilla station by its CName (radio_station_12_growl) or by its dial name.
             m = re.match(r"radio_station_(\d\d)_", name)
@@ -685,8 +697,11 @@ def fingerprint(pcm):
     k = int(2 * ALIGN_SR / ALIGN_HOP)
     if db.shape[1] < k:
         return db - db.mean(axis=1, keepdims=True)
-    kern = np.ones(k) / k
-    return (db - np.apply_along_axis(lambda r: np.convolve(r, kern, mode="same"), 1, db)).astype(np.float64)
+    # A moving mean whose window shrinks at the edges; zero padding there turns silence into a ramp.
+    kern = np.ones(k)
+    count = np.convolve(np.ones(db.shape[1]), kern, mode="same")
+    mean = np.apply_along_axis(lambda r: np.convolve(r, kern, mode="same") / count, 1, db)
+    return (db - mean).astype(np.float64)
 
 
 def find_passages(cap_fp, src_fp, label: str) -> list[dict]:
@@ -700,6 +715,8 @@ def find_passages(cap_fp, src_fp, label: str) -> list[dict]:
         return []
     ce = np.concatenate([[0.0], np.cumsum((cap_fp ** 2).sum(axis=0))])
     energy = np.sqrt(np.maximum(ce[L:] - ce[:-L], 1e-9))
+    # Silence and near-silence in the capture correlate with anything; keep them out of the argmax.
+    quiet = energy < 0.2 * np.median(energy)
     passages: list[dict] = []
     for s0 in range(0, src_fp.shape[1] - L + 1, hop):
         t = src_fp[:, s0:s0 + L]
@@ -708,6 +725,7 @@ def find_passages(cap_fp, src_fp, label: str) -> list[dict]:
         if tn < 1e-6:
             continue
         score = fftconvolve(cap_fp, t[::-1, ::-1], mode="valid")[0] / (tn * energy)
+        score[quiet] = 0.0
         i = int(np.argmax(score))
         sc = float(score[i])
         if sc < ALIGN_MIN_SCORE:
@@ -723,7 +741,8 @@ def find_passages(cap_fp, src_fp, label: str) -> list[dict]:
         else:
             passages.append({"source": label, "lag": lag, "srcStart": src_t, "srcEnd": src_t + ALIGN_CHUNK_S,
                              "capStart": cap_t, "capEnd": cap_t + ALIGN_CHUNK_S, "scores": [sc]})
-    return [p for p in passages if len(p["scores"]) >= 2]
+    # Two chunks at a middling score is what a wrong track with a similar beat produces.
+    return [p for p in passages if len(p["scores"]) >= 3 or max(p["scores"]) >= 0.55]
 
 
 def capture_floor_db(pcm) -> float:
@@ -752,7 +771,7 @@ def cmd_align(args) -> None:
     target = json.loads((out_dir / "target.json").read_text(encoding="utf-8"))
     route = args.route
     trim_key = "stereoTrimDb" if route == "stereo" else "monoTrimDb"
-    routing_trim = float(target["routingStation"][trim_key])
+    routing_trim = float(target["routingStation"][trim_key]) + float(target.get("radioxlPathDb", 0.0))
 
     # Sources: every decoded vanilla track, with what the chain adds to it on this route.
     sources: dict[str, dict] = {}
@@ -785,7 +804,7 @@ def cmd_align(args) -> None:
             raise SystemExit(f"--track wants NN=<audio> with NN a dial station number, not {spec!r}")
         t = by_number[number]
         label = f"{number}/{Path(file).stem}"
-        sources[label] = {"path": Path(file), "station": t["stationName"], "vanilla": False,
+        sources[label] = {"path": Path(file), "station": t["stationName"], "vanilla": False, "vanillaStation": True,
                           "predicted": float(t[trim_key])}
 
     # Fingerprints. The vanilla set is cached in the work folder; a station's files are done each run.
@@ -825,6 +844,7 @@ def cmd_align(args) -> None:
             p["path"] = str(sources[label]["path"])
             p["station"] = sources[label]["station"]
             p["predicted"] = sources[label]["predicted"]
+            p["vanilla"] = sources[label]["vanilla"] or sources[label].get("vanillaStation", False)
             found.append(p)
 
     # One thing plays at a time: keep the best-ranked passage in any stretch. Two sources holding the
@@ -852,13 +872,18 @@ def cmd_align(args) -> None:
                       and min(abs(kept[j]["capStart"] - p["capEnd"]), abs(p["capStart"] - kept[j]["capEnd"])) < 20]
         pick = next((candidates[n["station"]] for n in neighbours if n["station"] in candidates), None)
         if pick is not None and pick is not p:
-            for k in ("source", "path", "station", "predicted"):
+            for k in ("source", "path", "station", "predicted", "vanilla"):
                 p[k] = pick[k]
             p["attributedBy"] = "neighbour"
         elif pick is None:
             p["ambiguous"] = " or ".join(candidates)
     for p in kept:
         p["alsoMatches"] = [q["source"] for q in p["alsoMatches"]]
+    # A passage ends where the next one starts: the last chunk extends past the change of track.
+    for a, b in zip(kept, kept[1:]):
+        if a["capEnd"] > b["capStart"]:
+            a["srcEnd"] -= a["capEnd"] - b["capStart"]
+            a["capEnd"] = b["capStart"]
 
     if not kept:
         raise SystemExit("no track from the decoded set or the given stations was found in this capture")
@@ -869,8 +894,8 @@ def cmd_align(args) -> None:
         dur = p["capEnd"] - p["capStart"]
         cap = measure_one(capture, p["capStart"], dur)
         src = measure_one(Path(p["path"]), p["srcStart"], dur)
-        if cap["I"] is None or src["I"] is None:
-            continue
+        if cap["I"] is None or src["I"] is None or cap["I"] < -60:
+            continue  # nothing was playing there
         p.update({"seconds": round(dur, 1), "captureLufs": cap["I"], "capturePeakDb": cap["Peak"],
                   "sourceLufs": src["I"], "measured": round(cap["I"] - src["I"], 1)})
         # What the room adds to the reading if it sits under the music at the floor level.
@@ -878,9 +903,12 @@ def cmd_align(args) -> None:
         p["counted"] = p["roomDb"] <= ALIGN_ROOM_DB and "ambiguous" not in p and p["predicted"] > float("-inf")
         rows.append(p)
 
+    # The player's volume is read off the vanilla passages, so a RadioXL residual is the RadioXL path.
     counted = [p for p in rows if p["counted"]]
-    offset = median([p["measured"] - p["predicted"] for p in counted]) if counted else 0.0
-    print(f"player offset (measured - predicted, median over {len(counted)} passage(s)) {offset:+.1f} dB" + chr(10))
+    anchor = [p for p in counted if p["vanilla"]] or counted
+    offset = median([p["measured"] - p["predicted"] for p in anchor]) if anchor else 0.0
+    print(f"player offset (measured - predicted, median over {len(anchor)} "
+          f"{'vanilla ' if anchor and anchor[0]['vanilla'] else ''}passage(s)) {offset:+.1f} dB" + chr(10))
     print(f"{'capture s':>15}  {'track':44} {'score':>5} {'capture':>8} {'source':>7} {'chain':>6} {'model':>6} {'resid':>6} {'room':>5}")
     worst = 0.0
     for p in rows:

@@ -45,8 +45,8 @@
   16-bit sample past it (#41); the builder is where that is checked.
 - The level target a track aims at is derived offline from the game's own files
   (`tools/level-target.py`, #44): every vanilla radio track measured and put on the broadcast chain
-  with its station's send trim. A file at about -11 LUFS lands on the game's median through
-  `radioxl_radio`.
+  with its station's send trim, plus the 2 dB the RadioXL path adds on top of the trim, measured on
+  the Radioport. A file at about -13 LUFS lands on the game's median through `radioxl_radio`.
 - A manifest is read by a strict JSON parser and checked field by field. Every fault is logged with
   the file and the line, and a manifest with one is skipped whole. Covered by `plugin/tests/`.
 - One dial on every receiver: a custom station sits at the frequency at the front of its display
@@ -96,12 +96,11 @@
   rows. (The Radioport popup on switch-on is measured: it shows the moment the Radioport comes on.)
 
 - The Radioport level against a vanilla station, by capture rather than by ear.
-- The offline level model against one capture: two vanilla stations and one RadioXL station on the
-  Radioport, two minutes each, standing still somewhere quiet, then
-  `level-target.py align <capture.wav> --route mono --station <dir>`. Each RadioXL passage must land
-  within about 1 LU of the model, or at a constant offset that then goes into `target.json`, before
-  the builder suggests a level from it (#44). The only pair on record, a world-device capture from
-  before the tool existed, has RadioXL 2 dB under the model.
+- The level model on the stereo route: the Radioport check (two passes, 2026-09-18) put the vanilla
+  trims within 0.3 LU and the RadioXL path at +2 dB, now in `target.json`. A parked car with the
+  same three stations, `level-target.py align <capture.wav> --route stereo --station <dir>`, says
+  whether the 2 dB holds on the stereo send; the one world-device capture on record pointed the
+  other way but was made with the player moving (#44).
 - A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
 
 ## Planned

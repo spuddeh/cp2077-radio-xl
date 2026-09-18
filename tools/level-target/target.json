@@ -1,9 +1,10 @@
 {
- "fileLufsTarget": -10.9,
+ "fileLufsTarget": -12.9,
  "fileLufsTargetByRoute": {
-  "stereo": -10.5,
-  "mono": -11.4
+  "stereo": -12.5,
+  "mono": -13.4
  },
+ "radioxlPathDb": 2.0,
  "chainLevelMedian": {
   "stereo": -12.5,
   "mono": -16.4
