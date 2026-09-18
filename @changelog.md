@@ -11,7 +11,8 @@
 - Builder: the Volume slider runs 0 to 400 % with the dB shown either side of 100 %;
   `buildManifest` writes any gain other than 1; a RadioExt `volume` above 1 imports as written up to
   4 with a note that RadioExt's value was tuned against its own player; an opened manifest's gain is
-  clamped to 4, not 1. `manifest-rules.test.ts` accepts a gain above 1.
+  clamped to 4, not 1. `manifest-rules.test.ts` accepts a gain above 1. Checked in game: a station
+  at gain 2 plays a file peaking at -8 dBFS clean and 6 dB up, and a full-scale master crackles.
 
 ### Added
 - `tools/level-target.py` (#44): the offline level target. Reads `audio_2_soundbanks.archive`
