@@ -98,7 +98,7 @@
 - The Radioport level against a vanilla station, by capture rather than by ear.
 - Why Growl FM plays 4 dB above its stereo send trim at a world device while every other station
   sits within about 2 LU of the table and the Radioport matches it exactly, and what the 2 dB the
-  RadioXL path adds is on the sound side of the send (#47). Neither blocks the builder.
+  RadioXL path adds is on the sound side of the send (#47). Both block the release.
 - A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
 
 ## Planned
