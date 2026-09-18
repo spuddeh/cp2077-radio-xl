@@ -45,10 +45,10 @@
     file plays left only; independent channels sum to +3 dB); a world radio sums the two channels
     into one (identical channels +4.2 dB over one channel, independent +2.0, a mono file +1.6).
   - **A custom sound adds nothing of its own.** Eight stations on the Radioport against the
-    corrected column: seven vanilla within about 1 LU, Tool FM at -0.3. `RADIOXL_PATH_DB` is 0
-    and the file target is back at -10.9 LUFS. The "+2 dB" was Vexelstrom, whose own tracks play
-    1 to 2 dB under its trims on every receiver and which the routing bank copies; Growl FM's
-    "4 dB at a device" was 2 dB of the wrong column and the rest device scatter.
+    corrected column: seven vanilla within about 1 LU, Tool FM at -0.3. `RADIOXL_PATH_DB` is 0.
+    The "+2 dB" came from using Vexelstrom as the yardstick while the model still added its
+    segment volumes (next bullet); Growl FM's "4 dB at a device" was 2 dB of the wrong column and
+    the rest device scatter.
   - **A segment's own Volume is not on the chain.** Wwise folds every Volume in the hierarchy into
     one gain after the insert effects (the same reason the -96 dB dry mute does not silence the
     sends), so the +1 to +4 dB on eleven segments never reaches a receiver. With it out of the sum
