@@ -43,7 +43,10 @@
   measured and is assumed the same. The cause was looked for in the banks and is not a static
   value there: the Audio Input source gain is 0, the sound and its actor-mixer parent carry no
   gain before the inserts, the Time Stretch insert's parameter block holds no gain, the copied
-  sends verify, and AudioXL copies frames unchanged at gain 1. The term stays measured.
+  sends verify, and AudioXL copies frames unchanged at gain 1. The term stays measured. On the
+  stereo route (two clean captures at a world radio) the trim table holds only to about ±2 LU,
+  Growl FM sits 4 dB above its trim every time, and Tool FM lands about 1 dB above the model
+  relative to Vexelstrom, so the 2 dB term is kept for both routes.
 
 ## [0.3.0] - 2026-09-16
 
