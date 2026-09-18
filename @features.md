@@ -45,8 +45,11 @@
   16-bit sample past it (#41); the builder is where that is checked.
 - The level target a track aims at is derived offline from the game's own files
   (`tools/level-target.py`, #44): every vanilla radio track measured and put on the broadcast chain
-  with its station's send trim, plus the 2 dB the RadioXL path adds on top of the trim, measured on
-  the Radioport. A file at about -13 LUFS lands on the game's median through `radioxl_radio`.
+  with its station's send trim. A custom sound adds nothing of its own: on the Radioport a RadioXL
+  row lands on Vexelstrom's copied trims within the method's noise against seven vanilla stations.
+  A file at about -11 LUFS lands on the game's median through `radioxl_radio`. The receivers are
+  measured too: the Radioport and a car pass both channels straight through; a world radio sums
+  them into one.
 - A manifest is read by a strict JSON parser and checked field by field. Every fault is logged with
   the file and the line, and a manifest with one is skipped whole. Covered by `plugin/tests/`.
 - One dial on every receiver: a custom station sits at the frequency at the front of its display
@@ -95,11 +98,8 @@
 - The never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line
   rows. (The Radioport popup on switch-on is measured: it shows the moment the Radioport comes on.)
 
-- The Radioport level against a vanilla station, by capture rather than by ear.
-- Why Growl FM plays 4 dB above its stereo send trim at a world device while every other station
-  sits within about 2 LU of the table and the Radioport matches it exactly, and what the 2 dB the
-  RadioXL path adds is on the sound side of the send (#47). Both block the release.
-- A gain above 1 on a quiet track, and that a raised track peaking near full scale crackles (#41).
+- Why Vexelstrom's own tracks play 1 to 2 dB under its send trims when the other seven measured
+  stations sit on theirs. It does not touch a RadioXL station, which plays at the trims themselves.
 
 ## Planned
 

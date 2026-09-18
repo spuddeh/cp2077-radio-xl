@@ -62,9 +62,10 @@ Mike's lines name Morro Rock and Ash's name Growl FM.
 is +12 dB. RadioXL routes a station through the same level stages as the game's own stations, so
 audio mastered like commercial music plays among them at `1`: the game's own radio files measure
 -5 to -19 LUFS, most of them near -11, and a loud web stream at `1` read within the vanilla band on
-the Radioport. A file that measures about -13 LUFS lands on the middle of the dial at `1`; a modern
-master near -9 sits about 4 dB above it, and `0.6` brings it to the middle. Lower it for material
-that plays louder than the vanilla stations; raise it for a quiet recording.
+the Radioport. A file that measures about -11 LUFS lands on the middle of the dial at `1`; a modern
+master near -9 sits about 2 dB above it, and `0.8` brings it to the middle. Lower it for material
+that plays louder than the vanilla stations; raise it for a quiet recording. A world radio sums a
+track's two channels into one, so a wide mix plays a little quieter there than a narrow one.
 
 **A gain above `1` must leave the loudest sample under full scale.** The samples are scaled as
 16-bit integers and a value past the top wraps rather than clips, which is heard as crackle on the

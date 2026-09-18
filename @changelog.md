@@ -34,19 +34,24 @@
   the recording's floor and does not count a passage the room lifts by more than 1 dB. Vanilla
   fingerprints are cached in `work/fingerprints.npz`. No probe log. Needs numpy and scipy.
   `measure_one` takes an optional excerpt. On the captures already on disk: five Growl FM tracks at
-  the Radioport put the method's own noise at about 1 LU per passage. Then two Radioport captures
-  made for it: the vanilla passages (Vexelstrom, Growl FM, Hardest to Be) land within 0.3 LU of
-  the trim model and the RadioXL rows land +1.6 to +3.0 dB hot. `RADIOXL_PATH_DB = 2.0` carries
-  that: `report` subtracts it from the file target (now -12.9 LUFS, stereo -12.5, mono -13.4) and
-  writes it to `target.json` as `radioxlPathDb`; `check` and `align` add it to a RadioXL row's
-  prediction. With it, the worst residual over both passes is 1.0 LU. The stereo route is not
-  measured and is assumed the same. The cause was looked for in the banks and is not a static
-  value there: the Audio Input source gain is 0, the sound and its actor-mixer parent carry no
-  gain before the inserts, the Time Stretch insert's parameter block holds no gain, the copied
-  sends verify, and AudioXL copies frames unchanged at gain 1. The term stays measured. On the
-  stereo route (two clean captures at a world radio) the trim table holds only to about ±2 LU,
-  Growl FM sits 4 dB above its trim every time, and Tool FM lands about 1 dB above the model
-  relative to Vexelstrom, so the 2 dB term is kept for both routes.
+  the Radioport put the method's own noise at about 1 LU per passage. Then nine captures on the
+  Radioport, a car and a spawned world radio, with synthetic noise tracks and two marked routing
+  banks, settled the model:
+  - **The two sends were assigned to the wrong receivers.** With the copied send that carries the
+    left/right channel curves marked 12 dB down, the Radioport and a car dropped by it and a world
+    radio did not. `SEND_STEREO` is the Radioport and vehicles, `SEND_MONO` is world devices;
+    `align --route` and `measure-loudness.py report --json` follow that.
+  - **The receivers themselves:** the Radioport passes both channels straight through (a left-only
+    file plays left only; independent channels sum to +3 dB); a world radio sums the two channels
+    into one (identical channels +4.2 dB over one channel, independent +2.0, a mono file +1.6).
+  - **A custom sound adds nothing of its own.** Eight stations on the Radioport against the
+    corrected column: seven vanilla within about 1 LU, Tool FM at -0.3. `RADIOXL_PATH_DB` is 0
+    and the file target is back at -10.9 LUFS. The "+2 dB" was Vexelstrom, whose own tracks play
+    1 to 2 dB under its trims on every receiver and which the routing bank copies; Growl FM's
+    "4 dB at a device" was 2 dB of the wrong column and the rest device scatter.
+  - Ruled out along the way: the Time Stretch insert (a bank without it measures the same), every
+    static gain in the banks, Wwise loudness normalisation (none set), duplicate definitions across
+    banks (none), a second station bleeding at a device (none).
 
 ## [0.3.0] - 2026-09-16
 
