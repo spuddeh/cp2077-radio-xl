@@ -84,6 +84,9 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     await page.setFile('.file-pick input[type=file]', files.icon)
     await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.song)
     await page.waitFor("document.querySelectorAll('.track').length === 1")
+    // The stand-in file is measured (and refused) before Build .zip is offered; on a slow runner that
+    // takes a moment.
+    await page.waitFor("!document.querySelector('.footer-state').textContent.startsWith('Measuring')")
 
     const state = await page.evaluate(`(() => document.querySelector('.footer-state').textContent + ' | ' + [...document.querySelectorAll('.row-note.fault')].map((e) => e.textContent).join(' ~ '))()`)
     assert.match(state, /is ready/, state)

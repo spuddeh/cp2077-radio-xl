@@ -4,7 +4,7 @@
   "$contentdir_note": "contentDir and installDir are MATCHED ARRAYS. radioxl ships THREE trees: archive (the framework's own glyph), r6 (scripts, the RCF card and docs page) and red4ext (the plugin DLL, the routing bank and stations/README.md, which keeps the stations folder alive through a mod manager). Dropping an entry here silently drops that tree from the download while every test that reads the REPO still passes. deploy-mod ships the same 22 files.",
   "$builder_note": "builder is not a mod. It is the station builder's README and changelog, under a folder named for it, as the Miscellaneous file on the mod page: re-uploading it with the builder's version is what tells followers the builder changed, and its description carries the notes. site/scripts/nexus-builder-file.py writes site/nexus-file/ from site/README.md and site/CHANGELOG.md; commit that output before tagging.",
   "$file_id_note": "The Nexus file id is NOT stored here. It lives in a REPOSITORY VARIABLE named NEXUS_FILE_ID_<ARTIFACT> (uppercased), set under Settings > Secrets and variables > Actions > Variables. A file_id DOES NOT EXIST until the artifact's first file has been uploaded to Nexus BY HAND. Get it from the mod page's Files tab > 'API Info' (Nexus labels it 'Group ID'). DO NOT use the file_id from the public v1 API -- that is a different id space and the wrong value looks entirely plausible.",
-  "$mod_page_note": "`update_mod_version` sets the page's headline version to the released file's version: true for radioxl, false for builder, which shares the page. `nexus_mod_id` is the number in the mod page URL. The page DESCRIPTION is still manual -- no endpoint in the pipeline touches it.",
+  "$mod_page_note": "`update_mod_version` sets the page's headline version to the released file's version: true for radioxl, false for builder, which shares the page. `post_changelog` (default: the same as update_mod_version) posts the release notes to the page changelog under the artifact's own version: true for builder, whose 'sb' versions read apart from the mod's. `nexus_mod_id` is the number in the mod page URL. The page DESCRIPTION is still manual -- no endpoint in the pipeline touches it.",
   "artifacts": {
     "radioxl": {
       "displayName": "RadioXL - Native Radio Stations",
@@ -28,6 +28,7 @@
       "primary_mod_manager_download": false,
       "show_requirements_pop_up": false,
       "update_mod_version": false,
+      "post_changelog": true,
       "currentVersion": "0.2.1sb"
     }
   },
