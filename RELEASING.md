@@ -46,7 +46,9 @@ exists so that followers are told when the builder changes and can read the note
    in-game checks.
 3. Push `main`.
 4. Create a GitHub Release whose **tag** is `<artifact>-v<version>`: `radioxl-v0.4.0`,
-   `builder-v0.2.0`. The body feeds two Nexus fields, split by one marker:
+   `builder-v0.2.1sb`. The builder file's version carries an `sb` suffix on Nexus so its changelog
+   entries sort apart from the mod's; the page's own version in `site/package.json` does not.
+   The body feeds two Nexus fields, split by one marker:
 
    ```
    <file description, 255 characters at most>

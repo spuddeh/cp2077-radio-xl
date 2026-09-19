@@ -1,5 +1,5 @@
 {
-  "$schema_note": "Maps release artifacts to their Nexus Mods targets. To publish, create a GitHub Release tagged '<artifact>-v<version>' (e.g. radioxl-v0.4.0, builder-v0.2.0). The release.yml workflow parses the tag, stages contentDir into installDir, zips it as '<fileBaseName>_v<version>.zip', attaches the zip to the release, and uploads to Nexus via Nexus-Mods/upload-action (beta.10, v3 upload API). See RELEASING.md.",
+  "$schema_note": "Maps release artifacts to their Nexus Mods targets. To publish, create a GitHub Release tagged '<artifact>-v<version>' (e.g. radioxl-v0.4.0, builder-v0.2.1sb: the builder file carries an sb suffix on Nexus so its changelog entries sort apart from the mod's). The release.yml workflow parses the tag, stages contentDir into installDir, zips it as '<fileBaseName>_v<version>.zip', attaches the zip to the release, and uploads to Nexus via Nexus-Mods/upload-action (beta.10, v3 upload API). See RELEASING.md.",
   "$paths_note": "contentDir = repo folder whose CONTENTS ship. installDir = path inside the zip those contents are placed at (the in-game install path under the Cyberpunk 2077 root). fileBaseName = the download filename stem (version is appended).",
   "$contentdir_note": "contentDir and installDir are MATCHED ARRAYS. radioxl ships THREE trees: archive (the framework's own glyph), r6 (scripts, the RCF card and docs page) and red4ext (the plugin DLL, the routing bank and stations/README.md, which keeps the stations folder alive through a mod manager). Dropping an entry here silently drops that tree from the download while every test that reads the REPO still passes. deploy-mod ships the same 22 files.",
   "$builder_note": "builder is not a mod. It is the station builder's README and changelog, under a folder named for it, as the Miscellaneous file on the mod page: re-uploading it with the builder's version is what tells followers the builder changed, and its description carries the notes. site/scripts/nexus-builder-file.py writes site/nexus-file/ from site/README.md and site/CHANGELOG.md; commit that output before tagging.",
@@ -28,7 +28,7 @@
       "primary_mod_manager_download": false,
       "show_requirements_pop_up": false,
       "update_mod_version": false,
-      "currentVersion": "0.2.1"
+      "currentVersion": "0.2.1sb"
     }
   },
   "$name_note": "Nexus v3 validates displayName against ^[a-zA-Z0-9 _'().-]+$ and rejects the upload with a 422 otherwise. No '&', no '/'."

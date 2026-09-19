@@ -30,6 +30,9 @@ from pathlib import Path
 
 SITE = Path(__file__).resolve().parent.parent
 URL = "https://spuddeh.github.io/cp2077-radio-xl/"
+# The Nexus file version carries this suffix so its changelog entries sort apart from the mod's.
+# The page's own version (package.json) does not.
+NEXUS_SUFFIX = "sb"
 
 
 def newest_entry(changelog: str, version: str) -> str:
@@ -76,7 +79,7 @@ def main() -> None:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    stem = f"RadioXL Station Builder {version}"
+    stem = f"RadioXL Station Builder {version}{NEXUS_SUFFIX}"
     with zipfile.ZipFile(out / f"{stem}.zip", "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(folder.iterdir()):
             z.write(f, f"RadioXL Station Builder/{f.name}")
@@ -84,9 +87,9 @@ def main() -> None:
     # The Files tab renders BBCode, so the link is one.
     description = "\n".join([
         f"The station builder is a web page: [url={URL}]{URL}[/url]",
-        f"This file is its README and changelog at version {version}; nothing here needs installing.",
+        f"This file is its README and changelog at version {version}{NEXUS_SUFFIX}; nothing here needs installing.",
         "",
-        f"Version {version}",
+        f"Version {version}{NEXUS_SUFFIX}",
         *changes,
         "",
     ])
