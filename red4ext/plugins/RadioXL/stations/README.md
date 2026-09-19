@@ -162,7 +162,8 @@ guide on the modding wiki walks through the WolvenKit side of steps 3 and 4 with
 ## The audio
 
 Put the files beside the manifest. **AudioXL is what loads them**, so it is a hard requirement for
-any station with files: WAV, MP3, OGG or FLAC. This framework does not decode, stream or mix
+any station with files: MP3, OGG, FLAC, or WAV as plain PCM at 16 or 24 bits. A WAV in 32-bit
+float, or any tag other than plain PCM, is refused. This framework does not decode, stream or mix
 anything.
 
 A track whose file AudioXL will not take is dropped, and the log names it. A station with no
