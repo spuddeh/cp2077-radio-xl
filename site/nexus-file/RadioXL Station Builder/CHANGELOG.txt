@@ -4,9 +4,6 @@ One entry per builder version. The version is in package.json and printed at the
 scripts/nexus-builder-file.py turns the newest entry into the Nexus misc file's description.
 
 ## 0.2.1
-
-- Build .zip waits until every file has been measured, and the footer says how many are still
-  measuring. A build started before that wrote the unmeasured tracks at 100 %.
 - A RadioExt station comes across with its Volume at 100 %. RadioExt's own volume was set against
   RadioExt's player, and with Auto level putting each track on the game's level it moved the whole
   station off target. The note says what the value was.
