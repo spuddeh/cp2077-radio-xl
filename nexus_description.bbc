@@ -98,7 +98,7 @@ A station can play a live internet radio stream instead of music files. AudioXL 
 allowHttpConnections = true
 allowedHost = ice1.somafm.com[/code]
 [/quote]
-Use the hosts the station's own page names; one [b]allowedHost[/b] line per host, and [b]*.somafm.com[/b] covers every host under a domain.
+Use the hosts the station's own page names; one [b]allowedHost[/b] line per host. A [b]*.somafm.com[/b] line covers every host under that domain, but not [b]somafm.com[/b] itself: a bare domain needs its own line.
 
 [b]A stream URL may redirect, and AudioXL checks every host it is sent to.[/b] So a station can stay silent with the host from its URL already allowed, because the host it ended up at is a different one. AudioXL's own log, [b]red4ext\logs\audioxl-<date>.log[/b], names the host that was refused, without saying it came from a redirect:
 [quote][code][AudioXL] Register 'radio_station_example_01' (script): 'regiocast.streamabc.net' is not in the allowedHost list in AudioXL.ini[/code]
