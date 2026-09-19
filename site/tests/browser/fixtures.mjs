@@ -116,6 +116,7 @@ export async function writeFixtures() {
   const song = join(dir, 'A Song.mp3')
   const tone = join(dir, 'Tone.wav')
   const radioExt = join(dir, 'radioext-station.zip')
+  const radioExtBase = join(dir, 'radioext-base-atlas.zip')
   await writeFile(icon, png(24, 16, [255, 255, 255, 255]))
   await writeFile(song, Buffer.alloc(4096))
   await writeFile(tone, toneWav())
@@ -140,5 +141,26 @@ export async function writeFixtures() {
       ['archive/pc/mod/test_station.archive', Buffer.alloc(512)],
     ]),
   )
-  return { dir, icon, song, tone, radioExt }
+  // A RadioExt station pointing its icon at one of the game's own atlases, with no archive: the
+  // shape of the report in #48.
+  const base2 = 'bin/x64/plugins/cyber_engine_tweaks/mods/radioExt/radios/dock_station'
+  await writeFile(
+    radioExtBase,
+    zip([
+      [
+        `${base2}/metadata.json`,
+        JSON.stringify({
+          displayName: '66.6 Dock Station',
+          fm: 66.6,
+          volume: 1,
+          icon: 'UIIcon.Stealth',
+          customIcon: { inkAtlasPath: 'base\\gameplay\\gui\\ipod_screens\\ipd_jamies.inkatlas', inkAtlasPart: 'jamie', useCustom: true },
+          streamInfo: { streamURL: '', isStream: false },
+          order: ['Only.mp3'],
+        }),
+      ],
+      [`${base2}/Only.mp3`, Buffer.alloc(2048)],
+    ]),
+  )
+  return { dir, icon, song, tone, radioExt, radioExtBase }
 }

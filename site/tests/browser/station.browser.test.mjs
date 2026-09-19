@@ -214,6 +214,30 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.deepEqual(await page.errors(), [])
   })
 
+  test('an image chosen after a RadioExt import replaces the imported atlas path (#48)', async () => {
+    await page.evaluate(`[...document.querySelectorAll('.tabs button')].find((b) => b.textContent.includes('RadioExt')).click(); 1`)
+    await page.waitFor("!!document.querySelector('.open-station input[type=file]')")
+    await page.setFile('.open-station input[type=file]', files.radioExtBase)
+    await page.waitFor(`(() => {
+      const replace = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Replace')
+      if (replace) replace.click()
+      return !replace && [...document.querySelectorAll('.form input[type=text]')].some((i) => i.value.startsWith('base\\\\'))
+    })()`)
+    // Own atlas is one step past From an image on the icon stepper.
+    await page.evaluate(`(async () => {
+      document.querySelectorAll('.stepper .prev')[0].click()
+      await new Promise((r) => setTimeout(r, 150))
+      return 1
+    })()`)
+    await page.setFile('.file-pick input[type=file]', files.icon)
+    await page.waitFor("document.querySelector('.footer-state').textContent.includes('is ready')")
+    const fields = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.form input[type=text]')].map((i) => i.value))"))
+    assert.ok(fields.some((v) => v === 'radio_station_dock_station\\gui\\radio_station_dock_station.inkatlas'), `the atlas should be the station's own: ${JSON.stringify(fields)}`)
+    assert.ok(!fields.some((v) => v.startsWith('base\\')), `the imported base\\ path should be gone: ${JSON.stringify(fields)}`)
+    assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/DockStation.archive'])
+    assert.deepEqual(await page.errors(), [])
+  })
+
   test('a stream station is one url track, and says what the player must allow', async () => {
     await page.evaluate(`(async () => {
       const remove = document.querySelector('.remove-all')

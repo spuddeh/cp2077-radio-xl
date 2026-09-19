@@ -136,6 +136,9 @@ export const useStation = create<StationState>((set) => ({
     set((s) => {
       const next = { ...s, ...patch }
       if ('stationName' in patch && !s.cnameEdited) next.cname = cnameFrom(next.stationName)
+      // Choosing an image means the page makes a new icon, so a path an opened or converted station
+      // carried has nothing left to point at: the station ID's defaults take over until typed in.
+      if (patch.iconMode === 'image' && s.iconMode !== 'image') next.iconTargetEdited = false
       if (next.iconMode === 'image' && !next.iconTargetEdited) {
         const target = defaultIconTarget(next.cname)
         next.iconPart = target.part

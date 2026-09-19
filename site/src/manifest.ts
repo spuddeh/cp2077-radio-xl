@@ -133,9 +133,9 @@ export function checkManifest(s: ManifestInput): Fault[] {
     if (named && !/^[\x21-\x7e]+$/.test(part))
       faults.push({ field: 'icon', message: 'The part name is plain letters, digits and punctuation, with no spaces.' })
     if (named && !/^[a-z0-9_\-.]+(\\[a-z0-9_\-.]+)*\.inkatlas$/.test(atlas))
-      faults.push({ field: 'icon', message: 'The atlas path is folders of letters, digits and underscores, ending in .inkatlas.' })
+      faults.push({ field: 'icon', message: 'The atlas path is folders of letters, digits and underscores, ending in .inkatlas. Clear the field to use the station\'s own path.' })
     else if (named && /^(base|ep1)\\/.test(atlas))
-      faults.push({ field: 'icon', message: 'The atlas path must not start with base\\ or ep1\\. A path there can replace a file of the game.' })
+      faults.push({ field: 'icon', message: 'The atlas path must not start with base\\ or ep1\\. A path there can replace a file of the game. Clear the field to use the station\'s own path.' })
     const size = s.iconImageSize
     if (size && (size[0] === 0 || size[1] === 0))
       faults.push({ field: 'icon', message: 'The icon image has no size. An SVG needs a width and height.' })
