@@ -131,7 +131,16 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     // the measurement sets it and the slider is read-only.
     await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.tone)
     await page.waitFor("document.querySelectorAll('.track').length === 2")
+    // While the file measures, Build .zip waits and the footer says so; a build then would write
+    // the track at 100%.
+    const during = await page.evaluate(`JSON.stringify({
+      state: document.querySelector('.footer-state').textContent,
+      disabled: [...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip')).disabled,
+    })`)
+    const seen = JSON.parse(during)
+    if (seen.state.startsWith('Measuring')) assert.equal(seen.disabled, true, during)
     await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('LUFS'))`)
+    await page.waitFor("document.querySelector('.footer-state').textContent.includes('is ready')")
 
     const readings = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.track-reading')].map((e) => e.textContent))"))
     const tone = readings.find((r) => r.includes('LUFS'))

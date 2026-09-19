@@ -94,6 +94,9 @@ function saveSwitch(key: string, value: boolean): boolean {
 export function App() {
   const s = useStation()
   const faults = useMemo(() => checkManifest(s), [s])
+  // A build that starts while files are still measuring would write those tracks at 100%, so it
+  // waits for the last measurement, whichever way the auto level switch is set.
+  const measuring = s.tracks.filter((t) => !t.url && t.source && t.level === undefined).length
   const faultFor = (field: string) => faults.find((f) => f.field === field)?.message
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
@@ -233,7 +236,7 @@ export function App() {
     )
 
   const startBuild = async () => {
-    if (faults.length > 0 || build) return
+    if (faults.length > 0 || measuring > 0 || build) return
     const folder = s.folder ?? modFolder(s.stationName, s.cname)
     const file = zipName(folder)
     let target = null
@@ -554,11 +557,15 @@ export function App() {
 
       <footer className="footer">
         <div className="hints">
-          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0 || build !== null} onClick={startBuild} />
+          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0 || measuring > 0 || build !== null} onClick={startBuild} />
           <Hint keyLabel="C" label="Copy station.json" onClick={copyManifest} />
         </div>
         <span className="footer-state">
-          {faults.length === 0 ? `${displayName(s)} is ready` : `${faults.length} to fix before building`}
+          {faults.length > 0
+            ? `${faults.length} to fix before building`
+            : measuring > 0
+              ? `Measuring ${measuring} ${measuring === 1 ? 'file' : 'files'} before building`
+              : `${displayName(s)} is ready`}
         </span>
       </footer>
 
