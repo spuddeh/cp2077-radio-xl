@@ -7,7 +7,9 @@
   station's `gain`. `Manifest.hpp` reads and clamps it the way the station one is read, naming the
   file and line; `RadioXL_StationTrackGain` hands it to script; `RadioXL.reds` sets each row to
   station gain x track gain, with the fallback's 0.56 still on top. `ManifestTests.cpp` covers the
-  read, the default, the clamp line, a string refused and a stream with a gain.
+  read, the default, the clamp line, a string refused and a stream with a gain. Checked in game by
+  capture on the Radioport: a track at 0.5 lands 6 dB under one at 1 within the method's noise
+  (residuals +0.3 / -0.3 at 1, +0.4 / +0.9 at 0.5 in a noisy room).
 - Builder 0.2.0: a level slider per track (0 to 400 % with the dB shown), a play button that hears
   the track at that level, and a measurement of every file as it is added: integrated loudness
   and true peak in the browser (`src/loudness.ts`, EBU R128 in a worker), then the suggestion that
