@@ -8,11 +8,15 @@ notes without downloading.
 usage:
   python scripts/nexus-builder-file.py [--out DIR]
 
-Writes, into --out (default: site/):
-  RadioXL Station Builder <version>.zip   README and CHANGELOG, as .md and as .txt, under a folder
-                                          named for the builder, so a mod manager that installs
-                                          the file by mistake makes an obviously empty mod
-  RadioXL Station Builder <version>.txt   the file description: the link, then the newest entry
+Writes:
+  site/nexus-file/RadioXL Station Builder/   README and CHANGELOG, as .md and as .txt. This is what
+                                             the release pipeline zips (release-manifest.json,
+                                             artifact `builder`), so commit it before tagging. The
+                                             folder name is the point: a mod manager that installs
+                                             the file by mistake makes an obviously empty mod.
+and, into --out (default: site/), for the first upload, which is by hand:
+  RadioXL Station Builder <version>.zip      the same folder, zipped
+  RadioXL Station Builder <version>.txt      the file description: the link, then the newest entry
 
 The version is package.json's. Nothing is typed by hand.
 """
@@ -47,14 +51,21 @@ def main() -> None:
     # The description is plain text on the Files tab, so the entry's code marks are dropped.
     entry = newest_entry(changelog.read_text(encoding="utf-8"), version).replace("`", "")
 
+    folder = SITE / "nexus-file" / "RadioXL Station Builder"
+    folder.mkdir(parents=True, exist_ok=True)
+    for stale in folder.iterdir():
+        stale.unlink()
+    for source in (readme, changelog):
+        (folder / source.name).write_text(source.read_text(encoding="utf-8"), encoding="utf-8", newline="")
+        # Most Nexus users double-click, and Windows opens .txt and not .md.
+        (folder / f"{source.stem}.txt").write_text(source.read_text(encoding="utf-8").replace("`", ""), encoding="utf-8", newline="")
+
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     stem = f"RadioXL Station Builder {version}"
     with zipfile.ZipFile(out / f"{stem}.zip", "w", zipfile.ZIP_DEFLATED) as z:
-        for source in (readme, changelog):
-            z.write(source, f"RadioXL Station Builder/{source.name}")
-            # Most Nexus users double-click, and Windows opens .txt and not .md.
-            z.writestr(f"RadioXL Station Builder/{source.stem}.txt", source.read_text(encoding="utf-8").replace("`", ""))
+        for f in sorted(folder.iterdir()):
+            z.write(f, f"RadioXL Station Builder/{f.name}")
 
     description = "\n".join([
         f"The station builder is a web page: {URL}",
@@ -65,7 +76,7 @@ def main() -> None:
         "",
     ])
     (out / f"{stem}.txt").write_text(description, encoding="utf-8")
-    print(f"wrote {out / (stem + '.zip')}\nwrote {out / (stem + '.txt')}")
+    print(f"wrote {folder}\nwrote {out / (stem + '.zip')}\nwrote {out / (stem + '.txt')}")
 
 
 if __name__ == "__main__":
