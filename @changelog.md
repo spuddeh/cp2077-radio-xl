@@ -9,7 +9,9 @@
   station gain x track gain, with the fallback's 0.56 still on top. `ManifestTests.cpp` covers the
   read, the default, the clamp line, a string refused and a stream with a gain. Checked in game by
   capture on the Radioport: a track at 0.5 lands 6 dB under one at 1 within the method's noise
-  (residuals +0.3 / -0.3 at 1, +0.4 / +0.9 at 0.5 in a noisy room).
+  (residuals +0.3 / -0.3 at 1, +0.4 / +0.9 at 0.5 in a noisy room). A raise too: a -8.4 dBFS file
+  at the builder's suggested 2.34 plays clean and about 7 dB up; a +2 dBFS master at 2 crackles
+  from the first beat and reads about 2.5 dB short of +6, the energy the wrap loses.
 - Builder 0.2.0: a level slider per track (0 to 400 % with the dB shown), a play button that hears
   the track at that level, and a measurement of every file as it is added: integrated loudness
   and true peak in the browser (`src/loudness.ts`, EBU R128 in a worker), then the suggestion that
