@@ -22,4 +22,10 @@ set_target_properties(RadioXL PROPERTIES
 #   ctest --test-dir plugin\build -C Release --output-on-failure
 enable_testing()
 add_executable(RadioXLManifestTests tests/ManifestTests.cpp)
+
+# Sources are UTF-8: the manifest tests carry the titles a station author writes.
+if(MSVC)
+    target_compile_options(RadioXL PRIVATE /utf-8)
+    target_compile_options(RadioXLManifestTests PRIVATE /utf-8)
+endif()
 add_test(NAME manifest COMMAND RadioXLManifestTests)

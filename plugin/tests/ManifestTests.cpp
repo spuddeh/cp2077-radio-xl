@@ -358,6 +358,30 @@ void TestTrackGain()
     Check(stream.ok && stream.station.tracks.size() == 1 && stream.station.tracks[0].gain == 0.7f, "a stream track takes a gain", stream.Joined());
 }
 
+void TestNonAsciiText()
+{
+    // The titles and file names from the #45 report: CJK, full-width punctuation, a wave dash,
+    // brackets, an apostrophe, and a run of hyphens. The reader takes them all, as written, so a
+    // station carrying them is not refused by the plugin.
+    const Read r(R"json({
+  "name": "radio_station_s_l3nc3", "frequency": 98.1, "displayName": "S!L3NC3",
+  "tracks": [
+    { "file": "audio/2 8 1 4 - 恢复.mp3", "title": "2 8 1 4 - 恢复" },
+    { "file": "audio/Kikiyama - ゆめのはじまり.mp3", "title": "Kikiyama - ゆめのはじまり" },
+    { "file": "audio/Death Music？.mp3", "title": "Death Music？" },
+    { "file": "audio/Fairy Tale Woods： Apple House.mp3", "title": "Fairy Tale Woods： Apple House" },
+    { "file": "audio/〜 [Live] Don't Stop, & Go.mp3", "title": "〜 [Live] Don't Stop, & Go" },
+    { "file": "audio/Leliel - 904-g0=---------------------.mp3", "title": "Leliel - 904-g0=---------------------" }
+  ]
+})json");
+    Check(r.ok, "non-ASCII titles and file names read", r.Joined());
+    Check(r.station.tracks.size() == 6, "every track kept");
+    Check(r.station.tracks.size() == 6 && r.station.tracks[1].title == "Kikiyama - ゆめのはじまり", "a CJK title is kept as written");
+    Check(r.station.tracks.size() == 6 && r.station.tracks[1].file == "audio/Kikiyama - ゆめのはじまり.mp3", "a CJK file name is kept as written");
+    Check(r.log.empty(), "nothing logged", r.Joined());
+    Check(radioxl::Label(r.station) == "98.1 S!L3NC3", "a name with punctuation labels as written", radioxl::Label(r.station));
+}
+
 void TestEveryFaultIsReported()
 {
     // Two faults on two lines: both are named, so the author fixes the file once.
@@ -384,6 +408,7 @@ int main()
     TestWarnings();
     TestTrackGain();
     TestShowFrequency();
+    TestNonAsciiText();
     TestEveryFaultIsReported();
     if (g_failures == 0)
     {
