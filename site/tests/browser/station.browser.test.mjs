@@ -208,10 +208,10 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       `RadioExt's own order decides the tracks, got ${JSON.stringify(read.tracks)}`,
     )
     assert.ok(
-      read.notes.some((n) => n.includes("Volume 2.5 came from RadioExt's own player")),
+      read.notes.some((n) => n.includes("RadioExt's volume was 2.5")),
       `the volume note is missing: ${JSON.stringify(read.notes)}`,
     )
-    assert.equal(read.manifest.includes('"gain": 2.5'), true, `RadioExt's volume should come across as written: ${read.manifest}`)
+    assert.equal(read.manifest.includes('"gain"'), false, `RadioExt's volume must not become the station gain: ${read.manifest}`)
     assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/test_station.archive'])
     assert.deepEqual(await page.errors(), [])
   })

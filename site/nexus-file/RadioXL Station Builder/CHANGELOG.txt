@@ -3,6 +3,12 @@
 One entry per builder version. The version is in package.json and printed at the foot of the page.
 scripts/nexus-builder-file.py turns the newest entry into the Nexus misc file's description.
 
+## 0.2.1
+
+- A RadioExt station comes across with its Volume at 100 %. RadioExt's own volume was set against
+  RadioExt's player, and with Auto level putting each track on the game's level it moved the whole
+  station off target. The note says what the value was.
+
 ## 0.2.0
 
 - Each track has its own level, 0 to 400 % with the dB shown, written to the manifest as the track's

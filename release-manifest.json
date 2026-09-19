@@ -28,7 +28,7 @@
       "primary_mod_manager_download": false,
       "show_requirements_pop_up": false,
       "update_mod_version": false,
-      "currentVersion": "0.2.0"
+      "currentVersion": "0.2.1"
     }
   },
   "$name_note": "Nexus v3 validates displayName against ^[a-zA-Z0-9 _'().-]+$ and rejects the upload with a 422 otherwise. No '&', no '/'."

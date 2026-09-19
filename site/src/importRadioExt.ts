@@ -49,15 +49,15 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
   if (fm === null && parts) notes.push(`The station has no "fm", so the frequency ${parts[1]} came from the front of its name.`)
   if (fm !== null && parts && Number.parseFloat(parts[1]) !== fm) notes.push(`The name started with ${parts[1]} but "fm" is ${fm}. The frequency is ${fm}; the number was taken off the name.`)
 
-  // RadioExt's volume is a multiplier like the manifest's gain. RadioExt plays through its own
-  // renderer, so a value tuned there says nothing about the level on RadioXL's chain, where a
-  // station mastered like commercial music already sits among the game's own at 1.
+  // RadioExt's volume was tuned against RadioExt's own player, which says nothing about the level
+  // on RadioXL's chain, and auto level puts every track on the game's own level as the files are
+  // measured. A station Volume other than 100% on top of that moves the whole station off target
+  // by exactly RadioExt's number, so the station comes across at 100% and the note says what it was.
   const volume = typeof m.volume === 'number' ? m.volume : 1
-  const gain = Math.max(0, Math.min(4, volume))
-  if (volume > 4) notes.push(`Volume ${volume} was brought down to 4, the most RadioXL allows.`)
-  if (volume > 1)
+  const gain = 1
+  if (Math.abs(volume - 1) >= 0.005)
     notes.push(
-      `Volume ${volume} came from RadioExt's own player. On RadioXL a station plays at the game's own level at 100%, so check this one against a vanilla station before keeping it above that.`,
+      `RadioExt's volume was ${volume}. It was set against RadioExt's own player, so the station comes across at 100%: Auto level puts each track on the game's own level. Set the Volume slider yourself only if you turn Auto level off.`,
     )
 
   const stream = (m.streamInfo ?? {}) as Record<string, unknown>
