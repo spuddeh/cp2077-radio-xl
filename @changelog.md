@@ -22,7 +22,7 @@
   it on the chain with the station's send trim. `report` writes `tools/level-target/vanilla-levels.{json,md}`
   and `target.json`; `check` compares a capture against the model; `file` measures any audio the
   way the builder will and prints the peak-bounded gain. Result: 188 music tracks at -19.3 to -5.2
-  LUFS (median -11.0), a file target of -10.9 LUFS on `radioxl_radio` before the path term, no dynamics on either radio
+  LUFS (median -11.0), a file target of -11.1 LUFS on `radioxl_radio` (the align entry below has how it was settled), no dynamics on either radio
   bus, and `3803692087` is the master bus itself.
 - `tools/measure-loudness.py report --json <file>` writes the capture in the shape `check` reads.
 - `tools/level-target.py align <capture.wav> --route mono|stereo [--station DIR] [--track NN=<audio>]`
