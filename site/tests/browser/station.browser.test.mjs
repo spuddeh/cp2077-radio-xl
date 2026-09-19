@@ -252,8 +252,18 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     })()`)
     await page.waitFor("document.querySelectorAll('.track').length === 1")
 
-    const manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+    let manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
     assert.deepEqual(manifest.tracks, [{ url: 'https://stream.example.com/live.mp3' }])
+    // A stream can carry a title (#50); blank, it writes none.
+    await page.evaluate(`(() => {
+      const el = document.querySelector('.track-title input')
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'Live from Night City')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      return 1
+    })()`)
+    await page.waitFor("document.querySelector('.json pre').textContent.includes('Live from Night City')")
+    manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+    assert.deepEqual(manifest.tracks, [{ url: 'https://stream.example.com/live.mp3', title: 'Live from Night City' }])
     const notices = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.row-note.notice')].map((e) => e.textContent))"))
     assert.ok(
       notices.some((n) => n.includes('allowedHost = stream.example.com')),

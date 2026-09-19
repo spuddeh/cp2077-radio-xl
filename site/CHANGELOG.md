@@ -17,6 +17,12 @@ One entry per builder version. The version is in `package.json` and printed at t
   gets no suggestion.
 - Opening a station reads each track's `gain` back.
 - The builder's version is printed at the foot of the page.
+- Show frequency, on by default: off, the label is the name alone and the frequency only places
+  the station on the dial (RadioXL 0.4.0 reads the field). A RadioExt station whose name carried
+  no number comes across with it off.
+- A stream track has a title field; the URL sits under it.
+- Choosing an image after opening or converting a station takes the station's own atlas path
+  instead of the one the station carried.
 - The footer links to RadioXL's current Nexus page.
 
 ## 0.1.0
