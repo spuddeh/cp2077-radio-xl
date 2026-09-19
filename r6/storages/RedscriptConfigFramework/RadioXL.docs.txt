@@ -77,7 +77,7 @@ allowHttpConnections = true
 allowedHost = ice1.somafm.com[/code][/quote]
 Use the hosts the station's own page names; one [b]allowedHost[/b] line per host, and [b]*.somafm.com[/b] covers every host under a domain.
 
-[b]A stream often redirects, and the host it lands on needs its own line.[/b] So a station can stay silent even with the host from its URL allowed. AudioXL's log names the host it refused:
+[b]A stream URL may redirect, and AudioXL checks every host it is sent to.[/b] So a station can stay silent with the host from its URL already allowed, because the host it ended up at is a different one. The log names the host that was refused, without saying it came from a redirect:
 [quote][code]'regiocast.streamabc.net' is not in the allowedHost list in AudioXL.ini[/code][/quote]
 Add that host and start the game again. AudioXL reads the file once, at startup, so each host costs a restart until the station plays.
 
