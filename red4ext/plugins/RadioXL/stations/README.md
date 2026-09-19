@@ -68,9 +68,9 @@ measure -5 to -19 LUFS, most of them near -11; a modern master near -9 sits abou
 middle, and `0.8` brings it there. A world radio sums a track's two channels into one, so a wide
 mix plays a little quieter there than a narrow one.
 
-**The station builder measures each file and suggests its track `gain`**: the value that puts the
-file on -11 LUFS, as far as its peak allows. A stream cannot be measured ahead of time, so its
-level is set by hand.
+**The station builder measures each file and sets its track `gain`** to the value that puts the
+file on -11 LUFS, as far as its peak allows (auto level, on by default; off, the sliders are the
+author's). A stream cannot be measured ahead of time, so its level is set by hand.
 
 **A gain above `1` must leave the loudest sample under full scale.** The samples are scaled as
 16-bit integers and a value past the top wraps rather than clips, which is heard as crackle on the

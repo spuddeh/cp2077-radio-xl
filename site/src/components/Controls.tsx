@@ -81,6 +81,7 @@ export function Slider(props: {
   step: number
   onChange: (v: number) => void
   format?: (v: number) => string
+  disabled?: boolean
 }) {
   return (
     <div className="slider">
@@ -90,6 +91,7 @@ export function Slider(props: {
         max={props.max}
         step={props.step}
         value={props.value}
+        disabled={props.disabled}
         onChange={(e) => props.onChange(Number(e.target.value))}
       />
       <output>{props.format ? props.format(props.value) : props.value.toFixed(2)}</output>

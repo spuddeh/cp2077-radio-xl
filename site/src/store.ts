@@ -58,6 +58,12 @@ interface StationState {
   /** An opened station's icon archive that the page cannot read, so the preview has no icon. */
   iconArchiveUnreadable: boolean
   tracks: Track[]
+  /**
+   * On, every measured track's level is its suggestion and its slider is read-only. Off, the
+   * sliders are the author's, starting from whatever they hold. Opening a station that carries a
+   * track gain turns it off, because those levels were set on purpose.
+   */
+  autoLevel: boolean
   /** The mod folder to write, kept from an opened station so a rebuild replaces it. */
   folder: string | null
   /** Files from an opened station that go back into the zip unchanged. */
@@ -122,6 +128,7 @@ export const useStation = create<StationState>((set) => ({
   iconTargetEdited: false,
   iconArchiveUnreadable: false,
   tracks: [],
+  autoLevel: true,
   folder: null,
   extras: [],
   notes: [],
@@ -170,6 +177,7 @@ export const useStation = create<StationState>((set) => ({
       iconTargetEdited: true,
       iconArchiveUnreadable: st.iconArchiveUnreadable,
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
+      autoLevel: !st.tracks.some((t) => Math.abs(t.gain - 1) >= 0.005),
       folder: st.folder || null,
       extras: st.extras,
       notes: st.notes,

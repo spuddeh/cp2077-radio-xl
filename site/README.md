@@ -13,12 +13,12 @@ builds here is one RadioXL accepts. The manifest format itself is in the
 
 ## Track levels
 
-Each file is measured as it is added (integrated loudness and true peak, EBU R128) and the page
-suggests the level that puts it on the level of the game's own stations. A raise is bounded by the
-file's own peak, because RadioXL scales the samples and a sample past full scale wraps. "Use
-suggested levels" takes every suggestion at once; the slider on each track adjusts it, and the play
-button hears the track at that level. A stream cannot be measured ahead of time and keeps a manual
-level.
+Auto level is on by default: each file is measured as it is added (integrated loudness and true
+peak, EBU R128) and its level set so it plays at the level of the game's own stations. A raise is
+bounded by the file's own peak, because RadioXL scales the samples and a sample past full scale
+wraps. Turn auto level off to set the sliders yourself, from where they are; the suggestion stays
+on each track. The play button hears a track at its level. A stream cannot be measured ahead of
+time and keeps a manual level.
 
 The station's Volume is one trim on top of every track's level.
 

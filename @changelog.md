@@ -16,7 +16,10 @@
   the track at that level, and a measurement of every file as it is added: integrated loudness
   and true peak in the browser (`src/loudness.ts`, EBU R128 in a worker), then the suggestion that
   puts the file on `target.json`'s `fileLufsTarget` bounded by its peak with a 1 dB margin, the
-  same arithmetic as `level-target.py file`. "Use it" per track, "Use suggested levels" for all.
+  same arithmetic as `level-target.py file`. Auto level, on by default, sets each track's level as
+  its measurement lands and makes the slider read-only; off, the sliders are the author's from
+  where they are, with "use it" per track and "Use suggested levels" for all. A station opened
+  with a track gain in it opens with auto level off. The footer links to the current Nexus page.
   `buildManifest` writes a track gain only when it is not 1; opening a manifest reads it back; a
   stream keeps a manual level. `loudness.test.ts` checks the meter against the BS.1770 table and
   the EBU Tech 3341 tones and the suggestion against the tool's printed gains for every Tool FM

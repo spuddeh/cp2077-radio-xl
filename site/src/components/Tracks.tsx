@@ -13,7 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
 import { gainLabel, suggestGain, type Suggestion } from '../loudness'
 import { measureFile, preview } from '../measure'
-import { Fault, Notice, Slider } from './Controls'
+import { Bool, Fault, Notice, Slider } from './Controls'
 import { Tooltip } from './Tooltip'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
@@ -36,7 +36,7 @@ function atSuggestion(t: Track): boolean {
 const measuring = new Set<number>()
 
 export function Tracks() {
-  const { tracks, addFiles, addStream, set, updateTrack, updateTracks } = useStation()
+  const { tracks, addFiles, addStream, set, updateTrack, updateTracks, autoLevel } = useStation()
   const [confirming, setConfirming] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
@@ -72,17 +72,24 @@ export function Tracks() {
     return () => clearTimeout(t)
   }, [confirming])
 
-  // Every file track is measured once, as it arrives; the queue takes them one at a time.
+  // Every file track is measured once, as it arrives; the queue takes them one at a time. With
+  // auto level on, the measurement sets the track's level as it lands.
   useEffect(() => {
     for (const t of tracks) {
       if (t.url || !t.source || t.level !== undefined || measuring.has(t.id)) continue
       measuring.add(t.id)
       measureFile(t.source).then((level) => {
         measuring.delete(t.id)
-        updateTrack(t.id, { level })
+        const auto = useStation.getState().autoLevel
+        updateTrack(t.id, level && auto ? { level, gain: suggestGain(level, TARGET).gain } : { level })
       })
     }
   }, [tracks, updateTrack])
+
+  // Turning auto level on puts every measured track on its suggestion; off leaves them where they are.
+  useEffect(() => {
+    if (autoLevel) useSuggested()
+  }, [autoLevel])
 
   // A removed track that was playing stops.
   useEffect(() => {
@@ -103,11 +110,12 @@ export function Tracks() {
 
   const pending = tracks.filter((t) => !t.url && t.source && t.level === undefined).length
   const suggestible = tracks.filter((t) => suggestionFor(t) !== null && !atSuggestion(t)).length
-  const useSuggested = () =>
+  function useSuggested() {
     updateTracks(
       (t) => suggestionFor(t) !== null,
       (t) => ({ gain: suggestionFor(t)!.gain }),
     )
+  }
 
   return (
     <>
@@ -184,7 +192,16 @@ export function Tracks() {
                 : 'Drag a track by its number to move it.'}
             </span>
             <div className="tracks-buttons">
-              {tracks.some((t) => suggestionFor(t) !== null) && (
+              <Tooltip
+                title="Auto level"
+                text={`On, every file is measured and its level set so it plays at the level of the game's own stations (${TARGET.fileLufsTarget} LUFS in the file), as far as its peak allows. Off, the sliders are yours, from where they are.`}
+              >
+                <div className="auto-level">
+                  <span className="auto-level-label">Auto level</span>
+                  <Bool value={autoLevel} onChange={(v) => set({ autoLevel: v })} />
+                </div>
+              </Tooltip>
+              {!autoLevel && tracks.some((t) => suggestionFor(t) !== null) && (
                 <Tooltip
                   title="Suggested levels"
                   text={`Sets every measured track's level so it plays at the level of the game's own stations (${TARGET.fileLufsTarget} LUFS in the file), as far as its peak allows.`}
@@ -212,7 +229,7 @@ export function Tracks() {
             <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
               <ol className="tracks">
                 {tracks.map((t, i) => (
-                  <TrackRow key={t.id} track={t} index={i} playing={playing === t.id} onPlaying={() => setPlaying(preview.playing)} />
+                  <TrackRow key={t.id} track={t} index={i} playing={playing === t.id} auto={autoLevel} onPlaying={() => setPlaying(preview.playing)} />
                 ))}
               </ol>
             </SortableContext>
@@ -223,12 +240,14 @@ export function Tracks() {
   )
 }
 
-function TrackRow(props: { track: Track; index: number; playing: boolean; onPlaying: () => void }) {
+function TrackRow(props: { track: Track; index: number; playing: boolean; auto: boolean; onPlaying: () => void }) {
   const { updateTrack, removeTrack } = useStation()
   const t = props.track
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: t.id })
   const suggestion = suggestionFor(t)
   const canPlay = !t.url && !!t.source
+  // Auto level owns the slider of a track it has measured; a stream or an unreadable file is the author's.
+  const automatic = props.auto && suggestion !== null
   return (
     <li
       ref={setNodeRef}
@@ -294,6 +313,7 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; onPlay
           min={0}
           max={4}
           step={0.05}
+          disabled={automatic}
           onChange={(v) => {
             updateTrack(t.id, { gain: v })
             preview.setGain(t.id, v)
@@ -313,7 +333,9 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; onPlay
             <>
               {t.level.lufs.toFixed(1)} LUFS, peak {t.level.peakDb > 0 ? '+' : ''}
               {t.level.peakDb.toFixed(1)} dBFS.{' '}
-              {suggestion && atSuggestion(t) ? (
+              {suggestion && automatic ? (
+                <span className="track-suggested">Levelled to {gainLabel(suggestion.gain)}{suggestion.peakLimited ? ', as far as the peak allows' : ''}.</span>
+              ) : suggestion && atSuggestion(t) ? (
                 <span className="track-suggested">At the suggested level{suggestion.peakLimited ? ', as far as the peak allows' : ''}.</span>
               ) : suggestion ? (
                 <>

@@ -123,9 +123,10 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.deepEqual(await page.errors(), [])
   })
 
-  test('measures a file, suggests its level, and writes the gain the author takes', async () => {
+  test('measures a file and levels it, and off auto level the slider is yours', async () => {
     // A 997 Hz sine at -20 dBFS: -20.0 LUFS, peak -20.0 dBFS. Against the -11.1 LUFS target that
-    // wants +8.9 dB, which the peak allows, so the suggestion is 2.79.
+    // wants +8.9 dB, which the peak allows, so the level is 2.79. Auto level is on by default, so
+    // the measurement sets it and the slider is read-only.
     await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.tone)
     await page.waitFor("document.querySelectorAll('.track').length === 2")
     await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('LUFS'))`)
@@ -133,19 +134,22 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     const readings = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.track-reading')].map((e) => e.textContent))"))
     const tone = readings.find((r) => r.includes('LUFS'))
     assert.match(tone, /^-(19\.9|20\.0|20\.1) LUFS, peak -(19\.9|20\.0|20\.1) dBFS\./, tone)
-    assert.match(tone, /Suggested 279% \(\+8\.9 dB\)/, tone)
+    assert.match(tone, /Levelled to 279% \(\+8\.9 dB\)/, tone)
     // The stand-in mp3 is not audio the browser can decode, and says so without a fault.
     assert.ok(readings.some((r) => r.includes('could not read the file')), JSON.stringify(readings))
     const state = await page.evaluate("document.querySelector('.footer-state').textContent")
     assert.match(state, /is ready/, state)
-
-    await page.evaluate("document.querySelector('.use-suggested').click()")
-    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('At the suggested level'))`)
-    const manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+    let manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
     assert.deepEqual(manifest.tracks.map((t) => t.gain), [undefined, 2.79], JSON.stringify(manifest.tracks))
-    assert.equal(await page.evaluate("document.querySelector('.use-suggested').disabled"), true)
+    assert.equal(await page.evaluate("[...document.querySelectorAll('.track-level input[type=range]')][1].disabled"), true)
+    assert.equal(await page.evaluate("!!document.querySelector('.use-suggested')"), false)
 
-    // The slider moved by hand offers the suggestion again, and the version is on the page.
+    // Off: the slider keeps its value and comes alive; moved by hand, the suggestion is offered again.
+    await page.evaluate("document.querySelector('.auto-level .off').click()")
+    await page.waitFor("[...document.querySelectorAll('.track-level input[type=range]')][1].disabled === false")
+    manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+    assert.equal(manifest.tracks[1].gain, 2.79, 'turning auto level off keeps the level')
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('At the suggested level'))`)
     await page.evaluate(`(() => {
       const slider = [...document.querySelectorAll('.track-level input[type=range]')][1]
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(slider, '1')
@@ -153,6 +157,20 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       return 1
     })()`)
     await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Suggested 279%'))`)
+    await page.evaluate("document.querySelector('.use-suggested').click()")
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('At the suggested level'))`)
+    assert.equal(await page.evaluate("document.querySelector('.use-suggested').disabled"), true)
+
+    // Back on: every measured track returns to its suggestion and the button goes away.
+    await page.evaluate(`(() => {
+      const slider = [...document.querySelectorAll('.track-level input[type=range]')][1]
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(slider, '0.5')
+      slider.dispatchEvent(new Event('input', { bubbles: true }))
+      document.querySelector('.auto-level .on').click()
+      return 1
+    })()`)
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Levelled to 279%'))`)
+    assert.equal(await page.evaluate("!!document.querySelector('.use-suggested')"), false)
     assert.match(await page.evaluate("document.querySelector('.builder-version').textContent"), /^Station builder \d+\.\d+\.\d+$/)
     assert.deepEqual(await page.errors(), [])
   })

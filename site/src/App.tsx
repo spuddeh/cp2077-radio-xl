@@ -480,7 +480,7 @@ export function App() {
 
       <footer className="colophon">
         <nav aria-label="Links">
-          <a href="https://www.nexusmods.com/cyberpunk2077/mods/33488" target="_blank" rel="noopener noreferrer">RadioXL on Nexus Mods</a>
+          <a href="https://www.nexusmods.com/cyberpunk2077/mods/33983" target="_blank" rel="noopener noreferrer">RadioXL on Nexus Mods</a>
           <a href="https://github.com/spuddeh/cp2077-radio-xl" target="_blank" rel="noopener noreferrer">Source on GitHub</a>
           <a href="https://www.cdprojektred.com/en/fan-content" target="_blank" rel="noopener noreferrer">CD PROJEKT RED fan content guidelines</a>
         </nav>
