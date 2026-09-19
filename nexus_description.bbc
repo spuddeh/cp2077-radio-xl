@@ -98,7 +98,12 @@ A station can play a live internet radio stream instead of music files. AudioXL 
 allowHttpConnections = true
 allowedHost = ice1.somafm.com[/code]
 [/quote]
-Use the host the station's own page names; one [b]allowedHost[/b] line per host. A station that stays silent usually needs one more host: AudioXL's log names the one it refused.
+Use the hosts the station's own page names; one [b]allowedHost[/b] line per host, and [b]*.somafm.com[/b] covers every host under a domain.
+
+[b]A stream often redirects, and the host it lands on needs its own line.[/b] So a station can stay silent even with the host from its URL allowed. AudioXL's log names the host it refused:
+[quote][code]'regiocast.streamabc.net' is not in the allowedHost list in AudioXL.ini[/code]
+[/quote]
+Add that host and start the game again. AudioXL reads the file once, at startup, so each host costs a restart until the station plays.
 
 [b]AudioXL creates AudioXL.ini on its first start[/b], with everything off, and an update leaves it alone. Under Mod Organizer 2 the file is in Overwrite.
 
