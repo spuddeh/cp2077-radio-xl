@@ -7,7 +7,7 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 
-import { useStation } from '../src/store.ts'
+import { cnameFrom, useStation } from '../src/store.ts'
 import type { ImportedStation } from '../src/importStation.ts'
 
 function station(tracks: ImportedStation['tracks']): ImportedStation {
@@ -32,6 +32,16 @@ function station(tracks: ImportedStation['tracks']): ImportedStation {
     notes: [],
   }
 }
+
+test('a station ID comes from the name, and a name with no Latin letter still gets one (#45)', () => {
+  assert.equal(cnameFrom('S!L3NC3'), 'radio_station_s_l3nc3')
+  assert.equal(cnameFrom('Café Ràdio'), 'radio_station_cafe_radio')
+  const cjk = cnameFrom('ゆめのはじまり')
+  assert.match(cjk, /^radio_station_[0-9a-f]{8}$/, cjk)
+  assert.equal(cnameFrom('ゆめのはじまり'), cjk, 'the same name gives the same ID')
+  assert.notEqual(cnameFrom('恢复'), cjk)
+  assert.equal(cnameFrom('   '), '')
+})
 
 test('auto level is on to begin with, and a new file arrives at 100%', () => {
   assert.equal(useStation.getState().autoLevel, true)

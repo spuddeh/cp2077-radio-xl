@@ -104,7 +104,21 @@ function uniquePath(path: string, taken: Set<string>): string {
   for (let n = 2; ; n++) if (!taken.has(`${stem} (${n})${ext}`.toLowerCase())) return `${stem} (${n})${ext}`
 }
 
-/** A CName is letters, digits and underscores; the station name is the only input to it. */
+/** FNV-1a 32 over a string's UTF-8 bytes, as eight hex digits. */
+function fnv1a32(text: string): string {
+  let hash = 0x811c9dc5
+  for (const byte of new TextEncoder().encode(text)) {
+    hash ^= byte
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
+ * A CName is letters, digits and underscores; the station name is the only input to it. A name
+ * with no Latin letter or digit in it (CJK, Cyrillic, symbols) has nothing to slug, so it takes a
+ * hash of itself: stable for that name, and never empty for a name that is not.
+ */
 export function cnameFrom(name: string): string {
   const slug = name
     .normalize('NFKD')
@@ -112,7 +126,9 @@ export function cnameFrom(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
-  return slug ? `radio_station_${slug}` : ''
+  if (slug) return `radio_station_${slug}`
+  const trimmed = name.normalize('NFKC').trim()
+  return trimmed ? `radio_station_${fnv1a32(trimmed)}` : ''
 }
 
 export const useStation = create<StationState>((set) => ({
