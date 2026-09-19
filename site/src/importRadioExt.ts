@@ -114,9 +114,14 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
     )
   }
 
+  // RadioExt's label was the name as written, so a name with no number in it showed none.
+  const showFrequency = parts !== null
+  if (!showFrequency && stationName) notes.push('The name carried no frequency, so the label keeps it off. Show frequency turns it back on.')
+
   return {
     folder: '',
     frequency,
+    showFrequency,
     stationName,
     cname: cnameFrom(stationName),
     news: false,

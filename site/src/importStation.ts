@@ -22,6 +22,7 @@ export interface ExtraFile {
 export interface ImportedStation {
   folder: string
   frequency: string
+  showFrequency: boolean
   stationName: string
   cname: string
   news: boolean
@@ -44,7 +45,7 @@ export interface ImportedStation {
 
 export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
-const KNOWN = new Set(['name', 'frequency', 'displayName', 'news', 'gain', 'icon', 'atlas', 'tracks'])
+const KNOWN = new Set(['name', 'frequency', 'displayName', 'showFrequency', 'news', 'gain', 'icon', 'atlas', 'tracks'])
 const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident', 'gain'])
 /** Mod manager and OS files that are not part of a mod. */
 const JUNK = /(^|\/)(meta\.ini|desktop\.ini|thumbs\.db|\.ds_store)$/i
@@ -184,6 +185,7 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
   return {
     folder: folderName,
     frequency,
+    showFrequency: m.showFrequency !== false,
     stationName,
     cname: typeof m.name === 'string' ? m.name : '',
     news: m.news === true,

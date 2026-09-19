@@ -14,7 +14,7 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 
-import { buildManifest, checkManifest, type ManifestInput } from '../src/manifest.ts'
+import { buildManifest, checkManifest, displayName, type ManifestInput } from '../src/manifest.ts'
 import type { Track } from '../src/store.ts'
 
 /** Form state as an opened station would leave it, from a manifest's own JSON. */
@@ -40,6 +40,7 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
   })
   return {
     frequency: field !== null ? String(field) : parts ? parts[1] : '',
+    showFrequency: manifest.showFrequency !== false,
     stationName: parts ? parts[2].trim() : display,
     cname: typeof manifest.name === 'string' ? manifest.name : '',
     news: manifest.news === true,
@@ -106,6 +107,7 @@ const ACCEPTED: [name: string, manifest: Record<string, unknown>][] = [
   ['a track gain', like({ tracks: [{ file: 'a.mp3', gain: 0.8 }, { file: 'b.mp3', gain: 2.5 }] })],
   ['a stream with a gain', like({ tracks: [{ url: 'https://h/s', gain: 0.7 }] })],
   ['news off', like({ news: false })],
+  ['the frequency hidden from the label', like({ showFrequency: false })],
 ]
 
 for (const [name, manifest] of REFUSED) {
@@ -133,6 +135,15 @@ test('a manifest the page writes reads back the same', () => {
   assert.equal(written.news, true)
   assert.deepEqual(written.tracks, GOOD.tracks.map((t) => ({ file: t.file, title: t.title })))
   assert.deepEqual(checkManifest(asFormState(written)), [])
+})
+
+test('showFrequency is written only when off, and the name rules still hold', () => {
+  const hidden = asFormState(like({ showFrequency: false }))
+  assert.equal(buildManifest(hidden).showFrequency, false)
+  assert.equal(displayName(hidden), 'Tool FM')
+  assert.equal(buildManifest(asFormState(GOOD)).showFrequency, undefined)
+  assert.equal(displayName(asFormState(GOOD)), '104.9 Tool FM')
+  assert.ok(checkManifest(asFormState(like({ showFrequency: false, displayName: 'Tool FM 101.1' }))).length > 0, 'a hidden frequency does not let one into the name')
 })
 
 test('a track gain is written only when it is not 1, and reads back', () => {

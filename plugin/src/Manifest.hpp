@@ -63,6 +63,7 @@ struct Station
     std::string name;          // the station CName, e.g. radio_station_20_tool
     float frequency = -1.0f;   // the station's place on the dial, e.g. 104.9; always set once a manifest is accepted
     std::string displayName;   // the station's name alone, plain text; the label shown is Label()
+    bool showFrequency = true; // whether the label carries the frequency in front of the name
     std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
     bool news = false;         // Stanley's news and greetings may reach the station
@@ -86,11 +87,12 @@ inline std::string FrequencyText(double aFrequency)
 }
 
 // The label every receiver shows: the frequency, then the name, the CName standing in for a
-// station that gave no name.
+// station that gave no name. A station that hides its frequency shows the name alone; the
+// frequency still places it on the dial.
 inline std::string Label(const Station& aStation)
 {
     const std::string& name = aStation.displayName.empty() ? aStation.name : aStation.displayName;
-    return aStation.frequency >= 0.0f ? FrequencyText(aStation.frequency) + " " + name : name;
+    return aStation.showFrequency && aStation.frequency >= 0.0f ? FrequencyText(aStation.frequency) + " " + name : name;
 }
 
 // Whether a word reads as a frequency: a number of 10 or more standing on its own, so "104.9" and
@@ -258,7 +260,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     };
 
-    unknownKeys(root, {"name", "frequency", "displayName", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
+    unknownKeys(root, {"name", "frequency", "displayName", "showFrequency", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -315,6 +317,10 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
             at(gain->line, "\"gain\" is 0 to 4 - clamped");
         }
         aOut.gain = std::clamp(static_cast<float>(gain->number), 0.0f, kMaxGain);
+    }
+    if (const JsonValue* show = expect(root, "showFrequency", JsonValue::Kind::Bool, false))
+    {
+        aOut.showFrequency = show->boolean;
     }
 
     if (const JsonValue* tracks = expect(root, "tracks", JsonValue::Kind::Array, true))

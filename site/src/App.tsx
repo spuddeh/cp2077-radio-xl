@@ -308,6 +308,9 @@ export function App() {
               <Row label="Frequency" note="Decides the station's place on the dial. Required." fault={faultFor('frequency')}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
               </Row>
+              <Row label="Show frequency" note="Off, the label is the name alone. The frequency still places the station on the dial.">
+                <Bool value={s.showFrequency} onChange={(v) => s.set({ showFrequency: v })} />
+              </Row>
               <Row label="Name" note="Without the frequency; the game shows that in front." fault={faultFor('stationName')}>
                 <TextInput value={s.stationName} onChange={(v) => s.set({ stationName: v })} placeholder="Hangouts FM" spellCheck />
               </Row>
@@ -440,7 +443,8 @@ export function App() {
           </div>
           {preview === 'radioport' ? (
             <Radioport
-              frequency={s.frequency.trim()}
+              frequency={s.showFrequency ? s.frequency.trim() : ''}
+              dialFrequency={s.frequency.trim()}
               name={s.stationName.trim()}
               nowPlaying={firstSong?.title ?? ''}
               logo={logo}

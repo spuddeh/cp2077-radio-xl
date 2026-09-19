@@ -36,6 +36,8 @@ export interface Track {
 interface StationState {
   source: Source
   frequency: string
+  /** Off, the label is the name alone; the frequency still places the station on the dial. */
+  showFrequency: boolean
   stationName: string
   cname: string
   cnameEdited: boolean
@@ -112,6 +114,7 @@ export function cnameFrom(name: string): string {
 export const useStation = create<StationState>((set) => ({
   source: 'new',
   frequency: '',
+  showFrequency: true,
   stationName: '',
   cname: '',
   cnameEdited: false,
@@ -164,6 +167,7 @@ export const useStation = create<StationState>((set) => ({
     set({
       source: 'new',
       frequency: st.frequency,
+      showFrequency: st.showFrequency,
       stationName: st.stationName,
       cname: st.cname,
       cnameEdited: true,

@@ -27,6 +27,11 @@
   printed in the page footer; `site/CHANGELOG.md` carries one entry per version, and
   `site/scripts/nexus-builder-file.py` makes the Nexus misc file and its description from it.
 
+- `showFrequency` (#49): optional, `false` shows the station's name alone as the label while the
+  frequency still places it on the dial. `Label()` in `Manifest.hpp` honours it, the name rules
+  are unchanged, and the manifest tests cover the label both ways and a non-bool refused. The
+  builder has the switch beside Frequency and its previews follow it.
+
 ### Changed
 - The manifest's `gain` runs 0 to 4 instead of 0 to 1 (#41). `Manifest.hpp` gains `kMaxGain`; the
   clamp message reads `"gain" is 0 to 4 - clamped`; a raised gain is read as written and tested.

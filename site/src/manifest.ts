@@ -2,6 +2,7 @@ import { defaultIconTarget, type Track } from './store'
 
 export interface ManifestInput {
   frequency: string
+  showFrequency: boolean
   stationName: string
   cname: string
   news: boolean
@@ -51,9 +52,9 @@ export interface Fault {
   message: string
 }
 
-/** The label the game shows: the frequency, then the name, as the plugin composes it. */
-export function displayName(s: Pick<ManifestInput, 'frequency' | 'stationName'>): string {
-  return [s.frequency.trim(), s.stationName.trim()].filter(Boolean).join(' ')
+/** The label the game shows: the frequency, then the name, as the plugin composes it; the name alone when the frequency is hidden. */
+export function displayName(s: Pick<ManifestInput, 'frequency' | 'showFrequency' | 'stationName'>): string {
+  return [s.showFrequency ? s.frequency.trim() : '', s.stationName.trim()].filter(Boolean).join(' ')
 }
 
 /** The station.json the plugin reads. Keys at their defaults are left out. */
@@ -63,6 +64,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   if (Number.isFinite(frequency)) m.frequency = frequency
   const name = s.stationName.trim().replace(/\s+/g, ' ')
   if (name) m.displayName = name
+  if (!s.showFrequency) m.showFrequency = false
   if (s.news) m.news = true
   if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
   if (s.iconMode === 'record') {

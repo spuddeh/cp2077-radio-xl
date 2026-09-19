@@ -14,6 +14,7 @@ function station(tracks: ImportedStation['tracks']): ImportedStation {
   return {
     folder: 'Test',
     frequency: '90.5',
+    showFrequency: true,
     stationName: 'Test',
     cname: 'radio_station_test',
     news: false,

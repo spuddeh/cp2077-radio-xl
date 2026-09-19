@@ -9,13 +9,16 @@ const ROWS = 7
  * showing where the station lands on the dial.
  */
 export function Radioport(props: {
+  /** In the label; empty when the station hides it. */
   frequency: string
+  /** On the dial, always. */
+  dialFrequency: string
   name: string
   nowPlaying: string
   logo?: string
   animate: boolean
 }) {
-  const freq = Number.parseFloat(props.frequency)
+  const freq = Number.parseFloat(props.dialFrequency)
   const own = {
     freq: Number.isFinite(freq) ? freq : Infinity,
     label: [props.frequency, props.name].filter(Boolean).join(' ') || 'Your station',

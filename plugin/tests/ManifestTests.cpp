@@ -304,6 +304,28 @@ void TestWarnings()
     Check(r.log.size() == 5, "exactly five warnings", r.Joined());
 }
 
+void TestShowFrequency()
+{
+    // The frequency still places the station; only the label loses the number. The name rules
+    // hold either way, so a hidden frequency is not a way to write one into the name.
+    std::string text = kGood;
+    const std::string anchor = "\"news\": true,";
+    text.replace(text.find(anchor), anchor.size(), "\"news\": true, \"showFrequency\": false,");
+    const Read r(text);
+    Check(r.ok, "showFrequency reads", r.Joined());
+    Check(!r.station.showFrequency, "showFrequency false is kept");
+    Check(r.station.frequency == 104.9f, "the frequency is still read");
+    Check(radioxl::Label(r.station) == "Tool FM", "the label is the name alone", radioxl::Label(r.station));
+    const Read shown(kGood);
+    Check(shown.station.showFrequency && radioxl::Label(shown.station) == "104.9 Tool FM", "the default label carries the frequency", radioxl::Label(shown.station));
+    std::string named = text;
+    named.replace(named.find("\"Tool FM\""), 9, "\"101.1 Tool FM\"");
+    const Read refused(named);
+    Check(!refused.ok && refused.Logged("Mod/station.json:3: \"displayName\" starts with a number"), "a hidden frequency does not let one into the name", refused.Joined());
+    ExpectFault("showFrequency as a string", "{\n  \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\",\n  \"showFrequency\": \"no\",\n  \"tracks\": [ { \"file\": \"a\" } ]\n}",
+                "Mod/station.json:3: \"showFrequency\" must be true/false, not a string");
+}
+
 void TestTrackGain()
 {
     // A track's own gain is read as written, defaults to 1, and is clamped and named by line the
@@ -361,6 +383,7 @@ int main()
     TestSchemaFaults();
     TestWarnings();
     TestTrackGain();
+    TestShowFrequency();
     TestEveryFaultIsReported();
     if (g_failures == 0)
     {

@@ -31,6 +31,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `name` | The station's own CName: letters, digits and underscores only. It must be unique across every installed station mod. |
 | `frequency` | The station's place on the dial, as a number from 10 to 999: `104.9`. Required. See [The frequency and the name](#the-frequency-and-the-name). |
 | `displayName` | The station's name, without the frequency. Required. The game shows it after the frequency: `104.9 Your Station`. |
+| `showFrequency` | Optional. `false` shows the name alone as the label; the frequency still places the station on the dial. Defaults to `true`, as the game's own stations are shown. |
 | `news` | Optional. `true` lets the news reach the station: Stanley's bulletins and greetings, and N54 News. Defaults to `false`. See [News](#news). |
 | `gain` | Optional. One level trim for the whole station, `0` to `4`, on top of each track's own. Defaults to `1`. See [Level](#level). |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
@@ -85,7 +86,9 @@ every receiver steps through when you press next. A `93.7` lands between Night F
 Samizdat at 95.2. Two stations on one frequency sit next to each other, the game's own first.
 
 **The label is built from the two**, `104.9 Your Station`, the same way for every station, so the
-name is the name alone. A manifest is refused, and the log says which line, when:
+name is the name alone. `"showFrequency": false` leaves the number off the label for a station
+that is not a broadcast; the name rules below apply all the same. A manifest is refused, and the
+log says which line, when:
 
 - `frequency` or `displayName` is missing, or `frequency` is outside 10 to 999;
 - the name starts or ends with a number that reads as a frequency (`104.9 Your Station`,
