@@ -46,9 +46,8 @@ constexpr float kMaxGain = 4.0f;
 // length, so a station with one plays that stream and nothing else.
 //
 // A track's own `gain` levels it against the station's other tracks; it is multiplied with the
-// station's `gain`, and the product is what script sets on the track's AudioXL row. It is the one
-// stage before the sends a framework controls, which is why the level is in the samples and
-// nowhere else.
+// station's `gain`, and the product is what script sets on the track's AudioXL row. The samples
+// are the one stage before the sends a framework controls, so the level lives there and nowhere else.
 struct Track
 {
     std::string file;          // relative to the station's own manifest folder
