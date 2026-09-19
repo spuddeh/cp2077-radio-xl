@@ -108,6 +108,11 @@ export function Tracks() {
     set({ tracks: arrayMove(tracks, from, to) })
   }
 
+  // Without a save dialog the whole zip is assembled in memory before it downloads, and a large
+  // station can fail there with nothing to show for it.
+  const streamsToDisk = 'showSaveFilePicker' in window
+  const audioBytes = tracks.reduce((sum, t) => sum + (t.source?.size ?? 0), 0)
+  const inMemoryWarning = !streamsToDisk && audioBytes > 400 * 1048576
   const pending = tracks.filter((t) => !t.url && t.source && t.level === undefined).length
   const suggestible = tracks.filter((t) => suggestionFor(t) !== null && !atSuggestion(t)).length
   function useSuggested() {
@@ -183,6 +188,13 @@ export function Tracks() {
         </Notice>
       )}
 
+      {inMemoryWarning && (
+        <Notice>
+          This station is {(audioBytes / 1048576 / 1024).toFixed(1)} GB of audio, and this browser has no save dialog, so
+          the zip is built in memory before it downloads, which can fail for a station this size. Chrome and Edge
+          write the zip straight to disk.
+        </Notice>
+      )}
       {tracks.length > 0 && (
         <>
           <div className="tracks-tools">

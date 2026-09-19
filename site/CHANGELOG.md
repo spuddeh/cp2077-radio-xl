@@ -31,6 +31,8 @@ One entry per builder version. The version is in `package.json` and printed at t
   after it was picked is named rather than breaking the zip halfway.
 - A station name with no Latin letter or digit in it (CJK, Cyrillic, symbols) gets a station ID
   and a mod folder from a hash of the name, instead of none.
+- A large station in a browser with no save dialog gets a notice that the zip is built in memory,
+  and that Chrome and Edge write it straight to disk.
 - The footer links to RadioXL's current Nexus page.
 
 ## 0.1.0
