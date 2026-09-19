@@ -44,8 +44,8 @@ public func RadioXLScheduleMargin() -> Float {
 // station, so a full-scale sample wraps there. This is the trim that path needs, measured: -5 dB
 // lands both of its sends inside the vanilla range.
 //
-// It MULTIPLIES a station's own gain rather than replacing it, so a manifest that asks for a level
-// gets the same relative result whichever type carries the sound.
+// It MULTIPLIES the station's and the track's own gains rather than replacing them, so a manifest
+// that asks for a level gets the same relative result whichever type carries the sound.
 public func RadioXLFallbackTrim() -> Float {
   return 0.56;
 }
@@ -62,6 +62,7 @@ public native func RadioXL_StationIcon(index: Int32) -> String;
 public native func RadioXL_StationAtlas(index: Int32) -> String;
 public native func RadioXL_StationNews(index: Int32) -> Bool;
 public native func RadioXL_StationGain(index: Int32) -> Float;
+public native func RadioXL_StationTrackGain(index: Int32, track: Int32) -> Float;
 public native func RadioXL_StationTrackCount(index: Int32) -> Int32;
 public native func RadioXL_StationTrack(index: Int32, track: Int32) -> CName;
 public native func RadioXL_StationTrackKey(index: Int32, track: Int32) -> CName;
@@ -212,8 +213,10 @@ public class RadioXLService extends ScriptableService {
 
   // What a track's samples are scaled by. 1.0 on this framework's own type, because the send carries
   // the level there; the fallback's trim on the game's type, which has no send to set.
-  private func Gain(station: Int32) -> Float {
-    let gain: Float = RadioXL_StationGain(station);
+  // What a row's samples are scaled by: the station's gain times the track's own, and on the
+  // fallback type the trim that path needs on top. Every track is its own row, so the value is per row.
+  private func Gain(station: Int32, track: Int32) -> Float {
+    let gain: Float = RadioXL_StationGain(station) * RadioXL_StationTrackGain(station, track);
     if this.m_ownType { return gain; }
     return gain * RadioXLFallbackTrim();
   }
@@ -228,11 +231,11 @@ public class RadioXLService extends ScriptableService {
     let count: Int32 = RadioXL_StationCount();
     while station < count {
       let tracks: Int32 = RadioXL_StationTrackCount(station);
-      let gain: Float = this.Gain(station);
       let t: Int32 = 0;
       while t < tracks {
         let event: CName = RadioXL_StationTrack(station, t);
         let file: String = RadioXL_StationTrackFile(station, t);
+        let gain: Float = this.Gain(station, t);
         let stream: Bool = RadioXLAudio.IsStream(file);
         if stream && !RadioXLAudio.HttpAllowed() {
           RadioXLLog(s"\(event) streams \(file), and AudioXL.ini does not allow http: \(RadioXLAudio.HttpStatus())");
@@ -271,11 +274,10 @@ public class RadioXLService extends ScriptableService {
     let count: Int32 = RadioXL_StationCount();
     while station < count {
       let tracks: Int32 = RadioXL_StationTrackCount(station);
-      let gain: Float = this.Gain(station);
       let t: Int32 = 0;
       while t < tracks {
         let event: CName = RadioXL_StationTrack(station, t);
-        if IsNameValid(event) && !RadioXLAudio.SetGain(event, gain) {
+        if IsNameValid(event) && !RadioXLAudio.SetGain(event, this.Gain(station, t)) {
           failed += 1;
         }
         t += 1;

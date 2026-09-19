@@ -23,34 +23,41 @@
 
 namespace radioxl
 {
+// The level a station and each of its tracks get unless the manifest says otherwise. **A station's
+// level belongs on its send, not in its samples**, and the framework's own routing bank puts it
+// there, so the default leaves the audio alone. The correction for the game's own custom-radio
+// object, whose send reaches a world device 3 to 7 dB hotter than any vanilla station, is applied
+// in script and only on the path that uses that object.
+constexpr float kDefaultGain = 1.0f;
+
+// The most a manifest may ask for, station or track: +12 dB. The game's own radio files span 14 dB
+// of loudness, and the quietest is 8 dB under the median, so nothing quieter than that is a radio
+// track. The ceiling is not what keeps a raised track clean: AudioXL scales 16-bit samples and
+// WRAPS past full scale, so a track's own peak times its gain must stay under 0 dBFS. That check
+// belongs to the tool that can read the file (the station builder), not to a plugin that reads
+// only headers.
+constexpr float kMaxGain = 4.0f;
+
 // A track is an audio FILE and a title. Nothing else is written by hand: the length is read from
 // the file's own headers at load, and AudioXL registers the file and supplies the Wwise id. A
 // manifest that carried a duration would be a second place for it to be wrong.
 //
 // A track can instead be a URL, a live MP3 stream AudioXL plays from the network. A stream has no
 // length, so a station with one plays that stream and nothing else.
+//
+// A track's own `gain` levels it against the station's other tracks; it is multiplied with the
+// station's `gain`, and the product is what script sets on the track's AudioXL row. It is the one
+// stage before the sends a framework controls, which is why the level is in the samples and
+// nowhere else.
 struct Track
 {
-    std::string file;       // relative to the station's own manifest folder
-    std::string url;        // an http or https stream, in place of file
-    std::string title;      // the song title as it is shown, plain text, may be empty
-    float duration = 0.0f;  // seconds, from the file's headers - what the station schedules against
-    bool ident = false;     // a station ident: written to the station's blips, not its tracks
+    std::string file;          // relative to the station's own manifest folder
+    std::string url;           // an http or https stream, in place of file
+    std::string title;         // the song title as it is shown, plain text, may be empty
+    float duration = 0.0f;     // seconds, from the file's headers - what the station schedules against
+    bool ident = false;        // a station ident: written to the station's blips, not its tracks
+    float gain = kDefaultGain; // this track's own level, 0..kMaxGain, multiplied with the station's
 };
-
-// The level trim every station gets unless its manifest says otherwise. **A station's level belongs
-// on its send, not in its samples**, and the framework's own routing bank puts it there, so the
-// default here leaves the audio alone. The correction for the game's own custom-radio object, whose
-// send reaches a world device 3 to 7 dB hotter than any vanilla station, is applied in script and
-// only on the path that uses that object.
-constexpr float kDefaultGain = 1.0f;
-
-// The most a manifest may ask for: +12 dB. The game's own radio files span 14 dB of loudness, and
-// the quietest is 8 dB under the median, so nothing quieter than that is a radio track. The ceiling
-// is not what keeps a raised track clean: AudioXL scales 16-bit samples and WRAPS past full scale,
-// so a track's own peak times its gain must stay under 0 dBFS. That check belongs to the tool that
-// can read the file (the station builder), not to a plugin that reads only headers.
-constexpr float kMaxGain = 4.0f;
 
 struct Station
 {
@@ -324,7 +331,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
                 fail(item.line, "each track must be an object, { \"file\": ... }, not " + std::string(JsonValue::KindName(item.kind)));
                 continue;
             }
-            unknownKeys(item, {"file", "url", "title", "ident"}, "track");
+            unknownKeys(item, {"file", "url", "title", "ident", "gain"}, "track");
             Track track;
             const bool hasUrl = item.Find("url") != nullptr;
             if (hasUrl && item.Find("file"))
@@ -362,6 +369,14 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
                 {
                     fail(ident->line, "an ident is a file - a \"url\" track cannot be one");
                 }
+            }
+            if (const JsonValue* gain = expect(item, "gain", JsonValue::Kind::Number, false))
+            {
+                if (gain->number < 0.0 || gain->number > kMaxGain)
+                {
+                    at(gain->line, "a track's \"gain\" is 0 to 4 - clamped");
+                }
+                track.gain = std::clamp(static_cast<float>(gain->number), 0.0f, kMaxGain);
             }
             aOut.tracks.push_back(std::move(track));
         }

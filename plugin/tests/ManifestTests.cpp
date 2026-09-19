@@ -304,6 +304,38 @@ void TestWarnings()
     Check(r.log.size() == 5, "exactly five warnings", r.Joined());
 }
 
+void TestTrackGain()
+{
+    // A track's own gain is read as written, defaults to 1, and is clamped and named by line the
+    // way the station's is. It multiplies the station's gain in script, so the plugin keeps both.
+    const Read r(R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "gain": 0.5,
+  "tracks": [
+    { "file": "a", "gain": 0.8 },
+    { "file": "b" },
+    { "file": "c", "gain": 2.5 },
+    { "file": "d", "gain": 6 }
+  ]
+})json");
+    Check(r.ok, "a track gain does not refuse the manifest", r.Joined());
+    Check(r.station.gain == 0.5f, "the station gain is still read");
+    Check(r.station.tracks.size() == 4 && r.station.tracks[0].gain == 0.8f, "a track gain below 1 is read");
+    Check(r.station.tracks.size() == 4 && r.station.tracks[1].gain == radioxl::kDefaultGain, "a track without one defaults to 1");
+    Check(r.station.tracks.size() == 4 && r.station.tracks[2].gain == 2.5f, "a track gain above 1 is read as written");
+    Check(r.station.tracks.size() == 4 && r.station.tracks[3].gain == radioxl::kMaxGain, "a track gain past 4 is clamped");
+    Check(r.Logged("Mod/station.json:8: a track's \"gain\" is 0 to 4 - clamped"), "the clamp names the track's line", r.Joined());
+    Check(r.log.size() == 1, "exactly one warning", r.Joined());
+
+    ExpectFault("a track gain as a string",
+                "{\n  \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\",\n  \"tracks\": [ { \"file\": \"a\", \"gain\": \"0.5\" } ]\n}",
+                "Mod/station.json:3: \"gain\" must be a number, not a string");
+    // A stream has no samples of its own to measure ahead of time, but its row is scaled like any
+    // other, so a gain on it is read too.
+    const Read stream("{ \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\", \"tracks\": [ { \"url\": \"https://h/s\", \"gain\": 0.7 } ] }");
+    Check(stream.ok && stream.station.tracks.size() == 1 && stream.station.tracks[0].gain == 0.7f, "a stream track takes a gain", stream.Joined());
+}
+
 void TestEveryFaultIsReported()
 {
     // Two faults on two lines: both are named, so the author fixes the file once.
@@ -328,6 +360,7 @@ int main()
     TestSyntaxFaults();
     TestSchemaFaults();
     TestWarnings();
+    TestTrackGain();
     TestEveryFaultIsReported();
     if (g_failures == 0)
     {

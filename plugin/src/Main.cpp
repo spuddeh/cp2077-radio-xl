@@ -1014,6 +1014,22 @@ void RadioXL_StationGain(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, fl
         *aOut = s ? s->gain : kDefaultGain;
 }
 
+// One track's own level, multiplied with the station's by script before SetGain. A track the
+// manifest gave no gain answers 1.
+void RadioXL_StationTrackGain(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, float* aOut, int64_t)
+{
+    int32_t index = -1;
+    int32_t track = -1;
+    RED4ext::GetParameter(aFrame, &index);
+    RED4ext::GetParameter(aFrame, &track);
+    ++aFrame->code;
+    const Station* s = At(index);
+    if (aOut)
+    {
+        *aOut = (s && track >= 0 && track < static_cast<int32_t>(s->tracks.size())) ? s->tracks[track].gain : kDefaultGain;
+    }
+}
+
 void RadioXL_StationTrackCount(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
 {
     int32_t index = -1;
@@ -1243,6 +1259,7 @@ void RegisterNatives()
     reg("RadioXL_StationAtlas", &RadioXL_StationAtlas, "String", 1);
     reg("RadioXL_StationNews", &RadioXL_StationNews, "Bool", 1);
     reg("RadioXL_StationGain", &RadioXL_StationGain, "Float", 1);
+    reg("RadioXL_StationTrackGain", &RadioXL_StationTrackGain, "Float", 2);
     reg("RadioXL_StationTrackCount", &RadioXL_StationTrackCount, "Int32", 1);
     reg("RadioXL_StationTrack", &RadioXL_StationTrack, "CName", 2);
     reg("RadioXL_StationTrackKey", &RadioXL_StationTrackKey, "CName", 2);
