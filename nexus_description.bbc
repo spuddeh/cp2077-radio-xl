@@ -47,6 +47,7 @@ A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does n
 
 [list]
 [*][b]A new station.[/b] Give it a name and a frequency, drop in the songs, mark any of them as idents, and download the zip. The page shows the station on a Radioport and on a world radio as you go, so you see the label and the icon before the game does.[/*]
+[*][b]Levelled for you.[/b] Every song is measured as you add it and its level set to match the game's own stations, a loud one down and a quiet one up, with no change to the files. Turn Auto level off to set the sliders yourself; a play button on each track hears it at that level.[/*]
 [*][b]An icon from a picture.[/b] Choose an image and the page writes the texture, the atlas and the archive itself. Or pick one of the game's own station icons, or keep the RadioXL glyph.[/*]
 [*][b]A stream station.[/b] Paste the stream URL, and the page tells you which host the player has to allow in AudioXL's settings.[/*]
 [*][b]From RadioExt.[/b] Drop a RadioExt station's zip, rar or 7z on the page and it comes across as a RadioXL station: its name, frequency, songs and icon, the archive included.[/*]
@@ -79,6 +80,8 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
 [*][b]frequency[/b] is where the station sits on the dial, as a number. The dial is sorted by it, as it is for the game's own stations, so 104.9 lands between 103.5 Radio PEBKAC and 106.9 30 PRINCIPALES. Pick one the game does not already use: taken are 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
 [*][b]displayName[/b] is the station's name, without the frequency. The game shows the two together: [b]104.9 Your Station[/b]. A name that starts or ends with a number, or contains the frequency, is refused.[/*]
+[*][b]showFrequency[/b] is optional. false shows the name alone as the label; the frequency still places the station on the dial.[/*]
+[*][b]gain[/b] is optional, on the station and on each track: a level multiplier, 1 as recorded, up to 4. A track's own and the station's multiply. A raised level must leave the loudest sample under full scale or it crackles; the builder sets a track's level within that limit.[/*]
 [*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own; the builder page makes both from a picture. [b]icon[/b] can instead name an icon record the game already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
 [*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. WAV, MP3, OGG and FLAC. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
 [*][b]title[/b] is optional on a track. It is the song name in the radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
@@ -166,6 +169,7 @@ If a station appears but sorts oddly against another one, check its frequency: t
 
 [color=#ffff00][size=6][b]- Updates -[/b][/size][/color]
 
+[i][u]0.4.0[/u][/i] - A level per track, set for you by the builder; showFrequency; builder 0.2.0.
 [i][u]0.3.0[/u][/i] - The rework: real engine stations, the station.json, streams, idents, news, the keys and the settings panel, the builder page.
 [i][u]0.2.0[/u][/i] - Spuddeh's first attempt at a native radio framework, never released, and is what 0.3.0 turned into.
 [i][u]0.1.0[/u][/i] - First release, a script player, on the previous RadioXL page.

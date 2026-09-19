@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: A station's own remaining-tracks list, read for the song keys and consumed by them.
-// File Version: 0.3.0
+// File Version: 0.4.0
 // Credits: RED4ext by WopsS.
 // ======================================================================================
 //

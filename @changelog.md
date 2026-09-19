@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-19
+
 ### Added
 - A per-track level (#42): optional `tracks[].gain`, 0 to 4, default 1, multiplied with the
   station's `gain`. `Manifest.hpp` reads and clamps it the way the station one is read, naming the

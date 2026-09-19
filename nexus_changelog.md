@@ -1,7 +1,11 @@
-### [Unreleased - v0.4.0]
+### [Unreleased]
 
-- New: a station's `gain` can go above 1, up to 4, so a quiet recording can be brought up to the level of the game's own stations. A raised gain must leave the loudest sample under full scale or it crackles; the station README says how much a file can take.
-- Station builder: the Volume slider goes up to 400 %, and a RadioExt station's volume above 1 is kept as written instead of being brought down to 1.
+### v0.4.0
+
+- New: every track can have its own level, so a loud song comes down and a quiet one comes up without touching the files. The station builder measures each song and sets the level for you; the whole station still has one Volume on top.
+- New: a station's `gain` runs up to 4, so a quiet recording can be brought up to the level of the game's own stations. A raised level must leave the loudest sample under full scale or it crackles; the builder keeps its suggestion inside that limit.
+- New: `"showFrequency": false` shows a station's name alone as its label. The frequency still places it on the dial.
+- Station builder 0.2.0: Auto level, on by default, measures every song as you add it and sets its level to match the game's stations; turn it off to set the sliders yourself. A play button on each track hears it at that level. Own atlas takes your .archive and checks the atlas path is in it. A stream can have a title. A failed build stays on the page with a log to copy into a report. Choosing an image after opening or converting a station uses the station's own atlas path. A name with no Latin letters still gets a station ID. The builder's version is printed at the foot of the page, and its own changelog is the "RadioXL Station Builder" file under Miscellaneous.
 
 ### v0.3.0
 

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: A station manifest read whole, then checked field by field, every fault by line.
-// File Version: 0.2.0
+// File Version: 0.4.0
 // ======================================================================================
 //
 // A manifest with a fault is skipped whole rather than half-loaded: a station that loads with one
