@@ -9,7 +9,9 @@ usage:
   python scripts/nexus-builder-file.py [--out DIR]
 
 Writes, into --out (default: site/):
-  RadioXL Station Builder <version>.zip   README.md and CHANGELOG.md
+  RadioXL Station Builder <version>.zip   README and CHANGELOG, as .md and as .txt, under a folder
+                                          named for the builder, so a mod manager that installs
+                                          the file by mistake makes an obviously empty mod
   RadioXL Station Builder <version>.txt   the file description: the link, then the newest entry
 
 The version is package.json's. Nothing is typed by hand.
@@ -49,8 +51,10 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     stem = f"RadioXL Station Builder {version}"
     with zipfile.ZipFile(out / f"{stem}.zip", "w", zipfile.ZIP_DEFLATED) as z:
-        z.write(readme, "README.md")
-        z.write(changelog, "CHANGELOG.md")
+        for source in (readme, changelog):
+            z.write(source, f"RadioXL Station Builder/{source.name}")
+            # Most Nexus users double-click, and Windows opens .txt and not .md.
+            z.writestr(f"RadioXL Station Builder/{source.stem}.txt", source.read_text(encoding="utf-8").replace("`", ""))
 
     description = "\n".join([
         f"The station builder is a web page: {URL}",
