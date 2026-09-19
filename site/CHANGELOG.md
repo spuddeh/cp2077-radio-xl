@@ -23,6 +23,14 @@ One entry per builder version. The version is in `package.json` and printed at t
 - A stream track has a title field; the URL sits under it.
 - Choosing an image after opening or converting a station takes the station's own atlas path
   instead of the one the station carried.
+- Own atlas takes the .archive: Build .zip puts it in the package, and the page checks that the
+  archive's index lists the atlas path typed. An archive that stores its icon raw shows it in the
+  previews.
+- A build that fails stays on the page: which step and which file, with a log to copy into a
+  report. Every file is checked as readable before the zip starts, so a file moved or deleted
+  after it was picked is named rather than breaking the zip halfway.
+- A station name with no Latin letter or digit in it (CJK, Cyrillic, symbols) gets a station ID
+  and a mod folder from a hash of the name, instead of none.
 - The footer links to RadioXL's current Nexus page.
 
 ## 0.1.0

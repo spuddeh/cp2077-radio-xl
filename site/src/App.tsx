@@ -5,11 +5,11 @@ import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Contro
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
-import { BuildProgress, ToastView, type BuildPhase, type Toast } from './components/Feedback'
+import { BuildFailure, BuildProgress, ToastView, type BuildPhase, type Failure, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
 import { importRadioExt } from './importRadioExt'
-import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
+import { BuildError, buildZip, checkReadable, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
 import { archiveHasPath, iconFromArchive } from './readArchive'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 import { gainLabel } from './loudness'
@@ -218,10 +218,10 @@ export function App() {
   const closeToast = useCallback(() => setToast(null), [])
 
   const [build, setBuild] = useState<{ phase: BuildPhase; written: number; total: number; file: string } | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
   const closeBuild = useCallback(() => {
     setBuild((b) => {
       if (b?.phase === 'done') notify('Station built', b.file)
-      if (b?.phase === 'failed') notify('Build failed', b.file)
       return null
     })
   }, [notify])
@@ -244,9 +244,19 @@ export function App() {
       if ((e as DOMException).name === 'AbortError') return
     }
     setBuild({ phase: 'running', written: 0, total: 0, file })
+    setFailure(null)
     let frame = 0
+    // What the build is doing, and what it has done, for the failure panel and its log.
+    const started = Date.now()
+    const steps: string[] = []
+    let step = 'starting'
+    const at = (what: string) => {
+      step = what
+      steps.push(`${((Date.now() - started) / 1000).toFixed(1).padStart(6)} s  ${what}`)
+    }
     try {
       let extras = s.extras
+      at('making the icon')
       if (generatesIcon(s)) {
         const { part, atlas } = iconTarget(s)
         const icon = await iconArchiveFile({ image: s.iconImage!, size: s.iconImageSize!, atlas, part, folder })
@@ -255,6 +265,9 @@ export function App() {
       } else if (s.iconMode === 'atlas' && s.iconArchive) {
         extras = [{ path: `archive/pc/mod/${s.iconArchive.name}`, source: s.iconArchive.source }, ...s.extras.filter((x) => !/\.archive$/i.test(x.path))]
       }
+      at('checking every file can be read')
+      await checkReadable(s.tracks, extras)
+      at(`writing ${file}`)
       await buildZip({
         folder,
         manifest,
@@ -268,10 +281,25 @@ export function App() {
         },
       })
       cancelAnimationFrame(frame)
+      at('saved')
       setBuild((b) => b && { ...b, phase: 'done', written: b.total })
-    } catch {
+    } catch (e) {
       cancelAnimationFrame(frame)
       setBuild((b) => b && { ...b, phase: 'failed' })
+      const error = e instanceof BuildError ? e : new BuildError(step, null, e)
+      const cause = error.cause instanceof Error ? error.cause : null
+      const what = error.file ? `${error.step} ${error.file}` : error.step
+      const message = `Build failed while ${what}: ${cause?.name ?? 'Error'}: ${error.message}`
+      const log = [
+        `RadioXL station builder ${__BUILDER_VERSION__}`,
+        new Date().toISOString(),
+        navigator.userAgent,
+        `station ${folder}, ${s.tracks.length} track(s), icon ${s.iconMode}`,
+        ...steps,
+        message,
+        cause?.stack ?? '',
+      ].join('\n')
+      setFailure({ message, log })
     }
   }
 
@@ -544,6 +572,18 @@ export function App() {
         onFinished={closeBuild}
       />
       {toast && <ToastView key={toast.id} toast={toast} animate={animate} onDone={closeToast} />}
+      {failure && (
+        <BuildFailure
+          failure={failure}
+          onCopy={() =>
+            navigator.clipboard.writeText(failure.log).then(
+              () => notify('Copied', 'The build log is on the clipboard'),
+              () => notify('Copy failed', 'The browser refused clipboard access; select the log and copy it'),
+            )
+          }
+          onDismiss={() => setFailure(null)}
+        />
+      )}
 
       <footer className="colophon">
         <nav aria-label="Links">

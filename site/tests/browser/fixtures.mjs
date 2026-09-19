@@ -146,6 +146,8 @@ export async function writeFixtures() {
   const radioExt = join(dir, 'radioext-station.zip')
   const radioExtBase = join(dir, 'radioext-base-atlas.zip')
   const ownArchive = join(dir, 'own_icons.archive')
+  const gone = join(dir, 'Gone.mp3')
+  await writeFile(gone, Buffer.alloc(2048))
   await writeFile(ownArchive, archiveListing('ownstation\\gui\\icons.inkatlas'))
   await writeFile(icon, png(24, 16, [255, 255, 255, 255]))
   await writeFile(song, Buffer.alloc(4096))
@@ -192,5 +194,5 @@ export async function writeFixtures() {
       [`${base2}/Only.mp3`, Buffer.alloc(2048)],
     ]),
   )
-  return { dir, icon, song, tone, radioExt, radioExtBase, ownArchive }
+  return { dir, icon, song, tone, radioExt, radioExtBase, ownArchive, gone }
 }

@@ -98,6 +98,34 @@ export interface Toast {
   message: string
 }
 
+export interface Failure {
+  /** One line naming the step and the file, in the page. */
+  message: string
+  /** Everything a bug report needs, copied as text. */
+  log: string
+}
+
+/** A failed build stays on the page until dismissed, with its log to copy into a report. */
+export function BuildFailure(props: { failure: Failure; onCopy: () => void; onDismiss: () => void }) {
+  return (
+    <div className="build-failure ink-frame" role="alert">
+      <p className="build-failure-message">{props.failure.message}</p>
+      <details className="build-log">
+        <summary>Log</summary>
+        <pre>{props.failure.log}</pre>
+      </details>
+      <div className="build-failure-actions">
+        <button type="button" className="ink-frame copy-log" onClick={props.onCopy}>
+          Copy log
+        </button>
+        <button type="button" className="link" onClick={props.onDismiss}>
+          Dismiss
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /**
  * items_update.inkwidget Item_Received_SMALL: plays its whole life, in, hold and out, then ends.
  * The game's own sequence runs 5.8 s, which is long for a page, so it plays at TOAST_RATE.

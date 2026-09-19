@@ -88,6 +88,50 @@ export interface BuildProgress {
   total: number
 }
 
+/** A build failure that names what was being done and, when it was a file, which one. */
+export class BuildError extends Error {
+  constructor(
+    public readonly step: string,
+    public readonly file: string | null,
+    public readonly cause: unknown,
+  ) {
+    super(cause instanceof Error ? cause.message : String(cause))
+    this.name = 'BuildError'
+  }
+}
+
+/**
+ * Proves every file can still be read before the zip starts. A file picked and then moved or
+ * deleted throws here with its name, instead of breaking the zip stream halfway with none.
+ */
+export async function checkReadable(tracks: Track[], extras: { path: string; source: Blob }[]): Promise<void> {
+  // The first chunk through the same stream the zip reads: a sliced read can be served from the
+  // browser's own copy of a small file after the file on disk is gone, the stream cannot.
+  const firstChunk = async (blob: Blob) => {
+    const reader = blob.stream().getReader()
+    try {
+      await reader.read()
+    } finally {
+      await reader.cancel().catch(() => undefined)
+    }
+  }
+  for (const t of tracks) {
+    if (t.url || !t.source) continue
+    try {
+      await firstChunk(t.source)
+    } catch (e) {
+      throw new BuildError('reading', t.file, e)
+    }
+  }
+  for (const x of extras) {
+    try {
+      await firstChunk(x.source)
+    } catch (e) {
+      throw new BuildError('reading', x.path, e)
+    }
+  }
+}
+
 /** The zip's name, which says what the download is once it is among other mods' downloads. */
 export function zipName(folder: string): string {
   return `${folder} - RadioXL.zip`

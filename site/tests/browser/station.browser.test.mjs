@@ -8,6 +8,8 @@
 import { strict as assert } from 'node:assert'
 import { after, before, describe, test } from 'node:test'
 
+import { unlink } from 'node:fs/promises'
+
 import { findChrome, openPage, serve } from './harness.mjs'
 import { writeFixtures } from './fixtures.mjs'
 
@@ -257,6 +259,27 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       'the archive row should say the path was found',
     )
     assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/own_icons.archive'])
+    assert.deepEqual(await page.errors(), [])
+  })
+
+  test('a build that fails says which file and keeps a log on the page (#46)', async () => {
+    await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.gone)
+    await page.waitFor(`[...document.querySelectorAll('.track-file')].some((e) => e.textContent.includes('Gone.mp3'))`)
+    await unlink(files.gone)
+    await page.waitFor("!document.querySelector('.build-overlay')")
+    await page.evaluate(`[...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip')).click(); 1`)
+    await page.waitFor("!!document.querySelector('.build-failure')")
+    const message = await page.evaluate("document.querySelector('.build-failure-message').textContent")
+    assert.match(message, /^Build failed while reading audio\/Gone\.mp3: /, message)
+    const log = await page.evaluate("document.querySelector('.build-log pre').textContent")
+    assert.match(log, /^RadioXL station builder \d+\.\d+\.\d+\n/, log)
+    assert.ok(log.includes('checking every file can be read') && log.includes(message), log)
+    assert.equal(await page.evaluate("!!document.querySelector('.copy-log')"), true)
+    await page.evaluate("[...document.querySelectorAll('.build-failure button')].find((b) => b.textContent.trim() === 'Dismiss').click(); 1")
+    await page.waitFor("!document.querySelector('.build-failure')")
+    // The missing file is removed so the later tests build.
+    await page.evaluate(`[...document.querySelectorAll('.track')].find((li) => li.textContent.includes('Gone.mp3')).querySelector('.track-remove').click(); 1`)
+    await page.waitFor(`![...document.querySelectorAll('.track-file')].some((e) => e.textContent.includes('Gone.mp3'))`)
     assert.deepEqual(await page.errors(), [])
   })
 
