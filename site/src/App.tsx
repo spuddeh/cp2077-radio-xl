@@ -10,6 +10,7 @@ import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
 import { importRadioExt } from './importRadioExt'
 import { buildZip, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
+import { archiveHasPath, iconFromArchive } from './readArchive'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
 import { gainLabel } from './loudness'
 
@@ -154,6 +155,53 @@ export function App() {
       {textureSize[0]} x {textureSize[1]} px.
     </>
   )
+  // Own atlas: the chosen archive is checked for the atlas path whenever either changes, and its
+  // icon is shown when the archive happens to store it raw.
+  const iconArchive = s.iconArchive
+  const iconAtlas = s.iconAtlas
+  useEffect(() => {
+    if (s.iconMode !== 'atlas' || !iconArchive) return
+    let stale = false
+    const path = iconAtlas.trim().replace(/\//g, '\\')
+    archiveHasPath(iconArchive.source, path).then((has) => {
+      if (!stale) s.set({ iconArchiveHasAtlas: has })
+    })
+    if (path)
+      iconFromArchive(iconArchive.source, path).then((icon) => {
+        if (!stale && icon) s.set({ iconImage: icon.url, iconImageSize: icon.size, iconImageHasPixels: true })
+      })
+    return () => {
+      stale = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iconArchive, iconAtlas, s.iconMode])
+  const archivePicker = (
+    <>
+      <label className="file-pick">
+        <span>{iconArchive ? 'Change archive' : 'Choose the .archive'}</span>
+        <input
+          type="file"
+          accept=".archive"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (!f) return
+            s.set({ iconArchive: { name: f.name, source: f }, iconArchiveHasAtlas: null })
+            e.target.value = ''
+          }}
+        />
+      </label>
+      {iconArchive && (
+        <>
+          <span className="file-name">{iconArchive.name}</span>
+          <button type="button" className="link file-clear" onClick={() => s.set({ iconArchive: null, iconArchiveHasAtlas: null })}>
+            Remove
+          </button>
+        </>
+      )}
+    </>
+  )
+  const carriedArchive = s.extras.find((x) => /\.archive$/i.test(x.path))
   const archiveNotice = s.iconArchiveUnreadable && !s.iconImage && (
     <>
       This station&apos;s icon archive is compressed, which this page cannot read. Choose an image to see the icon in
@@ -204,6 +252,8 @@ export function App() {
         const icon = await iconArchiveFile({ image: s.iconImage!, size: s.iconImageSize!, atlas, part, folder })
         // A station mod carries one icon archive; an opened station's old one would name the same atlas.
         extras = [icon, ...s.extras.filter((x) => !/\.archive$/i.test(x.path))]
+      } else if (s.iconMode === 'atlas' && s.iconArchive) {
+        extras = [{ path: `archive/pc/mod/${s.iconArchive.name}`, source: s.iconArchive.source }, ...s.extras.filter((x) => !/\.archive$/i.test(x.path))]
       }
       await buildZip({
         folder,
@@ -380,11 +430,24 @@ export function App() {
               {s.iconMode === 'atlas' && (
                 <>
                   <Row
+                    label="Archive"
+                    note={
+                      iconArchive
+                        ? s.iconArchiveHasAtlas
+                          ? 'Build .zip puts it in the package. The atlas path was found in it.'
+                          : 'Build .zip puts it in the package.'
+                        : carriedArchive
+                          ? `${carriedArchive.path.split('/').pop()} came with the opened station and goes back into the zip. Choose another to replace it.`
+                          : 'The .archive WolvenKit packed with your atlas in it. Without one, add the archive to the mod yourself after building.'
+                    }
+                  >
+                    {archivePicker}
+                  </Row>
+                  <Row
                     label="Atlas"
                     note={
                       <>
-                        The .inkatlas path inside your station&apos;s archive. Add the archive to the zip yourself, or open
-                        a station that already has it.{' '}
+                        The .inkatlas path inside the archive.{' '}
                         <a href={ICON_GUIDE} target="_blank" rel="noopener noreferrer">
                           Making a station icon
                         </a>

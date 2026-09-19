@@ -53,6 +53,8 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
     iconImage: null,
     iconImageSize: null,
     iconImageHasPixels: true,
+    iconArchive: null,
+    iconArchiveHasAtlas: null,
     tracks,
   }
 }
@@ -135,6 +137,17 @@ test('a manifest the page writes reads back the same', () => {
   assert.equal(written.news, true)
   assert.deepEqual(written.tracks, GOOD.tracks.map((t) => ({ file: t.file, title: t.title })))
   assert.deepEqual(checkManifest(asFormState(written)), [])
+})
+
+test('an Own atlas archive that does not list the atlas path is a fault; one that does is not', () => {
+  const state = asFormState(GOOD)
+  state.iconArchive = { name: 'x.archive' }
+  state.iconArchiveHasAtlas = false
+  assert.ok(checkManifest(state).some((f) => f.message.includes('does not hold')))
+  state.iconArchiveHasAtlas = null
+  assert.ok(checkManifest(state).some((f) => f.message.includes('not a game archive')))
+  state.iconArchiveHasAtlas = true
+  assert.deepEqual(checkManifest(state), [])
 })
 
 test('showFrequency is written only when off, and the name rules still hold', () => {

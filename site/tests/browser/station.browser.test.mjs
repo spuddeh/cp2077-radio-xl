@@ -238,6 +238,28 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.deepEqual(await page.errors(), [])
   })
 
+  test('Own atlas takes the .archive, checks the path in it, and puts it in the zip (#43)', async () => {
+    // From the previous test's station (icon: From an image), Own atlas is one step back.
+    await page.evaluate(`(async () => {
+      document.querySelectorAll('.stepper .next')[0].click()
+      await new Promise((r) => setTimeout(r, 150))
+      return 1
+    })()`)
+    await page.waitFor("[...document.querySelectorAll('.form input[type=text]')].length >= 5")
+    await setField(3, 'ownstation\\gui\\wrong.inkatlas')
+    await setField(4, 'icon_part')
+    await page.setFile('.file-pick input[accept=".archive"]', files.ownArchive)
+    await page.waitFor(`[...document.querySelectorAll('.row-note.fault')].some((e) => e.textContent.includes('does not hold'))`)
+    await setField(3, 'ownstation\\gui\\icons.inkatlas')
+    await page.waitFor("document.querySelector('.footer-state').textContent.includes('is ready')")
+    assert.ok(
+      (await page.evaluate("[...document.querySelectorAll('.row-note')].map((e) => e.textContent).join(' | ')")).includes('was found in it'),
+      'the archive row should say the path was found',
+    )
+    assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/own_icons.archive'])
+    assert.deepEqual(await page.errors(), [])
+  })
+
   test('a stream station is one url track, and says what the player must allow', async () => {
     await page.evaluate(`(async () => {
       const remove = document.querySelector('.remove-all')

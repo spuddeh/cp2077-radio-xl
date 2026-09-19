@@ -167,6 +167,21 @@ function textureOfAtlas(f: Cr2wFile): string | null {
 }
 
 /**
+ * Whether an archive's index lists a path. The index is never compressed, so this reads any
+ * WolvenKit archive. Null when the bytes are not an archive at all.
+ */
+export async function archiveHasPath(archive: Blob, path: string): Promise<boolean | null> {
+  try {
+    const files = readIndex(new DataView(await archive.arrayBuffer()))
+    if (!files) return null
+    const hash = fnv1a64(path.replace(/\//g, '\\').toLowerCase())
+    return files.some((f) => f.hash === hash)
+  } catch {
+    return null
+  }
+}
+
+/**
  * The icon an archive holds for that atlas path, as an image the page can draw. Null when the
  * archive does not hold it, or holds it compressed.
  */

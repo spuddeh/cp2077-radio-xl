@@ -59,6 +59,10 @@ interface StationState {
   iconTargetEdited: boolean
   /** An opened station's icon archive that the page cannot read, so the preview has no icon. */
   iconArchiveUnreadable: boolean
+  /** In Own atlas mode, the .archive the author chose; Build .zip puts it in the package. */
+  iconArchive: { name: string; source: Blob } | null
+  /** Whether that archive's index lists the atlas path: null until checked, or when the file is not an archive. */
+  iconArchiveHasAtlas: boolean | null
   tracks: Track[]
   /**
    * On, every measured track's level is its suggestion and its slider is read-only. Off, the
@@ -130,6 +134,8 @@ export const useStation = create<StationState>((set) => ({
   iconImageHasPixels: true,
   iconTargetEdited: false,
   iconArchiveUnreadable: false,
+  iconArchive: null,
+  iconArchiveHasAtlas: null,
   tracks: [],
   autoLevel: true,
   folder: null,
@@ -183,6 +189,8 @@ export const useStation = create<StationState>((set) => ({
       iconImageHasPixels: true,
       iconTargetEdited: true,
       iconArchiveUnreadable: st.iconArchiveUnreadable,
+      iconArchive: null,
+      iconArchiveHasAtlas: null,
       tracks: st.tracks.map((t) => ({ id: nextId++, ...t })),
       autoLevel: !st.tracks.some((t) => Math.abs(t.gain - 1) >= 0.005),
       folder: st.folder || null,

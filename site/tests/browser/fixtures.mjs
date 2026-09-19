@@ -38,6 +38,34 @@ function toneWav(seconds = 3, rate = 48000, dbfs = -20) {
   return Buffer.concat([header, data])
 }
 
+/** FNV-1a 64 over the lowercase path, the archive's file hash. */
+function fnv1a64(text) {
+  let hash = 0xcbf29ce484222325n
+  for (const byte of Buffer.from(text.toLowerCase(), 'utf8')) {
+    hash ^= BigInt(byte)
+    hash = (hash * 0x100000001b3n) & 0xffffffffffffffffn
+  }
+  return hash
+}
+
+/** The smallest RDAR archive that lists a path: header, index, one file entry, one segment. */
+function archiveListing(path) {
+  const indexPos = 40
+  const tableAt = indexPos + 16
+  const filesAt = tableAt + 12
+  const segsAt = filesAt + 56
+  const out = Buffer.alloc(segsAt + 16)
+  out.write('RDAR', 0, 'latin1')
+  out.writeBigUInt64LE(BigInt(indexPos), 8)
+  out.writeUInt32LE(1, tableAt) // files
+  out.writeUInt32LE(1, tableAt + 4) // segments
+  out.writeUInt32LE(0, tableAt + 8) // dependencies
+  out.writeBigUInt64LE(fnv1a64(path), filesAt)
+  out.writeUInt32LE(0, filesAt + 20)
+  out.writeUInt32LE(1, filesAt + 24)
+  return out
+}
+
 /** A PNG of one colour, written by hand: the page only needs something with pixels. */
 function png(width, height, [r, g, b, a]) {
   const chunk = (type, body) => {
@@ -117,6 +145,8 @@ export async function writeFixtures() {
   const tone = join(dir, 'Tone.wav')
   const radioExt = join(dir, 'radioext-station.zip')
   const radioExtBase = join(dir, 'radioext-base-atlas.zip')
+  const ownArchive = join(dir, 'own_icons.archive')
+  await writeFile(ownArchive, archiveListing('ownstation\\gui\\icons.inkatlas'))
   await writeFile(icon, png(24, 16, [255, 255, 255, 255]))
   await writeFile(song, Buffer.alloc(4096))
   await writeFile(tone, toneWav())
@@ -162,5 +192,5 @@ export async function writeFixtures() {
       [`${base2}/Only.mp3`, Buffer.alloc(2048)],
     ]),
   )
-  return { dir, icon, song, tone, radioExt, radioExtBase }
+  return { dir, icon, song, tone, radioExt, radioExtBase, ownArchive }
 }

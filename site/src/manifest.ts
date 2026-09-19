@@ -16,6 +16,9 @@ export interface ManifestInput {
   iconImage: string | null
   iconImageSize: [number, number] | null
   iconImageHasPixels: boolean
+  /** Own atlas: the archive chosen, if any, and whether its index lists the atlas path. */
+  iconArchive: { name: string } | null
+  iconArchiveHasAtlas: boolean | null
   tracks: Track[]
 }
 
@@ -126,6 +129,10 @@ export function checkManifest(s: ManifestInput): Fault[] {
     faults.push({ field: 'icon', message: 'An icon record starts with UIIcon. and a name. RadioXL reads anything else as an atlas part, which needs its atlas.' })
   if (s.iconMode === 'atlas' && (!s.iconPart.trim() || !s.iconAtlas.trim()))
     faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
+  else if (s.iconMode === 'atlas' && s.iconArchive && s.iconArchiveHasAtlas === null)
+    faults.push({ field: 'icon', message: `${s.iconArchive.name} is not a game archive. Choose the .archive WolvenKit packed.` })
+  else if (s.iconMode === 'atlas' && s.iconArchive && s.iconArchiveHasAtlas === false)
+    faults.push({ field: 'icon', message: `${s.iconArchive.name} does not hold ${s.iconAtlas.trim()}. Check the path, or choose the archive that has it.` })
   if (s.iconMode === 'image' && !s.iconImage)
     faults.push({ field: 'icon', message: 'Choose the image to make the icon from.' })
   if (generatesIcon(s)) {
