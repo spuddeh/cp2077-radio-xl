@@ -47,7 +47,7 @@ A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does n
 
 [list]
 [*][b]A new station.[/b] Give it a name and a frequency, drop in the songs, mark any of them as idents, and download the zip. The page shows the station on a Radioport and on a world radio as you go, so you see the label and the icon before the game does.[/*]
-[*][b]Levelled for you.[/b] Every song is measured as you add it and its level set to match the game's own stations, a loud one down and a quiet one up, with no change to the files. Turn Auto level off to set the sliders yourself; a play button on each track hears it at that level.[/*]
+[*][b]Levelled for you.[/b] Every song is measured as you add it and its level set to match the game's own stations, a loud one down and a quiet one up, with no change to the files. Turn Auto level off to set the sliders yourself: the suggested level stays shown on each track as a starting point, and a play button hears the track at the level you set.[/*]
 [*][b]An icon from a picture.[/b] Choose an image and the page writes the texture, the atlas and the archive itself. Or pick one of the game's own station icons, or keep the RadioXL glyph.[/*]
 [*][b]A stream station.[/b] Paste the stream URL, and the page tells you which host the player has to allow in AudioXL's settings.[/*]
 [*][b]From RadioExt.[/b] Drop a RadioExt station's zip, rar or 7z on the page and it comes across as a RadioXL station: its name, frequency, songs and icon, the archive included.[/*]
