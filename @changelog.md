@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+- A per-track level (#42): optional `tracks[].gain`, 0 to 4, default 1, multiplied with the
+  station's `gain`. `Manifest.hpp` reads and clamps it the way the station one is read, naming the
+  file and line; `RadioXL_StationTrackGain` hands it to script; `RadioXL.reds` sets each row to
+  station gain x track gain, with the fallback's 0.56 still on top. `ManifestTests.cpp` covers the
+  read, the default, the clamp line, a string refused and a stream with a gain.
+- Builder 0.2.0: a level slider per track (0 to 400 % with the dB shown), a play button that hears
+  the track at that level, and a measurement of every file as it is added: integrated loudness
+  and true peak in the browser (`src/loudness.ts`, EBU R128 in a worker), then the suggestion that
+  puts the file on `target.json`'s `fileLufsTarget` bounded by its peak with a 1 dB margin, the
+  same arithmetic as `level-target.py file`. "Use it" per track, "Use suggested levels" for all.
+  `buildManifest` writes a track gain only when it is not 1; opening a manifest reads it back; a
+  stream keeps a manual level. `loudness.test.ts` checks the meter against the BS.1770 table and
+  the EBU Tech 3341 tones and the suggestion against the tool's printed gains for every Tool FM
+  file; the browser test measures a WAV tone and takes its suggestion. The builder's version is
+  printed in the page footer; `site/CHANGELOG.md` carries one entry per version, and
+  `site/scripts/nexus-builder-file.py` makes the Nexus misc file and its description from it.
+
 ### Changed
 - The manifest's `gain` runs 0 to 4 instead of 0 to 1 (#41). `Manifest.hpp` gains `kMaxGain`; the
   clamp message reads `"gain" is 0 to 4 - clamped`; a raised gain is read as written and tested.

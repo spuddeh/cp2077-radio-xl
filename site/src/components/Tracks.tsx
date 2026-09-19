@@ -11,18 +11,38 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
-import { Fault, Notice } from './Controls'
+import { gainLabel, suggestGain, type Suggestion } from '../loudness'
+import { measureFile, preview } from '../measure'
+import { Fault, Notice, Slider } from './Controls'
 import { Tooltip } from './Tooltip'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
 
+/** The level the suggestion aims at, set at build time from tools/level-target/target.json. */
+const TARGET = __LEVEL_TARGET__
+
+/** A track's suggestion, or null while unmeasured, unmeasurable or a stream. */
+export function suggestionFor(t: Track): Suggestion | null {
+  return t.level ? suggestGain(t.level, TARGET) : null
+}
+
+/** True when a track's slider already sits on its suggestion. */
+function atSuggestion(t: Track): boolean {
+  const s = suggestionFor(t)
+  return s !== null && Math.abs(t.gain - s.gain) < 0.005
+}
+
+/** Tracks whose measurement has been started, so a re-render never starts a second one. */
+const measuring = new Set<number>()
+
 export function Tracks() {
-  const { tracks, addFiles, addStream, set } = useStation()
+  const { tracks, addFiles, addStream, set, updateTrack, updateTracks } = useStation()
   const [confirming, setConfirming] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
   const [skipped, setSkipped] = useState<string[]>([])
   const [stream, setStream] = useState('')
+  const [playing, setPlaying] = useState<number | null>(null)
   const streamOk = /^https?:\/\/\S+$/i.test(stream.trim())
   const addStreamTrack = () => {
     if (!streamOk) return
@@ -52,6 +72,23 @@ export function Tracks() {
     return () => clearTimeout(t)
   }, [confirming])
 
+  // Every file track is measured once, as it arrives; the queue takes them one at a time.
+  useEffect(() => {
+    for (const t of tracks) {
+      if (t.url || !t.source || t.level !== undefined || measuring.has(t.id)) continue
+      measuring.add(t.id)
+      measureFile(t.source).then((level) => {
+        measuring.delete(t.id)
+        updateTrack(t.id, { level })
+      })
+    }
+  }, [tracks, updateTrack])
+
+  // A removed track that was playing stops.
+  useEffect(() => {
+    if (playing !== null && !tracks.some((t) => t.id === playing)) preview.stop()
+  }, [tracks, playing])
+
   const take = (files: File[]) => {
     setSkipped(files.filter((f) => !AUDIO.test(f.name)).map((f) => f.name))
     addFiles(files.filter((f) => AUDIO.test(f.name)))
@@ -63,6 +100,14 @@ export function Tracks() {
     const to = tracks.findIndex((t) => t.id === target.id)
     set({ tracks: arrayMove(tracks, from, to) })
   }
+
+  const pending = tracks.filter((t) => !t.url && t.source && t.level === undefined).length
+  const suggestible = tracks.filter((t) => suggestionFor(t) !== null && !atSuggestion(t)).length
+  const useSuggested = () =>
+    updateTracks(
+      (t) => suggestionFor(t) !== null,
+      (t) => ({ gain: suggestionFor(t)!.gain }),
+    )
 
   return (
     <>
@@ -133,24 +178,41 @@ export function Tracks() {
       {tracks.length > 0 && (
         <>
           <div className="tracks-tools">
-            <span className="tracks-hint">Drag a track by its number to move it.</span>
-            <button
-              type="button"
-              className={confirming ? 'ink-frame remove-all confirm' : 'ink-frame remove-all'}
-              onClick={() => {
-                if (!confirming) return setConfirming(true)
-                set({ tracks: [] })
-                setConfirming(false)
-              }}
-            >
-              {confirming ? `Remove all ${tracks.length}? Press again` : 'Remove all'}
-            </button>
+            <span className="tracks-hint">
+              {pending > 0
+                ? `Measuring ${pending} ${pending === 1 ? 'file' : 'files'}. Drag a track by its number to move it.`
+                : 'Drag a track by its number to move it.'}
+            </span>
+            <div className="tracks-buttons">
+              {tracks.some((t) => suggestionFor(t) !== null) && (
+                <Tooltip
+                  title="Suggested levels"
+                  text={`Sets every measured track's level so it plays at the level of the game's own stations (${TARGET.fileLufsTarget} LUFS in the file), as far as its peak allows.`}
+                >
+                  <button type="button" className="ink-frame use-suggested" disabled={suggestible === 0} onClick={useSuggested}>
+                    Use suggested levels
+                  </button>
+                </Tooltip>
+              )}
+              <button
+                type="button"
+                className={confirming ? 'ink-frame remove-all confirm' : 'ink-frame remove-all'}
+                onClick={() => {
+                  if (!confirming) return setConfirming(true)
+                  preview.stop()
+                  set({ tracks: [] })
+                  setConfirming(false)
+                }}
+              >
+                {confirming ? `Remove all ${tracks.length}? Press again` : 'Remove all'}
+              </button>
+            </div>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
               <ol className="tracks">
                 {tracks.map((t, i) => (
-                  <TrackRow key={t.id} track={t} index={i} />
+                  <TrackRow key={t.id} track={t} index={i} playing={playing === t.id} onPlaying={() => setPlaying(preview.playing)} />
                 ))}
               </ol>
             </SortableContext>
@@ -161,10 +223,12 @@ export function Tracks() {
   )
 }
 
-function TrackRow(props: { track: Track; index: number }) {
+function TrackRow(props: { track: Track; index: number; playing: boolean; onPlaying: () => void }) {
   const { updateTrack, removeTrack } = useStation()
   const t = props.track
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: t.id })
+  const suggestion = suggestionFor(t)
+  const canPlay = !t.url && !!t.source
   return (
     <li
       ref={setNodeRef}
@@ -210,6 +274,60 @@ function TrackRow(props: { track: Track; index: number }) {
       </Tooltip>
       )}
       <button type="button" className="track-remove" aria-label={`Remove ${t.file}`} onClick={() => removeTrack(t.id)} />
+
+      <div className="track-level">
+        <Tooltip title={props.playing ? 'Stop' : 'Play'} text="Hear this track at the level set here. Starting one stops any other.">
+          <button
+            type="button"
+            className="ink-frame track-play"
+            aria-pressed={props.playing}
+            aria-label={props.playing ? `Stop ${t.file}` : `Play ${t.file}`}
+            disabled={!canPlay}
+            onClick={() => {
+              if (props.playing) preview.stop()
+              else if (t.source) void preview.play(t.id, t.source, t.gain, props.onPlaying)
+            }}
+          />
+        </Tooltip>
+        <Slider
+          value={t.gain}
+          min={0}
+          max={4}
+          step={0.05}
+          onChange={(v) => {
+            updateTrack(t.id, { gain: v })
+            preview.setGain(t.id, v)
+          }}
+          format={gainLabel}
+        />
+        <span className="track-reading">
+          {t.url ? (
+            'A stream cannot be measured ahead of time. Set its level by ear against a vanilla station.'
+          ) : !t.source ? (
+            ''
+          ) : t.level === undefined ? (
+            'Measuring'
+          ) : t.level === null ? (
+            'This browser could not read the file, so no level is suggested.'
+          ) : (
+            <>
+              {t.level.lufs.toFixed(1)} LUFS, peak {t.level.peakDb > 0 ? '+' : ''}
+              {t.level.peakDb.toFixed(1)} dBFS.{' '}
+              {suggestion && atSuggestion(t) ? (
+                <span className="track-suggested">At the suggested level{suggestion.peakLimited ? ', as far as the peak allows' : ''}.</span>
+              ) : suggestion ? (
+                <>
+                  Suggested {gainLabel(suggestion.gain)}
+                  {suggestion.peakLimited ? ', limited by the peak' : ''}{' '}
+                  <button type="button" className="link track-use" onClick={() => updateTrack(t.id, { gain: suggestion.gain })}>
+                    use it
+                  </button>
+                </>
+              ) : null}
+            </>
+          )}
+        </span>
+      </div>
     </li>
   )
 }

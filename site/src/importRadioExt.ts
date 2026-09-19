@@ -66,7 +66,7 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
   const tracks: ImportedTrack[] = []
   const used = new Set<string>([metaEntry.path.toLowerCase()])
   if (streamUrl) {
-    tracks.push({ file: '', url: streamUrl, title: '', ident: false })
+    tracks.push({ file: '', url: streamUrl, title: '', ident: false, gain: 1 })
     notes.push('This station is a stream, so it came across as one url track.')
   } else {
     const audio = entries.filter((e) => e.path.toLowerCase().startsWith(base.toLowerCase()) && AUDIO.test(e.path))
@@ -80,7 +80,7 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
     })
     for (const e of ranked) {
       used.add(e.path.toLowerCase())
-      tracks.push({ file: `audio/${name(e)}`, title: titleOf(e.path), ident: false, source: await e.blob() })
+      tracks.push({ file: `audio/${name(e)}`, title: titleOf(e.path), ident: false, source: await e.blob(), gain: 1 })
     }
     if (!ranked.length) notes.push('No audio file was found beside metadata.json.')
   }

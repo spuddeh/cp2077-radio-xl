@@ -123,6 +123,40 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.deepEqual(await page.errors(), [])
   })
 
+  test('measures a file, suggests its level, and writes the gain the author takes', async () => {
+    // A 997 Hz sine at -20 dBFS: -20.0 LUFS, peak -20.0 dBFS. Against the -11.1 LUFS target that
+    // wants +8.9 dB, which the peak allows, so the suggestion is 2.79.
+    await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.tone)
+    await page.waitFor("document.querySelectorAll('.track').length === 2")
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('LUFS'))`)
+
+    const readings = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.track-reading')].map((e) => e.textContent))"))
+    const tone = readings.find((r) => r.includes('LUFS'))
+    assert.match(tone, /^-(19\.9|20\.0|20\.1) LUFS, peak -(19\.9|20\.0|20\.1) dBFS\./, tone)
+    assert.match(tone, /Suggested 279% \(\+8\.9 dB\)/, tone)
+    // The stand-in mp3 is not audio the browser can decode, and says so without a fault.
+    assert.ok(readings.some((r) => r.includes('could not read the file')), JSON.stringify(readings))
+    const state = await page.evaluate("document.querySelector('.footer-state').textContent")
+    assert.match(state, /is ready/, state)
+
+    await page.evaluate("document.querySelector('.use-suggested').click()")
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('At the suggested level'))`)
+    const manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+    assert.deepEqual(manifest.tracks.map((t) => t.gain), [undefined, 2.79], JSON.stringify(manifest.tracks))
+    assert.equal(await page.evaluate("document.querySelector('.use-suggested').disabled"), true)
+
+    // The slider moved by hand offers the suggestion again, and the version is on the page.
+    await page.evaluate(`(() => {
+      const slider = [...document.querySelectorAll('.track-level input[type=range]')][1]
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(slider, '1')
+      slider.dispatchEvent(new Event('input', { bubbles: true }))
+      return 1
+    })()`)
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Suggested 279%'))`)
+    assert.match(await page.evaluate("document.querySelector('.builder-version').textContent"), /^Station builder \d+\.\d+\.\d+$/)
+    assert.deepEqual(await page.errors(), [])
+  })
+
   test('converts a RadioExt station, order and archive included', async () => {
     await page.evaluate(`(async () => {
       [...document.querySelectorAll('.tabs button')].find((b) => b.textContent.includes('RadioExt')).click()
@@ -154,9 +188,10 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       `RadioExt's own order decides the tracks, got ${JSON.stringify(read.tracks)}`,
     )
     assert.ok(
-      read.notes.some((n) => n.includes('Volume 2.5 was brought down to 1')),
+      read.notes.some((n) => n.includes("Volume 2.5 came from RadioExt's own player")),
       `the volume note is missing: ${JSON.stringify(read.notes)}`,
     )
+    assert.equal(read.manifest.includes('"gain": 2.5'), true, `RadioExt's volume should come across as written: ${read.manifest}`)
     assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/test_station.archive'])
     assert.deepEqual(await page.errors(), [])
   })

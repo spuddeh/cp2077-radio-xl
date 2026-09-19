@@ -33,6 +33,7 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
       title: typeof t.title === 'string' ? t.title : '',
       ident: t.ident === true,
       url,
+      gain: typeof t.gain === 'number' ? t.gain : 1,
       // A track with a file stands for one whose audio was found beside the manifest.
       source: url ? undefined : new Blob([new Uint8Array(4)]),
     }
@@ -102,6 +103,8 @@ const ACCEPTED: [name: string, manifest: Record<string, unknown>][] = [
   ['idents beside songs', like({ tracks: [{ file: 'a.mp3', title: 'A' }, { file: 'ad.mp3', ident: true }] })],
   ['a gain below 1', like({ gain: 0.5 })],
   ['a gain above 1', like({ gain: 2.5 })],
+  ['a track gain', like({ tracks: [{ file: 'a.mp3', gain: 0.8 }, { file: 'b.mp3', gain: 2.5 }] })],
+  ['a stream with a gain', like({ tracks: [{ url: 'https://h/s', gain: 0.7 }] })],
   ['news off', like({ news: false })],
 ]
 
@@ -130,6 +133,15 @@ test('a manifest the page writes reads back the same', () => {
   assert.equal(written.news, true)
   assert.deepEqual(written.tracks, GOOD.tracks.map((t) => ({ file: t.file, title: t.title })))
   assert.deepEqual(checkManifest(asFormState(written)), [])
+})
+
+test('a track gain is written only when it is not 1, and reads back', () => {
+  const state = asFormState(like({ tracks: [{ file: 'a.mp3', title: 'A', gain: 0.8 }, { file: 'b.mp3', title: 'B' }, { file: 'c.mp3', title: 'C', gain: 1.004 }] }))
+  const written = buildManifest(state)
+  assert.deepEqual(written.tracks, [{ file: 'a.mp3', title: 'A', gain: 0.8 }, { file: 'b.mp3', title: 'B' }, { file: 'c.mp3', title: 'C' }])
+  const again = asFormState(written)
+  assert.deepEqual(again.tracks.map((t) => t.gain), [0.8, 1, 1])
+  assert.deepEqual(checkManifest(again), [])
 })
 
 test('a track with both a file and a stream keeps the stream', () => {

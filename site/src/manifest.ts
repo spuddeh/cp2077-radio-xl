@@ -78,6 +78,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
     const out: Record<string, unknown> = t.url ? { url: t.url } : { file: t.file }
     if (t.ident) out.ident = true
     else if (t.title) out.title = t.title
+    if (Math.abs(t.gain - 1) >= 0.005) out.gain = Math.round(t.gain * 100) / 100
     return out
   })
   return m

@@ -21,7 +21,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
   "news": true,
   "tracks": [
     { "file": "audio/first.mp3",  "title": "Artist - First Song" },
-    { "file": "audio/second.flac", "title": "Artist - Second Song" }
+    { "file": "audio/second.flac", "title": "Artist - Second Song", "gain": 0.8 }
   ]
 }
 ```
@@ -32,13 +32,14 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `frequency` | The station's place on the dial, as a number from 10 to 999: `104.9`. Required. See [The frequency and the name](#the-frequency-and-the-name). |
 | `displayName` | The station's name, without the frequency. Required. The game shows it after the frequency: `104.9 Your Station`. |
 | `news` | Optional. `true` lets the news reach the station: Stanley's bulletins and greetings, and N54 News. Defaults to `false`. See [News](#news). |
-| `gain` | Optional. A level trim on every track, `0` to `4`. Defaults to `1`, the audio as recorded. See [Level](#level). |
+| `gain` | Optional. One level trim for the whole station, `0` to `4`, on top of each track's own. Defaults to `1`. See [Level](#level). |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
 | `tracks[].title` | Optional. The song title, shown as written in the Radioport's radio popup. An untitled song plays everywhere a titled one does, and its title reads blank. |
 | `tracks[].ident` | Optional. `true` marks a station ident, jingle or ad: it plays between songs and never shows a title. See [Idents](#idents). |
+| `tracks[].gain` | Optional. This track's own level, `0` to `4`, multiplied with the station's `gain`. Defaults to `1`, the file as recorded. See [Level](#level). |
 
 ## News
 
@@ -58,20 +59,24 @@ Mike's lines name Morro Rock and Ash's name Growl FM.
 
 ## Level
 
-`gain` is the station's level trim, a multiplier on the samples: `0.5` is -6 dB, `2` is +6 dB, `4`
-is +12 dB. RadioXL routes a station through the same level stages as the game's own stations, so
-audio mastered like commercial music plays among them at `1`: the game's own radio files measure
--5 to -19 LUFS, most of them near -11, and a loud web stream at `1` read within the vanilla band on
-the Radioport. A file that measures about -11 LUFS lands on the middle of the dial at `1`; a modern
-master near -9 sits about 2 dB above it, and `0.8` brings it to the middle. Lower it for material
-that plays louder than the vanilla stations; raise it for a quiet recording. A world radio sums a
-track's two channels into one, so a wide mix plays a little quieter there than a narrow one.
+A track plays at its file's own loudness times two multipliers: the track's `gain` and the station's
+`gain`. Each is `0` to `4`: `0.5` is -6 dB, `2` is +6 dB, `4` is +12 dB, and `1` changes nothing.
+The track value levels the tracks against each other; the station value is one trim for the whole
+station. RadioXL routes a station through the same level stages as the game's own stations, so a
+file that measures about -11 LUFS lands on the middle of the dial at `1`. The game's own radio files
+measure -5 to -19 LUFS, most of them near -11; a modern master near -9 sits about 2 dB above the
+middle, and `0.8` brings it there. A world radio sums a track's two channels into one, so a wide
+mix plays a little quieter there than a narrow one.
+
+**The station builder measures each file and suggests its track `gain`**: the value that puts the
+file on -11 LUFS, as far as its peak allows. A stream cannot be measured ahead of time, so its
+level is set by hand.
 
 **A gain above `1` must leave the loudest sample under full scale.** The samples are scaled as
 16-bit integers and a value past the top wraps rather than clips, which is heard as crackle on the
 loud beats. A file mastered to 0 dBFS, which is most modern music, cannot be raised at all; a file
-peaking at -6 dBFS can take up to `2`. The station builder measures each file and keeps the value
-inside that limit.
+peaking at -6 dBFS can take up to `2`. The rule applies to the product of the two gains. The
+builder keeps its suggestion inside the file's limit; a value typed by hand is not checked.
 
 ## The frequency and the name
 

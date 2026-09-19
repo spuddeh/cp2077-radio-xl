@@ -10,6 +10,7 @@ export interface ImportedTrack {
   title: string
   ident: boolean
   source?: Blob
+  gain: number
 }
 
 /** A file in the dropped mod that is not the manifest or a track, carried into the zip unchanged. */
@@ -44,7 +45,7 @@ export interface ImportedStation {
 export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
 const KNOWN = new Set(['name', 'frequency', 'displayName', 'news', 'gain', 'icon', 'atlas', 'tracks'])
-const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident'])
+const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident', 'gain'])
 /** Mod manager and OS files that are not part of a mod. */
 const JUNK = /(^|\/)(meta\.ini|desktop\.ini|thumbs\.db|\.ds_store)$/i
 
@@ -133,20 +134,21 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     if (extraKeys.length) notes.push(`Track keys RadioXL does not read were left out: ${extraKeys.join(', ')}.`)
     const title = typeof t.title === 'string' ? t.title : ''
     const ident = t.ident === true
+    const gain = typeof t.gain === 'number' ? Math.max(0, Math.min(4, t.gain)) : 1
     if (typeof t.url === 'string') {
       // The plugin refuses a track with both. A stream already plays on its own, so the url is the
       // track and the file beside it goes; an ident cannot be a stream either.
       if (typeof t.file === 'string' && t.file.trim())
         notes.push(`A track named both a stream and a file (${t.file}). The stream was kept: a stream plays on its own.`)
       if (ident) notes.push('A stream was marked as an ident, which RadioXL refuses. It came across as an ordinary track.')
-      tracks.push({ file: '', url: t.url, title, ident: false })
+      tracks.push({ file: '', url: t.url, title, ident: false, gain })
       continue
     }
     if (typeof t.file !== 'string') continue
     const file = t.file.replace(/\\/g, '/')
     const entry = byPath.get((base + file).toLowerCase())
     if (entry) used.add(entry.path.toLowerCase())
-    tracks.push({ file, title, ident, source: entry ? await entry.blob() : undefined })
+    tracks.push({ file, title, ident, source: entry ? await entry.blob() : undefined, gain })
   }
   const missing = tracks.filter((t) => !t.url && !t.source).length
   if (missing) notes.push(`${missing} track${missing > 1 ? 's have' : ' has'} no audio file in what was dropped.`)

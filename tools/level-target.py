@@ -12,7 +12,7 @@ its file can be put on the same scale:
     level on a route = file loudness (LUFS) + that route's send trim (dB)
 
 A segment's own Volume is NOT in that sum. Wwise folds every Volume in the hierarchy into one voice
-gain applied after the insert effects, which is why the playlist's -96 dB dry mute does not silence
+gain applied after the insert effects, so the playlist's -96 dB dry mute does not silence
 the sends, and it is why a +1 to +4 dB segment Volume (Vexelstrom's six, one Night FM, three PEBKAC)
 never reaches them either: measured, those tracks land on trim alone. The table still lists it.
 

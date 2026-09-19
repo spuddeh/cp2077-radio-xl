@@ -8,6 +8,36 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { deflateSync, crc32 } from 'node:zlib'
 
+/**
+ * A WAV the page can decode and measure: 16-bit stereo PCM at 48 kHz, a 997 Hz sine at -20 dBFS on
+ * both channels, which reads -20.0 LUFS and peaks at -20.0 dBFS.
+ */
+function toneWav(seconds = 3, rate = 48000, dbfs = -20) {
+  const frames = seconds * rate
+  const data = Buffer.alloc(frames * 4)
+  const amplitude = Math.pow(10, dbfs / 20) * 32767
+  for (let n = 0; n < frames; n++) {
+    const v = Math.round(amplitude * Math.sin((2 * Math.PI * 997 * n) / rate))
+    data.writeInt16LE(v, n * 4)
+    data.writeInt16LE(v, n * 4 + 2)
+  }
+  const header = Buffer.alloc(44)
+  header.write('RIFF', 0, 'latin1')
+  header.writeUInt32LE(36 + data.length, 4)
+  header.write('WAVE', 8, 'latin1')
+  header.write('fmt ', 12, 'latin1')
+  header.writeUInt32LE(16, 16)
+  header.writeUInt16LE(1, 20) // PCM
+  header.writeUInt16LE(2, 22) // channels
+  header.writeUInt32LE(rate, 24)
+  header.writeUInt32LE(rate * 4, 28)
+  header.writeUInt16LE(4, 32)
+  header.writeUInt16LE(16, 34)
+  header.write('data', 36, 'latin1')
+  header.writeUInt32LE(data.length, 40)
+  return Buffer.concat([header, data])
+}
+
 /** A PNG of one colour, written by hand: the page only needs something with pixels. */
 function png(width, height, [r, g, b, a]) {
   const chunk = (type, body) => {
@@ -84,9 +114,11 @@ export async function writeFixtures() {
   const dir = await mkdtemp(join(tmpdir(), 'radioxl-fixtures-'))
   const icon = join(dir, 'icon.png')
   const song = join(dir, 'A Song.mp3')
+  const tone = join(dir, 'Tone.wav')
   const radioExt = join(dir, 'radioext-station.zip')
   await writeFile(icon, png(24, 16, [255, 255, 255, 255]))
   await writeFile(song, Buffer.alloc(4096))
+  await writeFile(tone, toneWav())
   const base = 'bin/x64/plugins/cyber_engine_tweaks/mods/radioExt/radios/test_station'
   await writeFile(
     radioExt,
@@ -108,5 +140,5 @@ export async function writeFixtures() {
       ['archive/pc/mod/test_station.archive', Buffer.alloc(512)],
     ]),
   )
-  return { dir, icon, song, radioExt }
+  return { dir, icon, song, tone, radioExt }
 }

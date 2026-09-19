@@ -25,3 +25,7 @@ example-station/build/
 
 # level-target.py scratch: extracted banks, wwiser dumps and decoded vanilla audio, hundreds of MB
 tools/level-target/work/
+
+# The station builder's Nexus misc file, made by site/scripts/nexus-builder-file.py
+/site/*.zip
+/site/RadioXL Station Builder *.txt

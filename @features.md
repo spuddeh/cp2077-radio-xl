@@ -36,6 +36,9 @@
 - A vehicle radio switched off and on stays on the custom station it was on. Verified in game.
 - `news: true` lets Stanley's news and greetings reach a station, under the same engine rules as
   vanilla stations (#16). A greeting reaching a custom station is verified in game.
+- Each track has an optional `gain` of its own, multiplied with the station's, so a loud file
+  comes down and a quiet one goes up without re-encoding (#42). The builder measures every file
+  and suggests the value that lands it on the game's own level, bounded by the file's peak.
 - A station's level is a send trim, the way every vanilla station's is: the framework loads its own
   bank, defining the `radioxl_radio` custom-sound type carrying copies of a vanilla station's two
   Broadcast Sends. No game file is replaced, and the game's own `mod_sfx_radio` type remains the

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import type { ImportedStation } from './importStation'
+import type { Measurement } from './loudness'
 
 export type Source = 'new' | 'radioext'
 export type IconMode = 'glyph' | 'record' | 'image' | 'atlas'
@@ -23,6 +24,13 @@ export interface Track {
   url?: string
   /** The audio the zip copies in. Missing when an opened station's file was not found. */
   source?: Blob
+  /** This track's own level, multiplied with the station's. 1 is the file as recorded. */
+  gain: number
+  /**
+   * The file's loudness and peak once measured; null for a file the browser could not read, and
+   * absent while the measurement is still to come. A stream is never measured.
+   */
+  level?: Measurement | null
 }
 
 interface StationState {
@@ -61,6 +69,8 @@ interface StationState {
   /** A stream track. A station with one plays that stream only, so it replaces the track list. */
   addStream: (url: string) => void
   updateTrack: (id: number, patch: Partial<Track>) => void
+  /** The same patch on every track the predicate picks, in one update. */
+  updateTracks: (pick: (t: Track) => boolean, patch: (t: Track) => Partial<Track>) => void
   removeTrack: (id: number) => void
   openStation: (station: ImportedStation) => void
 }
@@ -132,12 +142,13 @@ export const useStation = create<StationState>((set) => ({
       const added = files.map((source) => {
         const file = uniquePath(`audio/${source.name}`, taken)
         taken.add(file.toLowerCase())
-        return { id: nextId++, file, title: titleFromFile(source.name), ident: false, source }
+        return { id: nextId++, file, title: titleFromFile(source.name), ident: false, source, gain: 1 }
       })
       return { tracks: [...s.tracks, ...added] }
     }),
-  addStream: (url) => set({ tracks: [{ id: nextId++, file: '', title: '', ident: false, url }] }),
+  addStream: (url) => set({ tracks: [{ id: nextId++, file: '', title: '', ident: false, url, gain: 1 }] }),
   updateTrack: (id, patch) => set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+  updateTracks: (pick, patch) => set((s) => ({ tracks: s.tracks.map((t) => (pick(t) ? { ...t, ...patch(t) } : t)) })),
   removeTrack: (id) => set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
   openStation: (st) =>
     set({
