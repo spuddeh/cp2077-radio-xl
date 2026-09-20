@@ -14,7 +14,7 @@
 //              Without RedFileSystem the file cannot be read: the station is then remembered for
 //              the session only, and the two mutes do nothing. RedFileSystem is a dependency of
 //              RCF, so a player with the settings panel has it.
-// File Version: 0.4.0
+// File Version: 0.4.1
 // Credits: Rayshader (RedFileSystem, RedData)
 // ======================================================================================
 

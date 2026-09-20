@@ -2,6 +2,29 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-20
+
+### Fixed
+- My station never tuned a car radio on entry (#59). A car resumes its last station 200 to 320 ms
+  after the driver's seat is taken, measured against Vehicle Radio Display Fix's log across three
+  entries; the pass scheduled from `DriveEvents.OnEnter` read the receiver 0.1 s in, found it off
+  and returned. `OnVehicleRadioStationInitialized` did not reach script on that path at all - a
+  probe line ahead of its guards printed zero times in a full session - so nothing retried, and the
+  player kept whatever station the car resumed to. `MyStation.reds` now wraps
+  `PlayerPuppet.OnVehicleRadioStationChanged`, which the engine raises when the resume happens
+  rather than at a time guessed ahead of it. Sitting down arms the catch and the first change
+  disarms it, so a station picked by hand afterwards is left alone; a five second window backstops
+  a car whose radio is off and so never resumes. The existing `current == station` check ends the
+  loop from RadioXL's own tune. Confirmed in game: Body Heat for 85 ms, then the remembered station.
+  `VehRadioState` is not a usable signal for this: the game does not write that value at mount, so
+  a listener on it answers only for a player who also runs Vehicle Radio Display Fix.
+
+### Changed
+- Every return in `Schedule` and `Apply` logs its reason, and `Schedule` names the moment that asked
+  (`the player sat down`, `the vehicle radio was toggled`, `the Radioport came on`, `the vehicle
+  radio resumed its station`). Ten of the twelve paths returned silently, so a refusal and a hook
+  that never fired produced an identical log.
+
 ## [0.4.0] - 2026-09-19
 
 ### Added

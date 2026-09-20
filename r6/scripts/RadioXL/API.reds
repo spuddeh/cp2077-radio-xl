@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API a RadioXL 0.1.0 station mod calls.
-// File Version: 0.4.0
+// File Version: 0.4.1
 // ======================================================================================
 //
 // A station built for RadioXL 0.1.0 registers itself with one call from its own script. That call

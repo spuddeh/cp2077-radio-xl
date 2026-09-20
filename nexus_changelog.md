@@ -1,5 +1,9 @@
 ### [Unreleased]
 
+### v0.4.1
+
+- Fix: My station now tunes the car radio when you get in. The car brings its own station up a fraction of a second after you take the seat, later than the check ran, so the station you set was passed over.
+
 ### v0.4.0
 
 - New: every track can have its own level, so a loud song comes down and a quiet one comes up without touching the files. The station builder measures each song and sets the level for you; the whole station still has one Volume on top.
