@@ -300,9 +300,10 @@ export function App() {
         `station ${folder}, ${s.tracks.length} track(s), icon ${s.iconMode}`,
         ...steps,
         message,
+        error.advice ?? '',
         cause?.stack ?? '',
       ].join('\n')
-      setFailure({ message, log })
+      setFailure({ message, advice: error.advice, log })
     }
   }
 

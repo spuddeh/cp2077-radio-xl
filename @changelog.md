@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+- The station builder named no cause when a file could not be read (#45). A source file whose path
+  passes Windows' 260 characters cannot be opened, and the browser surfaces that as
+  `TypeError: network error` with nothing else, so the reported symptom was a build that stopped on
+  a track for no stated reason. `BuildError` carries an `advice` line, `readFailureAdvice` writes it
+  from the name's length, and the failure panel renders it under the message and in the copyable
+  log. `BuildError`'s constructor takes plain fields rather than parameter properties, which Node's
+  type stripping rejects, so `build.ts` is importable from a test at all.
+
 ## [0.5.0] - 2026-09-22
 
 ### Changed

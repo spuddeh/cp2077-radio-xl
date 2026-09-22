@@ -90,15 +90,35 @@ export interface BuildProgress {
 
 /** A build failure that names what was being done and, when it was a file, which one. */
 export class BuildError extends Error {
-  constructor(
-    public readonly step: string,
-    public readonly file: string | null,
-    public readonly cause: unknown,
-  ) {
+  readonly step: string
+  readonly file: string | null
+  readonly cause: unknown
+  /** What to do about it, in the reporter's terms, when the cause alone names nothing actionable. */
+  readonly advice: string | null
+
+  constructor(step: string, file: string | null, cause: unknown, advice: string | null = null) {
     super(cause instanceof Error ? cause.message : String(cause))
     this.name = 'BuildError'
+    this.step = step
+    this.file = file
+    this.cause = cause
+    this.advice = advice
   }
 }
+
+/**
+ * Windows refuses a path over 260 characters, and a file the browser cannot open reaches script as
+ * a bare `TypeError`. A long track name is the reachable half of that path, so it leads.
+ */
+export function readFailureAdvice(name: string): string {
+  const tooLong = name.length > LONG_NAME
+  return tooLong
+    ? `This file's name is ${name.length} characters. Windows stops at 260 for the whole path, so a name this long cannot be opened from a folder more than a few levels deep. Shorten the name, or move the folder nearer the drive root. If neither applies, the file has been moved, renamed or deleted since it was added.`
+    : 'The file has been moved, renamed or deleted since it was added, or its folder is no longer readable. Add it again.'
+}
+
+/** Past this, a track name alone accounts for most of a 260-character path. */
+const LONG_NAME = 96
 
 /**
  * Proves every file can still be read before the zip starts. A file picked and then moved or
@@ -120,14 +140,14 @@ export async function checkReadable(tracks: Track[], extras: { path: string; sou
     try {
       await firstChunk(t.source)
     } catch (e) {
-      throw new BuildError('reading', t.file, e)
+      throw new BuildError('reading', t.file, e, readFailureAdvice(t.file))
     }
   }
   for (const x of extras) {
     try {
       await firstChunk(x.source)
     } catch (e) {
-      throw new BuildError('reading', x.path, e)
+      throw new BuildError('reading', x.path, e, readFailureAdvice(x.path))
     }
   }
 }

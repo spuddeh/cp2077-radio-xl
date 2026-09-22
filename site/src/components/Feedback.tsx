@@ -101,6 +101,8 @@ export interface Toast {
 export interface Failure {
   /** One line naming the step and the file, in the page. */
   message: string
+  /** What to do about it, when the failure itself names nothing actionable. */
+  advice?: string | null
   /** Everything a bug report needs, copied as text. */
   log: string
 }
@@ -110,6 +112,7 @@ export function BuildFailure(props: { failure: Failure; onCopy: () => void; onDi
   return (
     <div className="build-failure ink-frame" role="alert">
       <p className="build-failure-message">{props.failure.message}</p>
+      {props.failure.advice && <p className="build-failure-advice">{props.failure.advice}</p>}
       <details className="build-log">
         <summary>Log</summary>
         <pre>{props.failure.log}</pre>

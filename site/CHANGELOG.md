@@ -3,6 +3,12 @@
 One entry per builder version. The version is in `package.json` and printed at the foot of the page.
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
+## [Unreleased]
+- A build that stops on a file the browser cannot open says why. A track name long enough to carry
+  most of a 260-character Windows path is named with its length and what to do about it; a shorter
+  one is told the file has been moved, renamed or deleted since it was added. The browser reports
+  both as a bare `TypeError: network error`, which names nothing a person can act on (#45).
+
 ## 0.2.1
 - A RadioExt station comes across with its Volume at 100 %. RadioExt's own volume was set against
   RadioExt's player, and with Auto level putting each track on the game's level it moved the whole
