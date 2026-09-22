@@ -2,7 +2,8 @@
 
 ### v0.5.0
 
-- Changed: My station and the two mutes are now kept across launches by RedFunctions, in place of RedFileSystem and RedData. Redscript Configuration Framework 3.0.0 moved to it, so the panel brings it with it; what you have set is read from the same file and carries over.
+- Fix: My station and the two mutes stopped being remembered once Redscript Configuration Framework was updated to 3.0.0. That release dropped RedFileSystem and RedData, which is where RadioXL kept those three values, and it went quiet rather than reporting anything.
+- Changed: RadioXL now keeps them through RedFunctions 0.12.0 or later, which replaces those two and is what the settings panel itself uses. What you have already set is read from the same file and carries over; nothing needs setting again.
 
 ### v0.4.1
 
