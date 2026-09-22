@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-22
+
 ### Changed
 - `State.reds` keeps `state.json` through RedFunctions instead of RedFileSystem and RedData. RCF
   3.0.0 dropped both and imports `RedFunctions.Storage` and `RedFunctions.Json` unguarded, so the

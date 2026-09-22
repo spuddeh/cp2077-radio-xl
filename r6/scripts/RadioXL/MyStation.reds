@@ -20,7 +20,7 @@
 //              (SetRadioReceiverStation); the Radioport is tuned through the quick-slots
 //              manager, which takes the DIAL POSITION (SendRadioEvent). Mixing them plays the
 //              wrong station one slot away.
-// File Version: 0.4.1
+// File Version: 0.5.0
 // Credits: psiberx (Codeware), Always My Radio Station by Krakhel (the behaviour)
 // ======================================================================================
 

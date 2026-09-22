@@ -17,7 +17,7 @@
 //              show method is private, so a popup asked for by a key is a raised
 //              VehicleRadioSongChanged carrying the track already playing; RadioXLPopup marks
 //              that event as this mod's so it is not also read as a new song.
-// File Version: 0.4.1
+// File Version: 0.5.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 

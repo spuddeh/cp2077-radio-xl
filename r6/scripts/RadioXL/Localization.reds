@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Registers the station name and song titles through Codeware's localization system.
-// File Version: 0.4.1
+// File Version: 0.5.0
 // Credits: Codeware by psiberx.
 // ======================================================================================
 //

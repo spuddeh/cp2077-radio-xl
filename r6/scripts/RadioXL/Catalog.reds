@@ -19,7 +19,7 @@
 //              THE TWO MUTES are applied three times: as the resource loads, at session ready,
 //              and the moment the setting changes. Each station's idents and the announcement
 //              graph's nodes are kept aside when cleared, so switching a mute off puts them back.
-// File Version: 0.4.1
+// File Version: 0.5.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 

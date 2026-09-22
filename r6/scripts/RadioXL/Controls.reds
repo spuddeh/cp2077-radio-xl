@@ -17,7 +17,7 @@
 //              player who wants the two radios on different keys. Every key can carry a modifier,
 //              so one key can serve two actions: F3 alone for the next song and Shift+F3 for the
 //              next station.
-// File Version: 0.4.1
+// File Version: 0.5.0
 // Credits: DigitalVixen (RCF)
 // ======================================================================================
 
