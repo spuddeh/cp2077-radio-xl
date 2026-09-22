@@ -65,7 +65,7 @@ framework so the `stations/` folder survives packaging.
 Optional: [Redscript Configuration Framework](https://www.nexusmods.com/cyberpunk2077/mods/30726)
 shows the settings panel and captures the keys; without it the defaults apply, with the next and
 previous song on F3 and F2. [RedFunctions](https://www.nexusmods.com/cyberpunk2077/mods/32312)
-0.12.0 or later keeps the remembered station and the two talk mutes across launches; without it
+0.13.0 or later keeps the remembered station and the two talk mutes across launches; without it
 the station is remembered for the session only and the mutes stay off. It is a dependency of the
 framework above, so a player with the panel has it.
 [RedLogger](https://www.nexusmods.com/cyberpunk2077/mods/31920): with it installed the framework
