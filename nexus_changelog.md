@@ -1,9 +1,5 @@
 ### [Unreleased]
 
-- Fix: The station builder now says why a build stopped on a track. The usual cause is a file whose
-  full path on your computer is over 260 characters, which Windows will not open; the builder names
-  the file, its name's length and what to shorten.
-
 ### v0.5.0
 
 - Fix: My station and the two mutes stopped being remembered once Redscript Configuration Framework was updated to 3.0.0. That release dropped RedFileSystem and RedData, which is where RadioXL kept those three values, and it went quiet rather than reporting anything.
