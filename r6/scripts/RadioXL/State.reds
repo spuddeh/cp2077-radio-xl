@@ -11,19 +11,19 @@
 //              moment. The announcement switch is read there too, so a fresh session starts in
 //              the right state without waiting for the panel.
 //
-//              Without RedFileSystem the file cannot be read: the station is then remembered for
-//              the session only, and the two mutes do nothing. RedFileSystem is a dependency of
+//              Without RedFunctions the file cannot be read: the station is then remembered for
+//              the session only, and the two mutes do nothing. RedFunctions is a dependency of
 //              RCF, so a player with the settings panel has it.
 // File Version: 0.4.1
-// Credits: Rayshader (RedFileSystem, RedData)
+// Credits: DV (RedFunctions)
 // ======================================================================================
 
 module RadioXL
 
-@if(ModuleExists("RedFileSystem"))
-import RedFileSystem.*
-@if(ModuleExists("RedData.Json"))
-import RedData.Json.*
+@if(ModuleExists("RedFunctions.Storage"))
+import RedFunctions.Storage.*
+@if(ModuleExists("RedFunctions.Json"))
+import RedFunctions.Json.*
 
 public class RadioXLState extends ScriptableService {
   public let rememberStation: CName = n"None";
@@ -69,60 +69,47 @@ public class RadioXLState extends ScriptableService {
     if IsDefined(catalog) { catalog.ApplyMutes(); }
   }
 
-  // RedFileSystem hands a storage out ONCE per run; a second GetStorage call for the same name
-  // locks it for everyone, so the handle is taken on the first read and kept.
-  @if(ModuleExists("RedFileSystem"))
-  private let m_storage: ref<FileSystemStorage>;
-
-  @if(ModuleExists("RedFileSystem"))
-  private func Storage() -> ref<FileSystemStorage> {
-    if !IsDefined(this.m_storage) {
-      this.m_storage = FileSystem.GetStorage("RadioXL");
-      if !IsDefined(this.m_storage) {
-        RadioXLLog("RedFileSystem storage unavailable - station memory is session-only");
-      }
+  @if(ModuleExists("RedFunctions.Storage"))
+  private func Storage() -> ref<ModStorage> {
+    let storage = ModStorage.Open("RadioXL");
+    if !IsDefined(storage) {
+      RadioXLLog(s"RedFunctions storage unavailable (\(ModStorage.LastError())) - station memory is session-only");
     }
-    return this.m_storage;
+    return storage;
   }
 
-  @if(ModuleExists("RedFileSystem") && ModuleExists("RedData.Json"))
+  @if(ModuleExists("RedFunctions.Storage") && ModuleExists("RedFunctions.Json"))
   private func Read() -> Void {
     let storage = this.Storage();
     if !IsDefined(storage) { return; }
-    if NotEquals(storage.Exists("state.json"), FileSystemStatus.True) {
+    if !storage.Has("state.json") {
       RadioXLLog("no state.json yet - defaults in use");
       return;
     }
-    let file = storage.GetFile("state.json");
-    if !IsDefined(file) { return; }
-    let obj = file.ReadAsJson() as JsonObject;
-    if !IsDefined(obj) { return; }
-    if obj.HasKey("rememberStation") { this.rememberStation = StringToName(obj.GetKeyString("rememberStation")); }
-    if obj.HasKey("muteIdents") { this.muteIdents = obj.GetKeyBool("muteIdents"); }
-    if obj.HasKey("muteNews") { this.muteNews = obj.GetKeyBool("muteNews"); }
+    let root = storage.ReadJson("state.json");
+    if !IsDefined(root) || !root.IsMap() { return; }
+    let obj = root.AsMap();
+    if obj.Contains("rememberStation") { this.rememberStation = StringToName(obj.Text("rememberStation")); }
+    if obj.Contains("muteIdents") { this.muteIdents = obj.Bool("muteIdents"); }
+    if obj.Contains("muteNews") { this.muteNews = obj.Bool("muteNews"); }
     RadioXLLog(s"state read: station \(this.rememberStation), idents muted \(this.muteIdents), announcements muted \(this.muteNews)");
   }
 
-  @if(ModuleExists("RedFileSystem") && ModuleExists("RedData.Json"))
+  @if(ModuleExists("RedFunctions.Storage") && ModuleExists("RedFunctions.Json"))
   private func Write() -> Void {
     let storage = this.Storage();
     if !IsDefined(storage) { return; }
-    let file = storage.GetFile("state.json");
-    if !IsDefined(file) {
-      RadioXLLog("state.json could not be opened for writing");
-      return;
-    }
-    let obj = new JsonObject();
-    obj.SetKeyString("rememberStation", IsNameValid(this.rememberStation) ? NameToString(this.rememberStation) : "None");
-    obj.SetKeyBool("muteIdents", this.muteIdents);
-    obj.SetKeyBool("muteNews", this.muteNews);
-    let ok: Bool = file.WriteJson(obj, "  ");
+    let obj = JsonMap.Make();
+    obj.PutText("rememberStation", IsNameValid(this.rememberStation) ? NameToString(this.rememberStation) : "None");
+    obj.PutBool("muteIdents", this.muteIdents);
+    obj.PutBool("muteNews", this.muteNews);
+    let ok: Bool = storage.WriteJson("state.json", obj);
     RadioXLLog(s"state written (\(ok)): station \(this.rememberStation), idents muted \(this.muteIdents), announcements muted \(this.muteNews)");
   }
 
-  @if(!ModuleExists("RedFileSystem") || !ModuleExists("RedData.Json"))
+  @if(!ModuleExists("RedFunctions.Storage") || !ModuleExists("RedFunctions.Json"))
   private func Read() -> Void {}
 
-  @if(!ModuleExists("RedFileSystem") || !ModuleExists("RedData.Json"))
+  @if(!ModuleExists("RedFunctions.Storage") || !ModuleExists("RedFunctions.Json"))
   private func Write() -> Void {}
 }

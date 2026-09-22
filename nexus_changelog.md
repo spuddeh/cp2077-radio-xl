@@ -1,5 +1,7 @@
 ### [Unreleased]
 
+- Changed: My station and the two mutes are now kept across launches by RedFunctions, in place of RedFileSystem and RedData. Redscript Configuration Framework 3.0.0 moved to it, so the panel brings it with it; what you have set is read from the same file and carries over.
+
 ### v0.4.1
 
 - Fix: My station now tunes the car radio when you get in. The car brings its own station up a fraction of a second after you take the seat, later than the check ran, so the station you set was passed over.

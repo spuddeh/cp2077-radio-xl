@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+- `State.reds` keeps `state.json` through RedFunctions instead of RedFileSystem and RedData. RCF
+  3.0.0 dropped both and imports `RedFunctions.Storage` and `RedFunctions.Json` unguarded, so the
+  claim these headers carried - that a player with the settings panel has RedFileSystem - stopped
+  being true, and an RCF 3.0.0 player silently lost the remembered station and both mutes. Both
+  plugins store under `r6/storages/<mod>/`, so an existing `state.json` is read where it lies and
+  no migration runs. The cached storage handle is gone with them: RedFileSystem hands a storage out
+  once per run, `ModStorage.Open` does not, so each read and write opens its own. `ReadJson` and
+  `WriteJson` are calls on the storage, which retires the file object and its null checks.
+  No fallback to the old pair - the guards name RedFunctions alone.
+
 ## [0.4.1] - 2026-09-20
 
 ### Fixed

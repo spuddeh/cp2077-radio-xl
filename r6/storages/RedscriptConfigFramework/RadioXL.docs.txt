@@ -22,7 +22,7 @@ RadioXL is a framework. Install it, then install stations built on it, or build 
 [/list]
 Optional:
 [url=https://www.nexusmods.com/cyberpunk2077/mods/30726]Redscript Configuration Framework[/url] - the settings panel below, and the keys.
-[url=https://www.nexusmods.com/cyberpunk2077/mods/13378]RedFileSystem[/url] and [url=https://www.nexusmods.com/cyberpunk2077/mods/14139]RedData[/url] - keep My station and the two mutes across launches.
+[url=https://www.nexusmods.com/cyberpunk2077/mods/32312]RedFunctions[/url] 0.12.0 or later - keeps My station and the two mutes across launches.
 [url=https://www.nexusmods.com/cyberpunk2077/mods/31920]RedLogger[/url] - a log of what was registered, in r6\logs\mods\.
 
 [b]Install[/b]
