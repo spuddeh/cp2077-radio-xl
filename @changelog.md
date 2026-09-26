@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Fixed
+- My station did nothing on getting into a car whose radio was off, which the first car of a
+  session always is. A car with its radio off resumes no station, so the sit-down pass found the
+  receiver off and the `OnVehicleRadioStationChanged` catch never fired. `DriveEvents.OnEnter` now
+  also queues `SchedulePowerOn`, a pass one second later (`m_resumeWait`, past the 200 to 320 ms a
+  resume takes). If the catch is still armed and the receiver is still off, `Apply` disarms and
+  sends `SendRadioEvent(true, true, position)`, whose toggle flag powers the receiver before
+  setting the station. Disarming first keeps the change it causes from tuning a second time. The
+  `tipPlayOnEnter` text says a radio that is off is switched on.
 - The station builder named no cause when a file could not be read (#45). A source file whose path
   passes Windows' 260 characters cannot be opened, and the browser surfaces that as
   `TypeError: network error` with nothing else, so the reported symptom was a build that stopped on

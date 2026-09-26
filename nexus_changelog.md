@@ -1,5 +1,7 @@
 ### [Unreleased]
 
+- Fix: My station now plays when you get into a car whose radio is off, such as the first car after loading a save. The radio is switched on to your station about a second after you sit down.
+
 ### v0.5.0
 
 - Fix: My station and the two mutes stopped being remembered once Redscript Configuration Framework was updated to 3.0.0. That release dropped RedFileSystem and RedData, which is where RadioXL kept those three values, and it went quiet rather than reporting anything.

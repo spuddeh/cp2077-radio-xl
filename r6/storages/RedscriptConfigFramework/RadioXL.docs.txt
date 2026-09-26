@@ -104,7 +104,7 @@ Four tabs in the Redscript Configuration Framework panel. Every station and ever
 [b]My station[/b]
 [*][b]Tune to my station.[/b] The switch for this tab.[/*]
 [*][b]Station.[/b] The station to tune to. It is remembered by name, so it stays the same station after you add or remove station mods. If that station is not installed, nothing is tuned.[/*]
-[*][b]When getting into a car / When the car radio is switched on / When the Radioport is switched on.[/b] The three moments the radio is tuned.[/*]
+[*][b]When getting into a car / When the car radio is switched on / When the Radioport is switched on.[/b] The three moments the radio is tuned. Getting into a car also switches the car radio on if it is off.[/*]
 [*][b]Even if the Radioport is on.[/b] Tunes the car radio even when the Radioport is already playing another station. Off leaves the Radioport's station alone.[/*]
 Nothing is tuned while the game blocks radio input: in a police vehicle, during a scripted drive, as Johnny, and before the car radio is unlocked.
 
