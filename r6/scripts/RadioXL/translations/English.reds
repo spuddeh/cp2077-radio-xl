@@ -76,7 +76,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipStation", "Remembered by name, so it stays the same station when station mods are added or removed.");
     this.Text("RadioXL.dropNone", "None");
     this.Text("RadioXL.optPlayOnEnter", "When getting into a car");
-    this.Text("RadioXL.tipPlayOnEnter", "Tune when you sit in the driver's seat and the radio is on.");
+    this.Text("RadioXL.tipPlayOnEnter", "Tune when you sit in the driver's seat. A car radio that is off is switched on.");
     this.Text("RadioXL.optPlayOnVehiclePowerOn", "When the car radio is switched on");
     this.Text("RadioXL.tipPlayOnVehiclePowerOn", "Tune when you turn the vehicle radio on.");
     this.Text("RadioXL.optPlayOnPocketPowerOn", "When the Radioport is switched on");

@@ -11,6 +11,10 @@
 //              a time guessed in advance. Sitting down arms that catch and the first change
 //              disarms it, so a station the player picks by hand afterwards is left alone.
 //
+//              A CAR WHOSE RADIO IS OFF RESUMES NOTHING, and the first car of a session is one.
+//              A second pass a second after sitting down finds the catch still armed, and
+//              switches the radio on to the remembered station.
+//
 //              THE STATION IS REMEMBERED BY ITS EVENT NAME, never by enum value or dial
 //              position: both numbers move when a station mod is installed or removed, and the
 //              name is the one thing a station keeps. It is resolved to the enum at the moment
@@ -28,11 +32,12 @@ module RadioXL
 
 public class RadioXLMyStationTick extends DelayCallback {
   public let pocket: Bool;
+  public let powerOn: Bool;
 
   public func Call() -> Void {
     let memory = RadioXLMyStation.Get();
     if IsDefined(memory) {
-      memory.Apply(this.pocket);
+      memory.Apply(this.pocket, this.powerOn);
     }
   }
 }
@@ -56,6 +61,10 @@ public class RadioXLMyStation extends ScriptableService {
   // Five seconds is a backstop for a car whose radio is off, which never resumes and so never
   // disarms. The window is not a race: the first change closes it.
   private let m_armWindow: Float = 5.0;
+
+  // How long after sitting down a car with no resume is taken to have its radio off. Past the
+  // 200 to 320 ms a resume takes, and short enough that the silence is not noticed.
+  private let m_resumeWait: Float = 1.0;
 
   public func Arm(gi: GameInstance) -> Void {
     this.m_armed = true;
@@ -100,6 +109,16 @@ public class RadioXLMyStation extends ScriptableService {
   // like a hook that never fired. `source` names the moment that asked, so a log with no line at
   // all means none of the four wraps ran.
   public func Schedule(pocket: Bool, source: String) -> Void {
+    this.Queue(pocket, false, 0.1, source);
+  }
+
+  // The pass that switches an off car radio on. It acts only while still armed; a car that resumed
+  // its own station in the meantime has disarmed, and that resume's pass does the tuning.
+  public func SchedulePowerOn(source: String) -> Void {
+    this.Queue(false, true, this.m_resumeWait, source);
+  }
+
+  private func Queue(pocket: Bool, powerOn: Bool, seconds: Float, source: String) -> Void {
     let controls = RadioXLControls.Get();
     if !IsDefined(controls) || !controls.rememberEnabled {
       RadioXLLog(s"my station: \(source) - tuning is switched off");
@@ -112,11 +131,12 @@ public class RadioXLMyStation extends ScriptableService {
     }
     let tick = new RadioXLMyStationTick();
     tick.pocket = pocket;
-    delay.DelayCallback(tick, 0.1);
+    tick.powerOn = powerOn;
+    delay.DelayCallback(tick, seconds);
     RadioXLLog(s"my station: \(source) - scheduled");
   }
 
-  public func Apply(pocket: Bool) -> Void {
+  public func Apply(pocket: Bool, powerOn: Bool) -> Void {
     let gi = GetGameInstance();
     let controls = RadioXLControls.Get();
     if !IsDefined(controls) || !controls.rememberEnabled {
@@ -166,13 +186,33 @@ public class RadioXLMyStation extends ScriptableService {
       RadioXLLog("my station: not tuned - the player is not the driver");
       return;
     }
+    // An off receiver is switched on only by the power-on pass, and only while no resume has
+    // disarmed it. Disarming first keeps the station change this call causes from tuning again.
+    let switchingOn: Bool = false;
     if !vehicle.IsRadioReceiverActive() {
-      RadioXLLog("my station: not tuned - the vehicle receiver is off");
-      return;
+      if !powerOn {
+        RadioXLLog("my station: not tuned - the vehicle receiver is off");
+        return;
+      }
+      if !this.IsArmed(gi) {
+        RadioXLLog("my station: not switched on - the vehicle receiver is off and no longer armed");
+        return;
+      }
+      switchingOn = true;
+    }
+    if powerOn {
+      this.m_armed = false;
     }
     let radio = player.GetPocketRadio();
     if !controls.ignorePocketRadio && IsDefined(radio) && radio.IsActive() {
       RadioXLLog("my station: not tuned - the Radioport is playing and it holds the receiver");
+      return;
+    }
+    // The toggle flag in SendRadioEvent powers an off receiver before setting the station.
+    if switchingOn {
+      let position: Int32 = RadioStationDataProvider.GetRadioStationUIIndex(station);
+      player.GetQuickSlotsManager().SendRadioEvent(true, true, position);
+      RadioXLLog(s"vehicle radio switched on to \(RadioXLState.Get().rememberStation) (enum \(station), dial \(position))");
       return;
     }
     let current: Int32 = Cast<Int32>(vehicle.GetCurrentRadioIndex());
@@ -266,6 +306,7 @@ protected func OnEnter(stateContext: ref<StateContext>, scriptInterface: ref<Sta
       // pass tunes it now. Arming covers the other case, where the car has yet to resume.
       memory.Arm(scriptInterface.GetGame());
       memory.Schedule(false, "the player sat down");
+      memory.SchedulePowerOn("the player sat down, in case the radio is off");
     }
   }
 }
