@@ -5,7 +5,7 @@
 //              language. The key is the first text on each line and never changes; the second is
 //              what the player reads. Station names and song titles are not here: those are the
 //              station author's text and go through RadioXLTexts unchanged.
-// File Version: 0.4.1
+// File Version: 0.5.1
 // Credits: psiberx (Codeware)
 // ======================================================================================
 

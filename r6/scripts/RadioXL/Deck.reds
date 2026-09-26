@@ -37,7 +37,7 @@
 //              flagged as not streaming-friendly, and the two Kerry USC songs stay hidden until
 //              the quest fact that unlocks them is set, the same two filters the game applies to
 //              its own picks.
-// File Version: 0.5.0
+// File Version: 0.5.1
 // Credits: psiberx (Codeware)
 // ======================================================================================
 

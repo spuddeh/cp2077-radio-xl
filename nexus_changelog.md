@@ -1,5 +1,7 @@
 ### [Unreleased]
 
+### v0.5.1
+
 - Fix: My station now plays when you get into a car whose radio is off, such as the first car after loading a save. The radio is switched on to your station about a second after you sit down.
 
 ### v0.5.0

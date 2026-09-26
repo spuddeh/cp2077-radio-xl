@@ -9,7 +9,7 @@
 //              A HELD MODIFIER WINS OVER THE BARE KEY. When two binds share a key and one of
 //              them carries a modifier that is held, that one runs; otherwise the bare one does.
 //              Modifiers are read only while the panel's modifier switch is on.
-// File Version: 0.5.0
+// File Version: 0.5.1
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
