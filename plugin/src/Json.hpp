@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -529,5 +530,87 @@ private:
 inline bool ParseJson(std::string_view aText, JsonValue& aOut, JsonError& aError)
 {
     return JsonReader::Parse(aText, aOut, aError);
+}
+
+// A value written back out as compact JSON, members in file order. Strings are escaped only where
+// JSON requires it, so UTF-8 text passes through as it was read.
+inline void WriteJson(const JsonValue& aValue, std::string& aOut)
+{
+    auto writeString = [&aOut](const std::string& aText)
+    {
+        aOut += '"';
+        for (const char c : aText)
+        {
+            switch (c)
+            {
+            case '"': aOut += "\\\""; break;
+            case '\\': aOut += "\\\\"; break;
+            case '\b': aOut += "\\b"; break;
+            case '\f': aOut += "\\f"; break;
+            case '\n': aOut += "\\n"; break;
+            case '\r': aOut += "\\r"; break;
+            case '\t': aOut += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20)
+                {
+                    char buf[8];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned>(static_cast<unsigned char>(c)));
+                    aOut += buf;
+                }
+                else
+                {
+                    aOut += c;
+                }
+            }
+        }
+        aOut += '"';
+    };
+
+    switch (aValue.kind)
+    {
+    case JsonValue::Kind::Null: aOut += "null"; break;
+    case JsonValue::Kind::Bool: aOut += aValue.boolean ? "true" : "false"; break;
+    case JsonValue::Kind::Number:
+    {
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%.15g", aValue.number);
+        aOut += buf;
+        break;
+    }
+    case JsonValue::Kind::String: writeString(aValue.string); break;
+    case JsonValue::Kind::Array:
+        aOut += '[';
+        for (size_t i = 0; i < aValue.array.size(); ++i)
+        {
+            if (i > 0)
+            {
+                aOut += ',';
+            }
+            WriteJson(aValue.array[i], aOut);
+        }
+        aOut += ']';
+        break;
+    case JsonValue::Kind::Object:
+        aOut += '{';
+        for (size_t i = 0; i < aValue.object.size(); ++i)
+        {
+            if (i > 0)
+            {
+                aOut += ',';
+            }
+            writeString(aValue.object[i].first);
+            aOut += ':';
+            WriteJson(aValue.object[i].second, aOut);
+        }
+        aOut += '}';
+        break;
+    }
+}
+
+inline std::string WriteJson(const JsonValue& aValue)
+{
+    std::string out;
+    WriteJson(aValue, out);
+    return out;
 }
 } // namespace radioxl

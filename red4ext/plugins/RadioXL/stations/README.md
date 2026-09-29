@@ -36,6 +36,8 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `gain` | Optional. One level trim for the whole station, `0` to `4`, on top of each track's own. Defaults to `1`. See [Level](#level). |
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
+| `description` | Optional. A few sentences about the station, up to 1000 characters, for other mods to read. RadioXL itself shows it nowhere. Either one text for every language, or an object of language codes: `{ "en-us": "...", "de-de": "..." }`. A player whose language is missing gets the plain text, else the `en-us` one. |
+| `extensions` | Optional. An object with one key per mod that reads extra data from stations: `{ "SomeMod": { ... } }`. RadioXL hands each value to the mod it names, as written, and reads none of it. What goes inside is that mod's own format. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
 | `tracks[].title` | Optional. The song title, shown as written in the Radioport's radio popup. An untitled song plays everywhere a titled one does, and its title reads blank. |

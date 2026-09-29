@@ -69,6 +69,9 @@ struct Station
     bool news = false;         // Stanley's news and greetings may reach the station
     float gain = kDefaultGain; // level trim applied to every track's samples, 0..kMaxGain; see RadioXL_StationGain
     std::vector<Track> tracks;
+    std::string description;   // text for every language, or empty; see Description()
+    std::vector<std::pair<std::string, std::string>> descriptions;  // language code, text
+    std::vector<std::pair<std::string, std::string>> extensions;    // consuming mod, its value as JSON text
     std::string source;        // which manifest it came from, for logging
     std::string folder;        // the manifest's own directory, which track files are relative to
 };
@@ -199,6 +202,65 @@ inline bool IsStationName(std::string_view aName)
     return true;
 }
 
+// A description is data for other mods, read through the script API; RadioXL shows it nowhere.
+// The limit counts characters, not bytes, so a translation is held to the same length.
+constexpr size_t kMaxDescription = 1000;
+
+inline size_t Utf8Length(std::string_view aText)
+{
+    size_t n = 0;
+    for (const char c : aText)
+    {
+        if ((static_cast<unsigned char>(c) & 0xC0) != 0x80)
+        {
+            ++n;
+        }
+    }
+    return n;
+}
+
+// A language as the game names it in its settings and its localization folders: `en-us`, `pl-pl`.
+inline bool IsLanguageCode(std::string_view aCode)
+{
+    auto lower = [](char c) { return c >= 'a' && c <= 'z'; };
+    return aCode.size() == 5 && lower(aCode[0]) && lower(aCode[1]) && aCode[2] == '-' && lower(aCode[3]) && lower(aCode[4]);
+}
+
+// The description in aLanguage: that language's text, else the plain text, else the `en-us` text.
+inline std::string Description(const Station& aStation, std::string_view aLanguage)
+{
+    const std::string* english = nullptr;
+    for (const auto& [code, text] : aStation.descriptions)
+    {
+        if (code == aLanguage)
+        {
+            return text;
+        }
+        if (code == "en-us")
+        {
+            english = &text;
+        }
+    }
+    if (!aStation.description.empty())
+    {
+        return aStation.description;
+    }
+    return english ? *english : std::string();
+}
+
+// The value a station carries for one consuming mod, as JSON text, or empty when it has none.
+inline std::string Extension(const Station& aStation, std::string_view aMod)
+{
+    for (const auto& [mod, json] : aStation.extensions)
+    {
+        if (mod == aMod)
+        {
+            return json;
+        }
+    }
+    return std::string();
+}
+
 using ManifestLog = std::function<void(const std::string&)>;
 
 // Reads aText as the manifest at aWhere ("<Mod>/station.json") into aOut. Every line written to
@@ -260,7 +322,8 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
         }
     };
 
-    unknownKeys(root, {"name", "frequency", "displayName", "showFrequency", "icon", "atlas", "news", "gain", "tracks"}, "manifest");
+    unknownKeys(root, {"name", "frequency", "displayName", "showFrequency", "icon", "atlas", "news", "gain", "tracks",
+                       "description", "extensions"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -321,6 +384,62 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
     if (const JsonValue* show = expect(root, "showFrequency", JsonValue::Kind::Bool, false))
     {
         aOut.showFrequency = show->boolean;
+    }
+
+    // `description` is one text for every language, or an object of language codes. A text past
+    // the limit is dropped rather than cut mid-sentence; the station still loads.
+    if (const JsonValue* description = root.Find("description"))
+    {
+        auto tooLong = [&](const JsonValue& aText, const std::string& aWhat)
+        {
+            if (Utf8Length(aText.string) <= kMaxDescription)
+            {
+                return false;
+            }
+            at(aText.line, aWhat + " is " + std::to_string(Utf8Length(aText.string)) + " characters, past the " +
+                               std::to_string(kMaxDescription) + " allowed - ignored");
+            return true;
+        };
+        if (description->Is(JsonValue::Kind::String))
+        {
+            if (!tooLong(*description, "\"description\""))
+            {
+                aOut.description = description->string;
+            }
+        }
+        else if (description->Is(JsonValue::Kind::Object))
+        {
+            for (const auto& [code, text] : description->object)
+            {
+                if (!IsLanguageCode(code))
+                {
+                    at(text.line, "\"description\" key \"" + code + "\" is not a language code like \"en-us\" - ignored");
+                }
+                else if (!text.Is(JsonValue::Kind::String))
+                {
+                    fail(text.line, "\"description\" \"" + code + "\" must be " + JsonValue::KindName(JsonValue::Kind::String) +
+                                        ", not " + JsonValue::KindName(text.kind));
+                }
+                else if (!tooLong(text, "\"description\" \"" + code + "\""))
+                {
+                    aOut.descriptions.emplace_back(code, text.string);
+                }
+            }
+        }
+        else
+        {
+            fail(description->line, std::string("\"description\" must be a string or an object of language codes, not ") +
+                                        JsonValue::KindName(description->kind));
+        }
+    }
+
+    // `extensions` holds one value per consuming mod, handed to that mod as JSON text and never read here.
+    if (const JsonValue* extensions = expect(root, "extensions", JsonValue::Kind::Object, false))
+    {
+        for (const auto& [mod, value] : extensions->object)
+        {
+            aOut.extensions.emplace_back(mod, WriteJson(value));
+        }
     }
 
     if (const JsonValue* tracks = expect(root, "tracks", JsonValue::Kind::Array, true))

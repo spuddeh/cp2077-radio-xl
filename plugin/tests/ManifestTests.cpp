@@ -391,6 +391,82 @@ void TestEveryFaultIsReported()
     Check(r.Logged("Mod/station.json:2:"), "first at line 2", r.Joined());
     Check(r.Logged("Mod/station.json:3:"), "second at line 3", r.Joined());
 }
+void TestDescription()
+{
+    // One text for every language.
+    const Read plain(R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "description": "Pirate signal out of Kabuki.",
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(plain.ok && plain.log.empty(), "a plain description reads", plain.Joined());
+    Check(radioxl::Description(plain.station, "de-de") == "Pirate signal out of Kabuki.", "a plain description serves every language");
+
+    // An object of language codes: the language asked for, else the plain text, else en-us.
+    const Read split(R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "description": { "en-us": "Pirate signal.", "de-de": "Piratensender.", "english": "x", "fr-fr": 3 },
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(!split.ok, "a description text that is not a string refuses the manifest");
+    Check(split.Logged("Mod/station.json:3: \"description\" key \"english\" is not a language code"), "a bad language code is named", split.Joined());
+    Check(split.Logged("Mod/station.json:3: \"description\" \"fr-fr\" must be a string"), "a wrong type is named", split.Joined());
+
+    const Read languages(R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "description": { "en-us": "Pirate signal.", "de-de": "Piratensender." },
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(languages.ok && languages.log.empty(), "a description per language reads", languages.Joined());
+    Check(radioxl::Description(languages.station, "de-de") == "Piratensender.", "the player's language wins");
+    Check(radioxl::Description(languages.station, "pl-pl") == "Pirate signal.", "a missing language falls back to en-us");
+
+    // The limit counts characters: 1000 two-byte characters pass, 1001 are dropped with a warning.
+    std::string fits;
+    for (int i = 0; i < 1000; ++i)
+    {
+        fits += "\xC3\xA9";
+    }
+    const Read atLimit("{ \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\",\n\"description\": \"" + fits +
+                       "\",\n\"tracks\": [ { \"file\": \"a\" } ] }");
+    Check(atLimit.ok && atLimit.log.empty() && radioxl::Description(atLimit.station, "en-us") == fits,
+          "1000 characters are allowed, however many bytes", atLimit.Joined());
+    const Read past("{ \"name\": \"x\", \"frequency\": 90.5, \"displayName\": \"Station X\",\n\"description\": \"" + fits +
+                    "!\",\n\"tracks\": [ { \"file\": \"a\" } ] }");
+    Check(past.ok, "an over-long description does not refuse the station", past.Joined());
+    Check(past.Logged("Mod/station.json:2: \"description\" is 1001 characters"), "the drop names the line", past.Joined());
+    Check(radioxl::Description(past.station, "en-us").empty(), "the over-long text is dropped, not cut");
+
+    ExpectFault("description of the wrong kind", R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "description": 4,
+  "tracks": [ { "file": "a" } ]
+})json", "Mod/station.json:3: \"description\" must be a string or an object");
+}
+
+void TestExtensions()
+{
+    const Read r(R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "extensions": {
+    "NpcCarStereo": { "weight": 2, "districts": ["Watson", "Kabuki \"old\""], "enabled": true, "note": null },
+    "Other": "text"
+  },
+  "tracks": [ { "file": "a" } ]
+})json");
+    Check(r.ok && r.log.empty(), "extensions read without a warning", r.Joined());
+    Check(radioxl::Extension(r.station, "NpcCarStereo") ==
+              R"({"weight":2,"districts":["Watson","Kabuki \"old\""],"enabled":true,"note":null})",
+          "an extension is handed over as the JSON written", radioxl::Extension(r.station, "NpcCarStereo"));
+    Check(radioxl::Extension(r.station, "Other") == "\"text\"", "a string extension stays JSON text");
+    Check(radioxl::Extension(r.station, "Missing").empty(), "a mod with no extension gets nothing");
+
+    ExpectFault("extensions that are not an object", R"json({
+  "name": "x", "frequency": 90.5, "displayName": "Station X",
+  "extensions": [],
+  "tracks": [ { "file": "a" } ]
+})json", "Mod/station.json:3: \"extensions\" must be");
+}
 } // namespace
 
 int main()
@@ -410,6 +486,8 @@ int main()
     TestShowFrequency();
     TestNonAsciiText();
     TestEveryFaultIsReported();
+    TestDescription();
+    TestExtensions();
     if (g_failures == 0)
     {
         std::printf("ok\n");

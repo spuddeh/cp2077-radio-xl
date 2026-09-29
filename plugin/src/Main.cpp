@@ -1208,6 +1208,77 @@ void RadioXL_StationTrackTitle(RED4ext::IScriptable*, RED4ext::CStackFrame* aFra
                         : std::string());
 }
 
+// --- the script API's reads ------------------------------------------------------------------
+
+// A station's frequency by its ERadioStationList value, vanilla or custom. -1 when unknown.
+void RadioXL_Frequency(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, float* aOut, int64_t)
+{
+    int32_t station = -1;
+    RED4ext::GetParameter(aFrame, &station);
+    ++aFrame->code;
+    if (!aOut)
+    {
+        return;
+    }
+    if (station >= 0 && station < kVanillaCount)
+    {
+        *aOut = kVanillaFrequency[station];
+        return;
+    }
+    const Station* s = At(station - kVanillaCount);
+    *aOut = s ? s->frequency : -1.0f;
+}
+
+// The folder the station's manifest sits in, which is the station mod's own name for it.
+void RadioXL_StationSource(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    int32_t index = -1;
+    RED4ext::GetParameter(aFrame, &index);
+    ++aFrame->code;
+    const Station* s = At(index);
+    OutString(aOut, s ? Utf8(std::filesystem::u8path(s->folder).filename()) : std::string());
+}
+
+void RadioXL_StationDescription(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    int32_t index = -1;
+    RED4ext::CString language;
+    RED4ext::GetParameter(aFrame, &index);
+    RED4ext::GetParameter(aFrame, &language);
+    ++aFrame->code;
+    const Station* s = At(index);
+    OutString(aOut, s ? radioxl::Description(*s, language.c_str()) : std::string());
+}
+
+void RadioXL_StationExtension(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CString* aOut, int64_t)
+{
+    int32_t index = -1;
+    RED4ext::CString mod;
+    RED4ext::GetParameter(aFrame, &index);
+    RED4ext::GetParameter(aFrame, &mod);
+    ++aFrame->code;
+    const Station* s = At(index);
+    OutString(aOut, s ? radioxl::Extension(*s, mod.c_str()) : std::string());
+}
+
+// Seconds since the station's current slot began, from the engine's own station clock, vanilla
+// stations included. Negative when the station is not in the manager or the read faulted.
+void RadioXL_StationPosition(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, float* aOut, int64_t)
+{
+    RED4ext::CName station;
+    RED4ext::GetParameter(aFrame, &station);
+    ++aFrame->code;
+    float seconds = -1.0f;
+    if (!radioxl::clock::SafeReadClock(station.hash, &seconds))
+    {
+        seconds = -1.0f;
+    }
+    if (aOut)
+    {
+        *aOut = seconds;
+    }
+}
+
 // A CName built from a string carries the hash but not the string, so anything that prints or
 // resolves it by text sees nothing. Registering the pair costs nothing and makes logs readable.
 void PoolNames()
@@ -1271,6 +1342,40 @@ void RegisterNatives()
     reg("RadioXL_StationTrackKeyHash", &RadioXL_StationTrackKeyHash, "Uint64", 2);
     reg("RadioXL_StationKeyHash64", &RadioXL_StationKeyHash64, "Uint64", 1);
     reg("RadioXL_StationTrackKeyHash64", &RadioXL_StationTrackKeyHash64, "Uint64", 2);
+    reg("RadioXL_StationSource", &RadioXL_StationSource, "String", 1);
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_Frequency", "RadioXL_Frequency", &RadioXL_Frequency);
+        fn->flags.isNative = true;
+        fn->AddParam("Int32", "station");
+        fn->SetReturnType("Float");
+        rtti->RegisterFunction(fn);
+    }
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationDescription", "RadioXL_StationDescription",
+                                                    &RadioXL_StationDescription);
+        fn->flags.isNative = true;
+        fn->AddParam("Int32", "index");
+        fn->AddParam("String", "language");
+        fn->SetReturnType("String");
+        rtti->RegisterFunction(fn);
+    }
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationExtension", "RadioXL_StationExtension",
+                                                    &RadioXL_StationExtension);
+        fn->flags.isNative = true;
+        fn->AddParam("Int32", "index");
+        fn->AddParam("String", "mod");
+        fn->SetReturnType("String");
+        rtti->RegisterFunction(fn);
+    }
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationPosition", "RadioXL_StationPosition",
+                                                    &RadioXL_StationPosition);
+        fn->flags.isNative = true;
+        fn->AddParam("CName", "station");
+        fn->SetReturnType("Float");
+        rtti->RegisterFunction(fn);
+    }
 
     // The schedule natives take station and track NAMES, not roster indices: the song keys ask
     // about vanilla stations as often as custom ones.
