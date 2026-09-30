@@ -23,6 +23,7 @@
 module RadioXLApiTest
 
 import RadioXL.*
+import Codeware.Localization.*
 
 public class RadioXLApiTestTick extends DelayCallback {
   public let runner: wref<RadioXLApiTest>;
@@ -295,6 +296,7 @@ public class RadioXLApiTest extends ScriptableService {
                && !RadioXLAPI.PlaySong(n"radioxl_no_such_station", n"radioxl_no_such_track")
                && !RadioXLAPI.SetStationSkipped(n"radioxl_no_such_station", true), "");
     this.Check("StationExtension for a mod with nothing is empty", StrLen(RadioXLAPI.StationExtension(stations[0], "RadioXLApiTest")) == 0, "");
+    this.ManifestData();
     let silenced: array<CName> = RadioXLAPI.SilencedBy();
     this.Note(s"SilencedBy: \(ArraySize(silenced)) situation(s); MyStation \(RadioXLAPI.MyStation()); idents muted \(RadioXLAPI.IdentsMuted()); news muted \(RadioXLAPI.NewsMuted())");
 
@@ -306,6 +308,65 @@ public class RadioXLApiTest extends ScriptableService {
     this.m_wasOn = Equals(RadioXLAPI.Receiver(), this.m_kind);
     this.m_wasStation = RadioXLAPI.CurrentStation();
     this.Next(1, 0.5);
+  }
+
+  // What no vanilla station has, read from stations installed in the Testing instance: PHONKWAVE
+  // RADIO carries idents, and a test description and extensions added to its manifest; Yumi Co.
+  // Radio is a stream. Each is skipped when its station is not installed.
+  private func ManifestData() -> Void {
+    let phonk: CName = n"radio_station_phonkwave_radio";
+    if !RadioXLAPI.IsCustomStation(phonk) {
+      this.Note("PHONKWAVE RADIO is not installed: description, extensions and idents not checked");
+    } else {
+      let loc = LocalizationSystem.GetInstance(GetGameInstance());
+      let language: String = IsDefined(loc) ? NameToString(loc.GetInterfaceLanguage()) : "en-us";
+      let expected: String = Equals(language, "de-de")
+        ? "Verzerrte Kuhglocken und Memphis-Tapes aus einem Keller in Kabuki. PHONKWAVE läuft die ganze Nacht, mit Werbung für Dinge, die niemand kaufen sollte."
+        : "Distorted cowbells and Memphis tapes from a basement in Kabuki. PHONKWAVE runs all night, with ads for things nobody should buy.";
+      let description: String = RadioXLAPI.StationDescription(phonk);
+      this.Check(s"StationDescription in the player's language (\(language))", Equals(description, expected), description);
+      let key: String = "Gameplay-Devices-Radio-RadioXL-radio_station_phonkwave_radio-desc";
+      let viaCodeware: String = IsDefined(loc) ? loc.GetText(key) : "";
+      this.Check("the description key resolves through Codeware's LocalizationSystem", Equals(viaCodeware, expected), viaCodeware);
+      let viaGame: String = GetLocalizedTextByKey(StringToName(key));
+      this.Check("the description key resolves through GetLocalizedTextByKey", Equals(viaGame, expected), viaGame);
+
+      let extension: String = RadioXLAPI.StationExtension(phonk, "RadioXLApiTest");
+      this.Check("StationExtension hands back the manifest's JSON",
+                 Equals(extension, "{\"marker\":\"phonk\",\"weight\":2,\"districts\":[\"Watson\",\"Kabuki\"]}"), extension);
+      this.Check("StationExtension for another mod is empty", StrLen(RadioXLAPI.StationExtension(phonk, "SomeOtherMod")) == 0, "");
+
+      let idents: array<CName> = RadioXLAPI.Idents(phonk);
+      let tracks: array<CName> = RadioXLAPI.Tracks(phonk);
+      let apart: Bool = true;
+      for ident in idents {
+        if ArrayContains(tracks, ident) { apart = false; }
+      }
+      this.Check("Idents lists the station's 19 idents, muted or not", ArraySize(idents) == 19,
+                 s"\(ArraySize(idents)), idents muted \(RadioXLAPI.IdentsMuted())");
+      this.Check("no ident is among the songs", apart, s"\(ArraySize(tracks)) songs");
+    }
+
+    let yumi: CName = n"radio_station_yumi_co_radio";
+    if !RadioXLAPI.IsCustomStation(yumi) {
+      this.Note("Yumi Co. Radio is not installed: the stream reads not checked");
+      return;
+    }
+    let state: RadioXLStreamState = RadioXLAPI.StreamState(yumi);
+    this.Check("IsStreamStation for a stream station", RadioXLAPI.IsStreamStation(yumi), "");
+    this.Check("StreamState of a stream station is not NotStream", NotEquals(state, RadioXLStreamState.NotStream), s"\(EnumInt(state))");
+    if !RadioXLAudio.HttpAllowed() {
+      this.Check("StreamState is Blocked while AudioXL.ini does not allow http", Equals(state, RadioXLStreamState.Blocked), s"\(EnumInt(state))");
+    } else {
+      this.Note(s"AudioXL allows http; StreamState is \(EnumInt(state)) (2 connecting, 3 live, 4 failed)");
+    }
+    let streamTracks: array<CName> = RadioXLAPI.Tracks(yumi);
+    if ArraySize(streamTracks) > 0 {
+      let first: CName = streamTracks[0];
+      this.Check("a stream track has no file", StrLen(RadioXLAPI.TrackFile(first)) == 0, RadioXLAPI.TrackFile(first));
+      this.Check("a stream track's length is the hour it is scheduled as", AbsF(RadioXLAPI.TrackLength(first) - 3600.0) < 1.0,
+                 s"\(RadioXLAPI.TrackLength(first)) s");
+    }
   }
 
   private func PowerOn() -> Void {

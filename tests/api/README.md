@@ -23,6 +23,13 @@ and song, flips every setting it can reach and puts each one back.
 - **From the CET console:** `RadioXLApiTest_RadioXLApiTest.Start()`, then
   `print(RadioXLApiTest_RadioXLApiTest.Report())`. This checks the redscript route only.
 
+## Stations it reads when installed
+
+The Testing instance's PHONKWAVE RADIO carries 19 idents and, added for this test, a `description`
+in `en-us` and `de-de` and an `extensions` entry for `RadioXLApiTest` (its original manifest is kept
+beside it as `station.json.orig`). Yumi Co. Radio is a stream. Without them those checks are
+skipped with a note.
+
 ## What it does not reach
 
 - `CatalogRefreshed` needs a quest to add songs to a station, and `Silenced` a phone call or a scene.
