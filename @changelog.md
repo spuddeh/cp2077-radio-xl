@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Added
+- A red warning in game when a stream station cannot play (#55): `Warnings.reds`,
+  `RadioXLWarnings`. After the HUD is up (`QuestTrackerGameController.OnInitialize`, as
+  NCZoningCore does, because the `WarningMessage` slot drops a message sent before its controller
+  listens) it reads `StreamState` for every stream station: `Blocked` names
+  `allowHttpConnections`, a registration AudioXL refused names the URL's host as the
+  `allowedHost` line to add, and a stream that never got a row points at AudioXL's log for a
+  redirect host. Rechecked every 15 s for five minutes while any stream is still connecting; once
+  per station per game launch; queued 11 s apart. Strings are `RadioXL.warnStream*`.
+- `API.md`: the script API for mod authors. Its redscript examples live in
+  `tests/api/.../DocExamples.reds`, so the test mod's compile checks them.
+- Station builder: a typed level beside each slider (`parseGain`, `Slider.parse`), sliders at 1 %
+  (#53); a play button on a stream track through a plain audio element, since the gain node's
+  cross-origin route needs headers a stream rarely sends; the stream notice covers redirects (#55).
 - The script API (#39). `RadioXLAPI` (`API.reds`) is the one class other mods may rely on; every
   other member is public only because the module needs it. `Version()` is 1. Reads: `Stations()` in
   dial order, `StationName`, `StationFrequency`, `StationDialPosition`, `StationIcon`,
