@@ -7,6 +7,12 @@ export interface ManifestInput {
   cname: string
   news: boolean
   gain: number
+  /** The description in every language, or the `en-us` one when others are carried. */
+  description: string
+  /** Other languages' descriptions from an opened station, written back unchanged. */
+  descriptionLanguages: Record<string, string>
+  /** An opened station's `extensions`, written back unchanged. */
+  extensions: Record<string, unknown> | null
   iconMode: 'glyph' | 'record' | 'image' | 'atlas'
   iconChoice: string
   iconRecord: string
@@ -20,6 +26,14 @@ export interface ManifestInput {
   iconArchive: { name: string } | null
   iconArchiveHasAtlas: boolean | null
   tracks: Track[]
+}
+
+/** The most a description may hold, in characters (`kMaxDescription` in Manifest.hpp). */
+export const DESCRIPTION_MAX = 1000
+
+/** Characters as the plugin counts them: code points, not UTF-16 units. */
+export function characters(text: string): number {
+  return [...text].length
 }
 
 /** The largest icon worth making, per side. PHONKWAVE Radio's is exactly this. */
@@ -70,6 +84,13 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   if (!s.showFrequency) m.showFrequency = false
   if (s.news) m.news = true
   if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
+  const description = s.description.trim()
+  if (Object.keys(s.descriptionLanguages).length > 0) {
+    m.description = { ...(description ? { 'en-us': description } : {}), ...s.descriptionLanguages }
+  } else if (description) {
+    m.description = description
+  }
+  if (s.extensions && Object.keys(s.extensions).length > 0) m.extensions = s.extensions
   if (s.iconMode === 'record') {
     const record = s.iconChoice === 'other' ? s.iconRecord.trim() : s.iconChoice
     if (record) m.icon = record
@@ -108,6 +129,8 @@ export function checkManifest(s: ManifestInput): Fault[] {
   else if (frequency && name.includes(frequency))
     faults.push({ field: 'stationName', message: 'The name contains the frequency. The label shows it in front already.' })
   if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
+  if (characters(s.description.trim()) > DESCRIPTION_MAX)
+    faults.push({ field: 'description', message: `The description is past ${DESCRIPTION_MAX} characters. RadioXL leaves out a longer one.` })
   else if (s.tracks.every((t) => t.ident))
     faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })
   const missing = s.tracks.filter((t) => !t.url && !t.source)

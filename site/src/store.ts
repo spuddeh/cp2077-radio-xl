@@ -43,6 +43,9 @@ interface StationState {
   cnameEdited: boolean
   news: boolean
   gain: number
+  description: string
+  descriptionLanguages: Record<string, string>
+  extensions: Record<string, unknown> | null
   iconMode: IconMode
   /** A vanilla station's `UIIcon` record, or `other` for the free-text record. */
   iconChoice: string
@@ -140,6 +143,9 @@ export const useStation = create<StationState>((set) => ({
   cnameEdited: false,
   news: false,
   gain: 1,
+  description: '',
+  descriptionLanguages: {},
+  extensions: null,
   iconMode: 'glyph',
   iconChoice: 'UIIcon.RadioDowntempo',
   iconRecord: '',
@@ -195,6 +201,9 @@ export const useStation = create<StationState>((set) => ({
       cnameEdited: true,
       news: st.news,
       gain: st.gain,
+      description: st.description,
+      descriptionLanguages: st.descriptionLanguages,
+      extensions: st.extensions,
       iconMode: st.iconMode,
       iconChoice: st.iconChoice,
       iconRecord: st.iconRecord,

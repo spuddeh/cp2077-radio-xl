@@ -61,6 +61,18 @@ export function TextInput(props: {
   )
 }
 
+export function TextArea(props: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
+  return (
+    <textarea
+      value={props.value}
+      placeholder={props.placeholder}
+      rows={props.rows ?? 4}
+      spellCheck
+      onChange={(e) => props.onChange(e.target.value)}
+    />
+  )
+}
+
 export function Bool(props: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <div className="bool">

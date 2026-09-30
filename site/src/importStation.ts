@@ -27,6 +27,9 @@ export interface ImportedStation {
   cname: string
   news: boolean
   gain: number
+  description: string
+  descriptionLanguages: Record<string, string>
+  extensions: Record<string, unknown> | null
   iconMode: IconMode
   iconChoice: string
   iconRecord: string
@@ -45,7 +48,7 @@ export interface ImportedStation {
 
 export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
-const KNOWN = new Set(['name', 'frequency', 'displayName', 'showFrequency', 'news', 'gain', 'icon', 'atlas', 'tracks'])
+const KNOWN = new Set(['name', 'frequency', 'displayName', 'showFrequency', 'news', 'gain', 'icon', 'atlas', 'tracks', 'description', 'extensions'])
 const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident', 'gain'])
 /** Mod manager and OS files that are not part of a mod. */
 const JUNK = /(^|\/)(meta\.ini|desktop\.ini|thumbs\.db|\.ds_store)$/i
@@ -182,6 +185,24 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     )
   }
 
+  // A description is one text, or one per language; the form edits the en-us text and carries the rest.
+  let description = ''
+  const descriptionLanguages: Record<string, string> = {}
+  if (typeof m.description === 'string') description = m.description
+  else if (m.description && typeof m.description === 'object' && !Array.isArray(m.description)) {
+    for (const [code, text] of Object.entries(m.description as Record<string, unknown>)) {
+      if (typeof text !== 'string') continue
+      if (code === 'en-us') description = text
+      else descriptionLanguages[code] = text
+    }
+    const others = Object.keys(descriptionLanguages)
+    if (others.length) notes.push(`The description's other languages (${others.join(', ')}) are kept as they were; the form edits the en-us text.`)
+  }
+  const extensions =
+    m.extensions && typeof m.extensions === 'object' && !Array.isArray(m.extensions) ? (m.extensions as Record<string, unknown>) : null
+  if (extensions && Object.keys(extensions).length)
+    notes.push(`Data for other mods (${Object.keys(extensions).join(', ')}) is kept as it was.`)
+
   return {
     folder: folderName,
     frequency,
@@ -189,6 +210,9 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     stationName,
     cname: typeof m.name === 'string' ? m.name : '',
     news: m.news === true,
+    description,
+    descriptionLanguages,
+    extensions,
     gain: typeof m.gain === 'number' ? Math.max(0, Math.min(4, m.gain)) : 1,
     iconMode: atlas ? 'atlas' : icon ? 'record' : 'glyph',
     iconChoice: vanilla ? vanilla.icon : icon && !atlas ? 'other' : 'UIIcon.RadioDowntempo',

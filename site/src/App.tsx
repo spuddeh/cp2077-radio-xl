@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { defaultIconTarget, useStation, type IconMode, type Source } from './store'
-import { buildManifest, checkManifest, displayName, generatesIcon, ICON_IMAGE_RECOMMENDED, iconTarget } from './manifest'
-import { Bool, Hint, Row, Slider, Stepper, TextInput } from './components/Controls'
+import { buildManifest, characters, checkManifest, DESCRIPTION_MAX, displayName, generatesIcon, ICON_IMAGE_RECOMMENDED, iconTarget } from './manifest'
+import { Bool, Hint, Row, Slider, Stepper, TextArea, TextInput } from './components/Controls'
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
@@ -405,6 +405,13 @@ export function App() {
               </Row>
               <Row label="News" note="Stanley's bulletins and greetings, and N54 News.">
                 <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
+              </Row>
+              <Row
+                label="Description"
+                note={`For other mods to read, such as ones that play stations from NPC cars. RadioXL shows it nowhere. ${characters(s.description.trim())} of ${DESCRIPTION_MAX} characters.`}
+                fault={faultFor('description')}
+              >
+                <TextArea value={s.description} onChange={(v) => s.set({ description: v })} placeholder="What the station plays, in a sentence or two." />
               </Row>
               <Row
                 label="Volume"
