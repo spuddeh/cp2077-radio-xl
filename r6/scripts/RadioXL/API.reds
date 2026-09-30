@@ -398,9 +398,12 @@ public abstract class RadioXLAPI {
     return true;
   }
 
+  // `n"None"` clears it.
   public final static func SetMyStation(station: CName) -> Bool {
     let state = RadioXLState.Get();
-    if !IsDefined(state) || RadioXLAPI.EnumOf(station) < 0 || Equals(state.rememberStation, station) { return false; }
+    let clear: Bool = !IsNameValid(station);
+    if clear { station = n"None"; }
+    if !IsDefined(state) || (!clear && RadioXLAPI.EnumOf(station) < 0) || Equals(state.rememberStation, station) { return false; }
     state.SetRememberStation(station);
     return true;
   }
