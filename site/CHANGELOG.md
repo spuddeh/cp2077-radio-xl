@@ -4,6 +4,14 @@ One entry per builder version. The version is in `package.json` and printed at t
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
 ## [Unreleased]
+- A level can be typed beside its slider, as a percentage (`133%`) or in dB (`+2.5 dB`), on the
+  station Volume and on every track. The sliders step in 1 % instead of 5 % (#53).
+- A stream track has a play button, to hear that the address is the station meant. An `http://`
+  stream cannot play from this page, which is served over https: the row links to it instead.
+- The stream notice says a stream can redirect to another host, that each host needs its own
+  `allowedHost` line, and where to find them (#55).
+- Build .zip waits until every file has been measured, and the footer says how many are still
+  measuring. A build started before that wrote the unmeasured tracks at 100 %.
 - A Description field, for other mods to read, with a count against its 1000-character limit.
   RadioXL shows the text nowhere.
 - Opening a station keeps what it carries for other mods (`extensions`), and a description written
