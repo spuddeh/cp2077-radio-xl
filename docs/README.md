@@ -1,4 +1,11 @@
-# Engine measurements
+# Documentation
+
+**For mod authors:** [the script API](script-api.md) - reading RadioXL's stations and songs, changing
+what plays, and its events, from redscript or CET.
+
+The rest of this folder is engine measurements.
+
+## Engine measurements
 
 What the framework found out about Cyberpunk 2077's radio system while being built. Everything here
 is about the engine, not about this code, so it is useful to anyone extending the radio - RadioXL

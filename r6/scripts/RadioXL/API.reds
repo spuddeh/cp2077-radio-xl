@@ -13,7 +13,7 @@
 //
 // From CET the class is the Lua global `RadioXL_RadioXLAPI`, and a Lua string is taken where a
 // CName is asked for: `RadioXL_RadioXLAPI.Tracks("radio_station_01_att_rock")`. A returned CName
-// reads as text through `.value`. Events are in Events.reds; API.md in the repository documents both.
+// reads as text through `.value`. Events are in Events.reds; docs/script-api.md in the repository documents both.
 //
 // **Put an array these functions return into a `let` before `ArraySize`, `ArrayContains` or
 // an index.** Redscript reads such a call's result from uninitialised memory otherwise, which can

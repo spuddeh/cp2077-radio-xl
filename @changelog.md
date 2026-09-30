@@ -11,7 +11,7 @@
   `allowedHost` line to add, and a stream that never got a row points at AudioXL's log for a
   redirect host. Rechecked every 15 s for five minutes while any stream is still connecting; once
   per station per game launch; queued 11 s apart. Strings are `RadioXL.warnStream*`.
-- `API.md`: the script API for mod authors. Its redscript examples live in
+- `docs/script-api.md`: the script API for mod authors. Its redscript examples live in
   `tests/api/.../DocExamples.reds`, so the test mod's compile checks them.
 - Station builder: a typed level beside each slider (`parseGain`, `Slider.parse`), sliders at 1 %
   (#53); a play button on a stream track through a plain audio element, since the gain node's

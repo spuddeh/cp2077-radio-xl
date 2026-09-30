@@ -18,7 +18,7 @@ What is still open is in the [issues](https://github.com/spuddeh/cp2077-radio-xl
 working board, with what has been measured on each. Not on Nexus yet.
 
 **Writing a mod that works with RadioXL?** The script API, for redscript and CET, is in
-[API.md](API.md).
+[docs/script-api.md](docs/script-api.md).
 
 ## What a station mod ships
 
@@ -220,7 +220,7 @@ r6/scripts/RadioXL/
   Settings.reds              the settings panel, one provider, four tabs
   Localization.reds, translations/
                              the station names and titles, and the panel's strings
-  API.reds                   the script API (RadioXLAPI); see API.md
+  API.reds                   the script API (RadioXLAPI); see docs/script-api.md
   Events.reds                the script API's events
 r6/storages/RedscriptConfigFramework/
                              the panel's card and the in-game docs page

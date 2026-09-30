@@ -1,7 +1,7 @@
 // ======================================================================================
 // Mod Name: RadioXL API Test
 // Author: Spuddeh
-// Description: The redscript examples in API.md, as written there, so a compile of the test mod
+// Description: The redscript examples in docs/script-api.md, as written there, so a compile of the test mod
 //              checks them. Change one here when it changes there.
 // File Version: 0.5.1
 // ======================================================================================
