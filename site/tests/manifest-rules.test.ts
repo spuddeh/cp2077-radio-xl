@@ -17,6 +17,21 @@ import { test } from 'node:test'
 import { buildManifest, checkManifest, displayName, type ManifestInput } from '../src/manifest.ts'
 import type { Track } from '../src/store.ts'
 
+/** The description as importStation reads it: the en-us text in the form, the other languages carried. */
+function descriptionOf(raw: unknown): { description: string; descriptionLanguages: Record<string, string> } {
+  if (typeof raw === 'string') return { description: raw, descriptionLanguages: {} }
+  const languages: Record<string, string> = {}
+  let description = ''
+  if (raw && typeof raw === 'object') {
+    for (const [code, text] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof text !== 'string') continue
+      if (code === 'en-us') description = text
+      else languages[code] = text
+    }
+  }
+  return { description, descriptionLanguages: languages }
+}
+
 /** Form state as an opened station would leave it, from a manifest's own JSON. */
 function asFormState(manifest: Record<string, unknown>): ManifestInput {
   const display = typeof manifest.displayName === 'string' ? manifest.displayName : ''
@@ -45,6 +60,9 @@ function asFormState(manifest: Record<string, unknown>): ManifestInput {
     cname: typeof manifest.name === 'string' ? manifest.name : '',
     news: manifest.news === true,
     gain: typeof manifest.gain === 'number' ? manifest.gain : 1,
+    ...descriptionOf(manifest.description),
+    extensions:
+      manifest.extensions && typeof manifest.extensions === 'object' ? (manifest.extensions as Record<string, unknown>) : null,
     iconMode: atlas ? 'atlas' : icon ? 'record' : 'glyph',
     iconChoice: icon && !atlas ? 'other' : 'UIIcon.RadioDowntempo',
     iconRecord: icon && !atlas ? icon : '',
@@ -193,4 +211,33 @@ test('a 0.3.0 manifest opened on the page is written back with the field', () =>
   assert.equal(written.frequency, 104.9)
   assert.equal(written.displayName, 'Tool FM')
   assert.deepEqual(checkManifest(asFormState(written)), [])
+})
+
+test('a plain description is written as one text', () => {
+  const written = buildManifest(asFormState(like({ description: 'Pirate signal out of Kabuki.' })))
+  assert.equal(written.description, 'Pirate signal out of Kabuki.')
+})
+
+test('a description in several languages is written back with every language', () => {
+  const description = { 'en-us': 'Pirate signal.', 'de-de': 'Piratensender.' }
+  const written = buildManifest(asFormState(like({ description })))
+  assert.deepEqual(written.description, description)
+})
+
+test('no description writes no key', () => {
+  assert.equal('description' in buildManifest(asFormState(GOOD)), false)
+})
+
+// The plugin counts characters, not bytes, and leaves out a description past 1000.
+test('a description past 1000 characters is a fault, and 1000 of them is not', () => {
+  const fits = 'é'.repeat(1000)
+  assert.deepEqual(checkManifest(asFormState(like({ description: fits }))), [])
+  const faults = checkManifest(asFormState(like({ description: fits + '!' })))
+  assert.deepEqual(faults.map((f) => f.field), ['description'])
+})
+
+test('extensions are written back unchanged', () => {
+  const extensions = { NpcCarStereo: { weight: 2, districts: ['Watson'] } }
+  const written = buildManifest(asFormState(like({ extensions })))
+  assert.deepEqual(written.extensions, extensions)
 })

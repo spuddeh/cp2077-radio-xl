@@ -180,7 +180,18 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 8px 0;
   color: var(--blue);
 }
-.cell input::placeholder { color: var(--grey); opacity: 0.55; }
+.cell textarea {
+  width: 100%;
+  background: none;
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  color: var(--blue);
+  resize: vertical;
+  min-height: 5em;
+}
+.cell input::placeholder,
+.cell textarea::placeholder { color: var(--grey); opacity: 0.55; }
 
 /* --- On / Off: settingsSelectorBool ----------------------------------------------------- */
 
