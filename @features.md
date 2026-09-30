@@ -29,10 +29,12 @@
   station is not created (#10).
 - The script API (#39): `RadioXLAPI` reads, deck-backed acts and ten events, reachable from CET as
   `RadioXL_RadioXLAPI` and `Observe("RadioXL.RadioXLEvents", ...)`. Verified in game by
-  `tests/api`, run both ways: 63 checks pass in a car and 62 on foot, and every event reached a
-  CET Observe as often as a redscript listener. In a car no Radioport power event arrives. A song
-  switched off through the API stays off after a save load. Not reached: CatalogRefreshed and
-  Silenced.
+  `tests/api`, run both ways: 63 checks pass in a car, and 75 on foot now that it also reads an
+  installed station's description (API and `-desc` key, through Codeware and GetLocalizedTextByKey),
+  its extensions, 19 idents while muted, and a stream station's reads. Every event reached a CET
+  Observe as often as a redscript listener; in a car no Radioport power event arrives. A song
+  switched off through the API stays off after a save load. Not reached: CatalogRefreshed,
+  Silenced, a description in a language other than English, and StreamState past Blocked.
 - Manifest `description` (#60) and `extensions`, with builder support for the first.
 - Each track's length is read from its file at load, so a station runs on the world clock like a
   vanilla one. No durations, event names, Wwise ids or records in a manifest.
