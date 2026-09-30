@@ -13,8 +13,9 @@ Enable `RadioXL API Test [DEV]` in MO2, below RadioXL.
 
 ## Running it
 
-With a save loaded and V on foot. It uses the Radioport, changes station and song, flips every
-setting it can reach and puts each one back.
+With a save loaded. Seated in a vehicle it uses the car radio, and also checks that the Radioport
+is never reported while seated; on foot it uses the Radioport. Run it both ways. It changes station
+and song, flips every setting it can reach and puts each one back.
 
 - **Through the wolvenkit MCP's live bridge:** `live_exec` the contents of `bridge/start.lua`, wait
   about 40 seconds, then `live_exec` `bridge/report.lua` (nil means still running). The report also
@@ -25,6 +26,5 @@ setting it can reach and puts each one back.
 ## What it does not reach
 
 - `CatalogRefreshed` needs a quest to add songs to a station, and `Silenced` a phone call or a scene.
-- The vehicle receiver: run it on foot. In a car the run stops after the reads.
 - A song state surviving a save load: switch one off with the API, load a save, and read
   `SongState` again.

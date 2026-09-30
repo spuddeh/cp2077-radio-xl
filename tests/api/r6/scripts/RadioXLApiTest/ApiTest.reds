@@ -14,8 +14,9 @@
 //
 //   print(RadioXLApiTest_RadioXLApiTest.Report())
 //
-// The run uses the Radioport. It switches it on if it is off, changes station and song, flips each
-// setting and puts every one back, and leaves the radio as it found it. It listens to the events
+// The run uses the car radio when V sits in a vehicle and the Radioport on foot. It switches that
+// radio on if it is off, changes station and song, flips each setting and puts every one back, and
+// leaves the radio as it found it. It listens to the events
 // the way a redscript mod does, registered by name in OnLoad; the CET route is checked from the
 // bridge with Observe.
 
@@ -43,6 +44,10 @@ public class RadioXLApiTest extends ScriptableService {
   private let m_running: Bool;
 
   // What the run changes, so it can be put back, and what it has seen so far.
+  private let m_kind: RadioXLReceiverKind;
+  private let m_seated: Bool;
+  private let m_radioportPower: Int32;
+  private let m_radioportPowerAtStart: Int32;
   private let m_wasOn: Bool;
   private let m_wasStation: CName;
   private let m_station: CName;
@@ -79,7 +84,10 @@ public class RadioXLApiTest extends ScriptableService {
   private cb func OnStationChanged(e: ref<RadioXLStationChangedEvent>) {
     this.Heard("StationChanged", s"\(e.Previous()) -> \(e.Station()) \(EnumInt(e.Receiver()))");
   }
-  private cb func OnRadioPower(e: ref<RadioXLRadioPowerEvent>) { this.Heard("RadioPower", s"\(EnumInt(e.Receiver())) on=\(e.On())"); }
+  private cb func OnRadioPower(e: ref<RadioXLRadioPowerEvent>) {
+    if Equals(e.Receiver(), RadioXLReceiverKind.Radioport) { this.m_radioportPower += 1; }
+    this.Heard("RadioPower", s"\(EnumInt(e.Receiver())) on=\(e.On())");
+  }
   private cb func OnCatalogRefreshed(e: ref<RadioXLCatalogRefreshedEvent>) { this.Heard("CatalogRefreshed", s"\(e.Station()) +\(e.Added())"); }
   private cb func OnSongStateChanged(e: ref<RadioXLSongStateChangedEvent>) { this.Heard("SongStateChanged", s"\(e.Track()) \(EnumInt(e.State()))"); }
   private cb func OnMutesChanged(e: ref<RadioXLMutesChangedEvent>) { this.Heard("MutesChanged", s"idents=\(e.Idents()) news=\(e.News())"); }
@@ -177,12 +185,22 @@ public class RadioXLApiTest extends ScriptableService {
     return GameInstance.GetPlayerSystem(GetGameInstance()).GetLocalPlayerMainGameObject() as PlayerPuppet;
   }
 
-  // The Radioport on at a station, or off with `station` set to None.
-  private func Radioport(station: CName) -> Void {
+  // The radio on at a station, or off with `station` set to None, the way the game's own radio
+  // selector does it. In a vehicle the event reaches the car radio as well as the Radioport.
+  private func Radio(station: CName) -> Void {
     let player = this.Player();
     if !IsDefined(player) { return; }
     let position: Int32 = IsNameValid(station) ? RadioXLAPI.StationDialPosition(station) : -1;
-    player.GetQuickSlotsManager().SendRadioEvent(position >= 0, true, position);
+    if position >= 0 {
+      player.GetQuickSlotsManager().SendRadioEvent(true, true, position);
+    } else {
+      player.GetQuickSlotsManager().SendRadioEvent(false, false, -1);
+    }
+  }
+
+  // The expected receiver as the report prints it: `1` for the car, `2` for the Radioport.
+  private func KindText() -> String {
+    return IntToString(EnumInt(this.m_kind));
   }
 
   public func Step(step: Int32) -> Void {
@@ -280,12 +298,12 @@ public class RadioXLApiTest extends ScriptableService {
     let silenced: array<CName> = RadioXLAPI.SilencedBy();
     this.Note(s"SilencedBy: \(ArraySize(silenced)) situation(s); MyStation \(RadioXLAPI.MyStation()); idents muted \(RadioXLAPI.IdentsMuted()); news muted \(RadioXLAPI.NewsMuted())");
 
-    if Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.Vehicle) {
-      this.Note("In a vehicle: the receiver steps use the Radioport. Get out and run it again.");
-      this.Finish();
-      return;
-    }
-    this.m_wasOn = Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.Radioport);
+    let player = this.Player();
+    this.m_seated = IsDefined(player) && IsDefined(player.GetMountedVehicle());
+    this.m_kind = this.m_seated ? RadioXLReceiverKind.Vehicle : RadioXLReceiverKind.Radioport;
+    this.m_radioportPowerAtStart = this.m_radioportPower;
+    this.Note(this.m_seated ? "in a vehicle: the run uses the car radio" : "on foot: the run uses the Radioport");
+    this.m_wasOn = Equals(RadioXLAPI.Receiver(), this.m_kind);
     this.m_wasStation = RadioXLAPI.CurrentStation();
     this.Next(1, 0.5);
   }
@@ -294,7 +312,7 @@ public class RadioXLApiTest extends ScriptableService {
     this.Mark();
     if !this.m_wasOn {
       let stations: array<CName> = RadioXLAPI.Stations();
-      this.Radioport(stations[0]);
+      this.Radio(stations[0]);
       this.Next(2, 2.5);
       return;
     }
@@ -303,9 +321,9 @@ public class RadioXLApiTest extends ScriptableService {
 
   // Tunes to a station other than the one playing: a custom one when there is one.
   private func Tune() -> Void {
-    this.Check("the Radioport is on", Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.Radioport), s"\(EnumInt(RadioXLAPI.Receiver()))");
+    this.Check("the radio is on", Equals(RadioXLAPI.Receiver(), this.m_kind), s"receiver \(EnumInt(RadioXLAPI.Receiver())), expected \(this.KindText())");
     if !this.m_wasOn {
-      this.Check("RadioPower on arrived", this.Since("RadioPower") >= 1 && StrContains(this.Last("RadioPower"), "on=true"), this.Last("RadioPower"));
+      this.Check("RadioPower on arrived for that radio", this.Since("RadioPower") >= 1 && StrContains(this.Last("RadioPower"), this.KindText() + " on=true"), this.Last("RadioPower"));
     }
     let current: CName = RadioXLAPI.CurrentStation();
     let target: CName = n"None";
@@ -451,13 +469,15 @@ public class RadioXLApiTest extends ScriptableService {
     let vanilla: CName = n"radio_station_01_att_rock";
     this.Check("Position reads a vanilla station nobody is listening to", RadioXLAPI.Position(vanilla) >= 0.0, s"\(RadioXLAPI.Position(vanilla)) s");
     this.Mark();
-    this.Radioport(n"None");
+    this.Radio(n"None");
     this.Next(11, 2.5);
   }
 
   private func PowerOff() -> Void {
-    this.Check("the Radioport is off", Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.None), s"\(EnumInt(RadioXLAPI.Receiver()))");
-    this.Check("RadioPower off arrived", this.Since("RadioPower") >= 1 && StrContains(this.Last("RadioPower"), "on=false"), this.Last("RadioPower"));
+    this.Check("the radio is off", Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.None), s"receiver \(EnumInt(RadioXLAPI.Receiver()))");
+    this.Check("RadioPower off arrived once, for that radio", this.Since("RadioPower") == 1 && StrContains(this.Last("RadioPower"), this.KindText() + " on=false"),
+               s"\(this.Since("RadioPower")): \(this.Last("RadioPower"))");
+    this.Check("CurrentStation and CurrentTrack read None with the radio off", !IsNameValid(RadioXLAPI.CurrentStation()) && !IsNameValid(RadioXLAPI.CurrentTrack()), "");
     this.Check("NextSong with no radio on is refused", !RadioXLAPI.NextSong(), "");
     let history: array<CName> = RadioXLAPI.History();
     this.Check("History is empty with no radio on", ArraySize(history) == 0, "");
@@ -465,8 +485,13 @@ public class RadioXLApiTest extends ScriptableService {
   }
 
   private func Restore() -> Void {
-    if this.m_wasOn { this.Radioport(this.m_wasStation); }
-    this.Note(this.m_wasOn ? s"the Radioport is back on \(this.m_wasStation)" : "the Radioport is left off, as it was");
+    if this.m_seated {
+      // The Radioport shadows the car radio while V is seated, and must never be reported as playing.
+      this.Check("no Radioport power event while seated", this.m_radioportPower == this.m_radioportPowerAtStart,
+                 s"\(this.m_radioportPower - this.m_radioportPowerAtStart)");
+    }
+    if this.m_wasOn { this.Radio(this.m_wasStation); }
+    this.Note(this.m_wasOn ? s"the radio is back on \(this.m_wasStation)" : "the radio is left off, as it was");
     this.Next(13, 0.1);
   }
 }
