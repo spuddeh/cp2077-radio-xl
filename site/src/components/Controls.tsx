@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import warning from '../assets/warning-triangle.png'
 
-export function Row(props: { label: string; note?: ReactNode; fault?: string; notice?: ReactNode; children: ReactNode }) {
+/** `bare` leaves out the frame behind the control: the game draws its On / Off pair on nothing. */
+export function Row(props: { label: string; note?: ReactNode; fault?: string; notice?: ReactNode; bare?: boolean; children: ReactNode }) {
   return (
     <div className="row">
       <label className="row-label">{props.label}</label>
-      <div className="cell ink-frame">{props.children}</div>
+      <div className={props.bare ? 'cell bare' : 'cell ink-frame'}>{props.children}</div>
       {props.notice ? (
         <div className="row-note notice">
           <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
@@ -26,10 +27,32 @@ export function Row(props: { label: string; note?: ReactNode; fault?: string; no
 
 export function Notice(props: { children: ReactNode }) {
   return (
-    <p className="row-note notice">
+    <div className="row-note notice">
       <span className="fault-icon" style={{ maskImage: `url(${warning})` }} aria-hidden />
-      <span className="note-text">{props.children}</span>
-    </p>
+      <div className="note-text">{props.children}</div>
+    </div>
+  )
+}
+
+/** Lines to paste somewhere, in a box with a button that copies them. */
+export function CopyBlock(props: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <div className="copy-block">
+      <pre>{props.text}</pre>
+      <button
+        type="button"
+        className="ink-frame copy-block-button"
+        onClick={() =>
+          navigator.clipboard.writeText(props.text).then(() => {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+          })
+        }
+      >
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
   )
 }
 
@@ -112,6 +135,7 @@ export function Slider(props: {
     <div className="slider">
       <input
         type="range"
+        title={props.parse ? 'The arrow keys move this 1% at a time.' : undefined}
         min={props.min}
         max={props.max}
         step={props.step}
@@ -127,7 +151,7 @@ export function Slider(props: {
           disabled={props.disabled}
           spellCheck={false}
           aria-label="Level, as a percentage or in dB"
-          title="Type a level: 133%, or +2.5 dB"
+          title="Type a level: 133%, or +2.5 dB. On the slider, the arrow keys move 1%."
           size={Math.max(4, (draft ?? shown).length)}
           onFocus={(e) => {
             setDraft(`${Math.round(props.value * 100)}%`)

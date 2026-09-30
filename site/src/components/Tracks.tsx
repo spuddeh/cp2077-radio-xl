@@ -13,7 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
 import { gainLabel, parseGain, suggestGain, type Suggestion } from '../loudness'
 import { measureFile, preview } from '../measure'
-import { Bool, Fault, Notice, Slider } from './Controls'
+import { Bool, CopyBlock, Fault, Notice, Slider } from './Controls'
 import { Tooltip } from './Tooltip'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
@@ -72,9 +72,10 @@ export function Tracks() {
     return () => clearTimeout(t)
   }, [confirming])
 
-  // Every file track is measured once, as it arrives; the queue takes them one at a time. With
-  // auto level on, the measurement sets the track's level as it lands.
+  // With auto level on, every file track is measured once and its level set as the measurement
+  // lands; the queue takes them one at a time. Off, nothing is measured: a big station takes minutes.
   useEffect(() => {
+    if (!autoLevel) return
     for (const t of tracks) {
       if (t.url || !t.source || t.level !== undefined || measuring.has(t.id)) continue
       measuring.add(t.id)
@@ -84,7 +85,7 @@ export function Tracks() {
         updateTrack(t.id, level && auto ? { level, gain: suggestGain(level, TARGET).gain } : { level })
       })
     }
-  }, [tracks, updateTrack])
+  }, [tracks, updateTrack, autoLevel])
 
   // Turning auto level on puts every measured track on its suggestion; off leaves them where they are.
   useEffect(() => {
@@ -113,7 +114,7 @@ export function Tracks() {
   const streamsToDisk = 'showSaveFilePicker' in window
   const audioBytes = tracks.reduce((sum, t) => sum + (t.source?.size ?? 0), 0)
   const inMemoryWarning = !streamsToDisk && audioBytes > 400 * 1048576
-  const pending = tracks.filter((t) => !t.url && t.source && t.level === undefined).length
+  const pending = autoLevel ? tracks.filter((t) => !t.url && t.source && t.level === undefined).length : 0
   const suggestible = tracks.filter((t) => suggestionFor(t) !== null && !atSuggestion(t)).length
   function useSuggested() {
     updateTracks(
@@ -180,15 +181,20 @@ export function Tracks() {
       </div>
       {streamHost && (
         <Notice>
-          A stream plays only once the player allows it: AudioXL fetches nothing unless{' '}
-          <code>red4ext\plugins\AudioXL\AudioXL.ini</code> carries{' '}
-          <code>allowHttpConnections = true</code> and <code>allowedHost = {streamHost}</code>. No mod can set that,
-          so say it on the station&apos;s own page. AudioXL writes that file on first start with everything off; under
-          Mod Organizer 2 it is in Overwrite.{' '}
-          <strong>A stream can redirect to another host</strong>, and each host needs its own{' '}
-          <code>allowedHost</code> line. To find them, allow this one, start the game and tune in: AudioXL&apos;s log
-          names any host it refused, and RadioXL shows a warning in game. <code>*.example.com</code> covers every
-          subdomain but not <code>example.com</code> itself.
+          <strong>Players have to allow this stream.</strong> Put these steps on your station&apos;s page:
+          <ol className="notice-steps">
+            <li>
+              Open <code>red4ext\plugins\AudioXL\AudioXL.ini</code>. With Mod Organizer 2 it is in Overwrite.
+            </li>
+            <li>
+              Set these two lines:
+              <CopyBlock text={`allowHttpConnections = true\nallowedHost = ${streamHost}`} />
+            </li>
+            <li>
+              Still silent? The stream moved to another host. AudioXL&apos;s log names it: add an{' '}
+              <code>allowedHost</code> line for that one too.
+            </li>
+          </ol>
         </Notice>
       )}
 
@@ -370,7 +376,7 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
           ) : !t.source ? (
             ''
           ) : t.level === undefined ? (
-            'Measuring'
+            props.auto ? 'Measuring' : ''
           ) : t.level === null ? (
             'This browser could not read the file, so no level is suggested.'
           ) : (

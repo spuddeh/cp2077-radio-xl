@@ -129,6 +129,40 @@ export function BuildFailure(props: { failure: Failure; onCopy: () => void; onDi
   )
 }
 
+/** Asked at Build .zip or Copy station.json while auto level is off and songs are unmeasured. */
+export function LevelQuestion(props: {
+  songs: number
+  megabytes: number
+  action: 'build' | 'copy'
+  onLevel: () => void
+  onSkip: () => void
+  onCancel: () => void
+}) {
+  const songs = `${props.songs} ${props.songs === 1 ? 'song' : 'songs'}`
+  return (
+    <div className="level-question ink-frame" role="dialog" aria-labelledby="level-question-title">
+      <p id="level-question-title" className="level-question-title">
+        Level the songs first?
+      </p>
+      <p>
+        Auto level measures each song and sets its level to match the game&apos;s own stations. Measuring {songs} (
+        {Math.round(props.megabytes)} MB) can take a few minutes. The page shows the progress.
+      </p>
+      <div className="level-question-actions">
+        <button type="button" className="ink-frame level-question-yes" onClick={props.onLevel}>
+          Level them
+        </button>
+        <button type="button" className="ink-frame level-question-no" onClick={props.onSkip}>
+          {props.action === 'build' ? 'Build without' : 'Copy without'}
+        </button>
+        <button type="button" className="link" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /**
  * items_update.inkwidget Item_Received_SMALL: plays its whole life, in, hold and out, then ends.
  * The game's own sequence runs 5.8 s, which is long for a page, so it plays at TOAST_RATE.

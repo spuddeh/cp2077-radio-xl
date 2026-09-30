@@ -8,8 +8,11 @@ One entry per builder version. The version is in `package.json` and printed at t
   station Volume and on every track. The sliders step in 1 % instead of 5 % (#53).
 - A stream track has a play button, to hear that the address is the station meant. An `http://`
   stream cannot play from this page, which is served over https: the row links to it instead.
-- The stream notice says a stream can redirect to another host, that each host needs its own
-  `allowedHost` line, and where to find them (#55).
+- The stream notice is three steps for the station's page, with the two AudioXL.ini lines in a box
+  that copies them, and what to do when a stream moves to another host (#55).
+- Auto level starts off. Build .zip and Copy station.json ask whether to level the songs first,
+  and say how many there are to measure: a big station takes minutes.
+- On / Off switches sit on the row with no box behind them, as the game draws them.
 - Build .zip waits until every file has been measured, and the footer says how many are still
   measuring. A build started before that wrote the unmeasured tracks at 100 %.
 - A Description field, for other mods to read, with a count against its 1000-character limit.

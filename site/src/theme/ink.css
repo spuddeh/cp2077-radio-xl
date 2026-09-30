@@ -190,6 +190,40 @@ button, input, select, textarea { font: inherit; color: inherit; }
   resize: vertical;
   min-height: 5em;
 }
+.copy-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 2px solid var(--warning);
+}
+.copy-block pre {
+  flex: 1;
+  margin: 0;
+  color: var(--blue);
+  font-size: var(--font-readable-x-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.copy-block-button {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.6;
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: var(--font-readable-x-small);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.copy-block-button:hover { --edge-opacity: 1; }
+.notice-steps { margin: 4px 0; padding-left: 1.3em; }
+.notice-steps li { margin: 2px 0; }
 .cell input::placeholder,
 .cell textarea::placeholder { color: var(--grey); opacity: 0.55; }
 

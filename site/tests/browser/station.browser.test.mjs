@@ -45,11 +45,14 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
   const build = async () => {
     // A build that has just finished still holds the progress panel, and the button with it.
     await page.waitFor("!document.querySelector('.build-overlay')")
-    await page.evaluate(`(() => {
+    await page.evaluate(`(async () => {
       window.__zip = undefined
       const button = [...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip'))
       if (button.disabled) throw new Error('Build .zip is disabled: ' + document.querySelector('.footer-state').textContent)
       button.click()
+      // With songs unmeasured, Build .zip first asks whether to level them; these builds say no.
+      await new Promise((r) => setTimeout(r, 100))
+      document.querySelector('.level-question-no')?.click()
       return 1
     })()`)
     await page.waitFor('!!window.__zip')
@@ -130,10 +133,19 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
 
   test('measures a file and levels it, and off auto level the slider is yours', async () => {
     // A 997 Hz sine at -20 dBFS: -20.0 LUFS, peak -20.0 dBFS. Against the -11.1 LUFS target that
-    // wants +8.9 dB, which the peak allows, so the level is 2.79. Auto level is on by default, so
-    // the measurement sets it and the slider is read-only.
+    // wants +8.9 dB, which the peak allows, so the level is 2.79. Auto level starts off, so nothing
+    // is measured until Build .zip asks and the answer is to level them; then the measurement sets
+    // the level and the slider is read-only.
     await page.setFile('input[accept=".wav,.mp3,.ogg,.flac"]', files.tone)
     await page.waitFor("document.querySelectorAll('.track').length === 2")
+    assert.equal(await page.evaluate("document.querySelector('.footer-state').textContent.includes('is ready')"), true, 'nothing measures with auto level off')
+    await page.waitFor("!document.querySelector('.build-overlay')")
+    await page.evaluate("[...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip')).click(); 1")
+    await page.waitFor("!!document.querySelector('.level-question')")
+    const question = await page.evaluate("document.querySelector('.level-question').textContent")
+    assert.match(question, /Level the songs first\?.*Measuring 2 songs/, question)
+    await page.evaluate("document.querySelector('.level-question-yes').click()")
+    await page.waitFor("!document.querySelector('.level-question')")
     // While the file measures, Build .zip waits and the footer says so; a build then would write
     // the track at 100%.
     const during = await page.evaluate(`JSON.stringify({
@@ -279,7 +291,12 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     await page.waitFor(`[...document.querySelectorAll('.track-file')].some((e) => e.textContent.includes('Gone.mp3'))`)
     await unlink(files.gone)
     await page.waitFor("!document.querySelector('.build-overlay')")
-    await page.evaluate(`[...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip')).click(); 1`)
+    await page.evaluate(`(async () => {
+      [...document.querySelectorAll('button.hint')].find((b) => b.textContent.includes('Build .zip')).click()
+      await new Promise((r) => setTimeout(r, 100))
+      document.querySelector('.level-question-no')?.click()
+      return 1
+    })()`)
     await page.waitFor("!!document.querySelector('.build-failure')")
     const message = await page.evaluate("document.querySelector('.build-failure-message').textContent")
     assert.match(message, /^Build failed while reading audio\/Gone\.mp3: /, message)
@@ -376,7 +393,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.equal((await read()).tracks[0].gain, 0.71, 'text that is not a level leaves the value alone')
 
     const notice = await page.evaluate("[...document.querySelectorAll('.row-note.notice')].map((e) => e.textContent).join(' ')")
-    assert.ok(notice.includes('redirect'), `the stream notice should say a stream can redirect: ${notice}`)
+    assert.ok(notice.includes('another host'), `the stream notice should say a stream can move to another host: ${notice}`)
     const play = await page.evaluate("document.querySelector('.track-play').disabled")
     assert.equal(play, false, 'an https stream can be played from the page')
     assert.deepEqual(await page.errors(), [])

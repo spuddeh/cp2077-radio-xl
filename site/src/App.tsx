@@ -5,7 +5,7 @@ import { Bool, Hint, Row, Slider, Stepper, TextArea, TextInput } from './compone
 import { Radioport } from './components/Radioport'
 import { LOGO_MAX, WORLD_LAYOUTS, WorldRadio, type WorldLayout } from './components/WorldRadio'
 import { Tracks } from './components/Tracks'
-import { BuildFailure, BuildProgress, ToastView, type BuildPhase, type Failure, type Toast } from './components/Feedback'
+import { BuildFailure, BuildProgress, LevelQuestion, ToastView, type BuildPhase, type Failure, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
 import { importRadioExt } from './importRadioExt'
@@ -94,9 +94,10 @@ function saveSwitch(key: string, value: boolean): boolean {
 export function App() {
   const s = useStation()
   const faults = useMemo(() => checkManifest(s), [s])
-  // A build that starts while files are still measuring would write those tracks at 100%, so it
-  // waits for the last measurement, whichever way the auto level switch is set.
-  const measuring = s.tracks.filter((t) => !t.url && t.source && t.level === undefined).length
+  // With auto level on, a build that starts while files are still measuring would write those
+  // tracks at 100%, so it waits for the last measurement. Off, nothing is measured.
+  const unmeasured = s.tracks.filter((t) => !t.url && t.source && t.level === undefined)
+  const measuring = s.autoLevel ? unmeasured.length : 0
   const faultFor = (field: string) => faults.find((f) => f.field === field)?.message
   const manifest = useMemo(() => JSON.stringify(buildManifest(s), null, 2), [s])
   const firstSong = s.tracks.find((t) => !t.ident)
@@ -307,13 +308,35 @@ export function App() {
     }
   }
 
+  // Auto level is off until asked for, because measuring a big station takes minutes. Building or
+  // copying with songs unmeasured asks once whether to level them first; adding songs asks again.
+  const [asking, setAsking] = useState<'build' | 'copy' | null>(null)
+  const [declined, setDeclined] = useState(false)
+  useEffect(() => setDeclined(false), [unmeasured.length])
+  const shouldAsk = !s.autoLevel && !declined && unmeasured.length > 0
+  const onBuild = () => (shouldAsk ? setAsking('build') : void startBuild())
+  const onCopy = () => (shouldAsk ? setAsking('copy') : copyManifest())
+  const levelFirst = () => {
+    const action = asking === 'build' ? 'Build .zip' : 'Copy station.json'
+    setAsking(null)
+    s.set({ autoLevel: true })
+    notify('Measuring', `${unmeasured.length} ${unmeasured.length === 1 ? 'song' : 'songs'}. ${action} again once it is done.`)
+  }
+  const skipLevelling = () => {
+    const action = asking
+    setAsking(null)
+    setDeclined(true)
+    if (action === 'build') void startBuild()
+    else copyManifest()
+  }
+
   // The footer hints are the page's keys, as they are the game's; typing in a field is left alone.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || el.closest('input, textarea, select, [contenteditable]')) return
-      if (e.key === 'z' || e.key === 'Z') startBuild()
-      if (e.key === 'c' || e.key === 'C') copyManifest()
+      if (e.key === 'z' || e.key === 'Z') onBuild()
+      if (e.key === 'c' || e.key === 'C') onCopy()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -390,7 +413,7 @@ export function App() {
               <Row label="Frequency" note="Decides the station's place on the dial. Required." fault={faultFor('frequency')}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
               </Row>
-              <Row label="Show frequency" note="Off, the label is the name alone. The frequency still places the station on the dial.">
+              <Row label="Show frequency" bare note="Off, the label is the name alone. The frequency still places the station on the dial.">
                 <Bool value={s.showFrequency} onChange={(v) => s.set({ showFrequency: v })} />
               </Row>
               <Row label="Name" note="Without the frequency; the game shows that in front." fault={faultFor('stationName')}>
@@ -403,7 +426,7 @@ export function App() {
               >
                 <TextInput value={s.cname} onChange={(v) => s.set({ cname: v, cnameEdited: true })} placeholder="radio_station_hangouts_fm" />
               </Row>
-              <Row label="News" note="Stanley's bulletins and greetings, and N54 News.">
+              <Row label="News" bare note="Stanley's bulletins and greetings, and N54 News.">
                 <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
               </Row>
               <Row
@@ -565,8 +588,8 @@ export function App() {
 
       <footer className="footer">
         <div className="hints">
-          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0 || measuring > 0 || build !== null} onClick={startBuild} />
-          <Hint keyLabel="C" label="Copy station.json" onClick={copyManifest} />
+          <Hint keyLabel="Z" label="Build .zip" disabled={faults.length > 0 || measuring > 0 || build !== null} onClick={onBuild} />
+          <Hint keyLabel="C" label="Copy station.json" onClick={onCopy} />
         </div>
         <span className="footer-state">
           {faults.length > 0
@@ -587,6 +610,16 @@ export function App() {
         onFinished={closeBuild}
       />
       {toast && <ToastView key={toast.id} toast={toast} animate={animate} onDone={closeToast} />}
+      {asking && (
+        <LevelQuestion
+          songs={unmeasured.length}
+          megabytes={unmeasured.reduce((sum, t) => sum + (t.source?.size ?? 0), 0) / 1048576}
+          action={asking}
+          onLevel={levelFirst}
+          onSkip={skipLevelling}
+          onCancel={() => setAsking(null)}
+        />
+      )}
       {failure && (
         <BuildFailure
           failure={failure}

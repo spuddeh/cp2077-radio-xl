@@ -752,6 +752,44 @@
 .auto-level-label { font-size: var(--font-readable-x-small); text-transform: uppercase; color: var(--neutral); opacity: 0.7; }
 .slider input[type='range']:disabled { cursor: default; opacity: 0.45; }
 
+/* --- the auto level question -------------------------------------------------------------- */
+
+.level-question {
+  --cut: 8px;
+  --edge: var(--blue);
+  --edge-opacity: 0.8;
+  --fill: #0c1014;
+  --fill-opacity: 0.97;
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px 18px;
+  display: grid;
+  gap: 8px;
+}
+.level-question p { margin: 0; font-size: var(--font-readable-small); }
+.level-question-title { color: var(--blue); text-transform: uppercase; }
+.level-question-actions { display: flex; gap: 14px; align-items: center; margin-top: 4px; }
+.level-question-yes,
+.level-question-no {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.6;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-x-small);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.level-question-yes { --edge-opacity: 1; }
+.level-question-yes:hover,
+.level-question-no:hover { --edge-opacity: 1; }
+
 /* --- build failure ------------------------------------------------------------------------- */
 
 .build-failure {

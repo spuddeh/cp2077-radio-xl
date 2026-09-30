@@ -43,16 +43,17 @@ test('a station ID comes from the name, and a name with no Latin letter still ge
   assert.equal(cnameFrom('   '), '')
 })
 
-test('auto level is on to begin with, and a new file arrives at 100%', () => {
-  assert.equal(useStation.getState().autoLevel, true)
+// Measuring a big station takes minutes, so it waits until the author asks for it.
+test('auto level is off to begin with, and a new file arrives at 100%', () => {
+  assert.equal(useStation.getState().autoLevel, false)
   useStation.getState().addFiles([new File([new Uint8Array(4)], 'a.mp3')])
   assert.deepEqual(useStation.getState().tracks.map((t) => t.gain), [1])
 })
 
-test('a station with no track gain opens with auto level on', () => {
-  useStation.getState().set({ autoLevel: false })
+test('an opened station starts with auto level off, whatever it was', () => {
+  useStation.getState().set({ autoLevel: true })
   useStation.getState().openStation(station([{ file: 'a.mp3', title: 'A', ident: false, gain: 1 }]))
-  assert.equal(useStation.getState().autoLevel, true)
+  assert.equal(useStation.getState().autoLevel, false)
 })
 
 test('a station with a track gain opens with auto level off, the gain kept', () => {
