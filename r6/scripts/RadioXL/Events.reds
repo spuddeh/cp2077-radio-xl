@@ -265,10 +265,8 @@ public class RadioXLEvents extends ScriptableService {
     let deck = RadioXLDeck.Get();
     if !IsDefined(deck) { return; }
     let r = deck.Receiver(gi);
-    let kind: RadioXLReceiverKind = RadioXLReceiverKind.None;
-    if IsDefined(r.vehicle) { kind = RadioXLReceiverKind.Vehicle; }
-    else if IsDefined(r.pocket) { kind = RadioXLReceiverKind.Radioport; }
-    let station: CName = IsDefined(r.station) ? r.station.name : n"None";
+    let kind: RadioXLReceiverKind = RadioXLEvents.KindOf(gi, r);
+    let station: CName = NotEquals(kind, RadioXLReceiverKind.None) && IsDefined(r.station) ? r.station.name : n"None";
 
     if NotEquals(kind, this.m_kind) {
       let was: RadioXLReceiverKind = this.m_kind;
@@ -283,6 +281,16 @@ public class RadioXLEvents extends ScriptableService {
       GameInstance.GetCallbackSystem().DispatchEventAs(n"RadioXL/StationChanged", RadioXLStationChangedEvent.Create(station, previous, kind));
       this.OnStationChanged(station, previous, kind);
     }
+  }
+
+  // The radio the player hears. In a vehicle the Radioport shadows the car radio and takes the same
+  // toggle a moment later, so while seated it never counts: a car switched off would otherwise read
+  // as the Radioport coming on and going off again.
+  public final static func KindOf(gi: GameInstance, r: ref<RadioXLReceiver>) -> RadioXLReceiverKind {
+    if IsDefined(r.vehicle) { return RadioXLReceiverKind.Vehicle; }
+    if !IsDefined(r.pocket) { return RadioXLReceiverKind.None; }
+    let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
+    return IsDefined(player) && IsDefined(player.GetMountedVehicle()) ? RadioXLReceiverKind.None : RadioXLReceiverKind.Radioport;
   }
 
   private func Power(kind: RadioXLReceiverKind, on: Bool) -> Void {

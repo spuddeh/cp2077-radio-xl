@@ -46,6 +46,11 @@
   languages' descriptions carried through a reopen.
 
 ### Fixed
+- Switching a car radio off sent `RadioPower` Radioport on and off within a millisecond while the
+  player sat in the car: the radio key's toggle reaches the Radioport too, and it shadows the car
+  radio's state until it handles that toggle. `RadioXLEvents.KindOf` ignores the Radioport while
+  the player is mounted, for the events and for `Receiver`, `CurrentStation` and `CurrentTrack`.
+  Measured through the live bridge.
 - `RadioXLRestrictions.IsCompanionOfLifted` called `ArrayContains` straight on `Companions(s)`'s
   return, the redscript rvalue bug that reads the array from uninitialised memory; bound to a local.
   The same bug crashed the game three times in the API test harness, which is how it surfaced.

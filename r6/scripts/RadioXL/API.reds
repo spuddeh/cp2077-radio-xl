@@ -272,25 +272,25 @@ public abstract class RadioXLAPI {
   public final static func Receiver() -> RadioXLReceiverKind {
     let deck = RadioXLDeck.Get();
     if !IsDefined(deck) { return RadioXLReceiverKind.None; }
-    let r = deck.Receiver(GetGameInstance());
-    if IsDefined(r.vehicle) { return RadioXLReceiverKind.Vehicle; }
-    if IsDefined(r.pocket) { return RadioXLReceiverKind.Radioport; }
-    return RadioXLReceiverKind.None;
+    let gi = GetGameInstance();
+    return RadioXLEvents.KindOf(gi, deck.Receiver(gi));
   }
 
   public final static func CurrentStation() -> CName {
     let deck = RadioXLDeck.Get();
     if !IsDefined(deck) { return n"None"; }
-    let r = deck.Receiver(GetGameInstance());
-    return r.IsValid() ? r.station.name : n"None";
+    let gi = GetGameInstance();
+    let r = deck.Receiver(gi);
+    return r.IsValid() && NotEquals(RadioXLEvents.KindOf(gi, r), RadioXLReceiverKind.None) ? r.station.name : n"None";
   }
 
   public final static func CurrentTrack() -> CName {
     let deck = RadioXLDeck.Get();
     let catalog = RadioXLCatalog.Get();
     if !IsDefined(deck) || !IsDefined(catalog) { return n"None"; }
-    let r = deck.Receiver(GetGameInstance());
-    if !r.IsValid() { return n"None"; }
+    let gi = GetGameInstance();
+    let r = deck.Receiver(gi);
+    if !r.IsValid() || Equals(RadioXLEvents.KindOf(gi, r), RadioXLReceiverKind.None) { return n"None"; }
     let index: Int32 = catalog.IndexOf(r.station, NameToHash(r.reported));
     return index >= 0 ? r.station.tracks[index].event : n"None";
   }
