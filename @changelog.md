@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-30
+
 ### Added
 - A red warning in game when a stream station cannot play (#55): `Warnings.reds`,
   `RadioXLWarnings`. After the HUD is up (`QuestTrackerGameController.OnInitialize`, as

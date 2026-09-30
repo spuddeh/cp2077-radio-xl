@@ -3,7 +3,7 @@
 One entry per builder version. The version is in `package.json` and printed at the foot of the page.
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
-## [Unreleased]
+## 0.3.0
 - A level can be typed beside its slider, as a percentage (`133%`) or in dB (`+2.5 dB`), on the
   station Volume and on every track. The sliders step in 1 % instead of 5 % (#53).
 - A stream track has a play button, to hear that the address is the station meant. An `http://`

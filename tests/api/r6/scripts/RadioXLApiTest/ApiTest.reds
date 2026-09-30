@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: Runs every RadioXLAPI function and checks every event, in game. A test harness:
 //              deployed to the Testing instance on its own, never shipped.
-// File Version: 0.5.1
+// File Version: 0.6.0
 // ======================================================================================
 //
 // Start it with a save loaded, on foot, from the CET console or the live bridge:

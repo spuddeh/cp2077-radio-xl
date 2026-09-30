@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: The redscript examples in docs/script-api.md, as written there, so a compile of the test mod
 //              checks them. Change one here when it changes there.
-// File Version: 0.5.1
+// File Version: 0.6.0
 // ======================================================================================
 
 module RadioXLApiTest.Examples

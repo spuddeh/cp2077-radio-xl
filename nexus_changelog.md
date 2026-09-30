@@ -1,6 +1,8 @@
-### [Unreleased - v0.6.0]
+### [Unreleased]
 
-- New: a script API for other mods. A mod can read every station and song, the player's song settings, what is playing and where, and each station's description; change song or station through RadioXL's own controls; and hear when the song, the station, the radio's power or a setting changes. Mod authors: see `RadioXLAPI` in `r6/scripts/RadioXL/API.reds`.
+### v0.6.0
+
+- New: a script API for other mods. A mod can read every station and song, the player's song settings, what is playing and where, and each station's description; change song or station through RadioXL's own controls; and hear when the song, the station, the radio's power or a setting changes. Mod authors: the API is documented at https://github.com/spuddeh/cp2077-radio-xl/blob/main/docs/script-api.md
 - New: a station can carry a `description` of up to 1000 characters, in one language or several, for other mods to read. RadioXL itself does not show it. The station builder has a field for it.
 - New: a station can carry data for other mods under `extensions`. RadioXL passes it on and does nothing else with it.
 - New: when a stream station cannot play, a warning in game says what to change in AudioXL.ini: switching streams on, or the host to allow.

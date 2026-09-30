@@ -9,7 +9,7 @@ This repo publishes to **GitHub Releases** and **Nexus Mods** through
 
 | Artifact id | What | Nexus mod | File on Nexus |
 | --- | --- | --- | --- |
-| `radioxl` | The framework: `archive`, `r6` and `red4ext`, the same 22 files `deploy-mod` ships | 33983 | main |
+| `radioxl` | The framework: `archive`, `r6` and `red4ext`, the same files `deploy-mod` ships | 33983 | main |
 | `builder` | The station builder's README and changelog, from `site/nexus-file/` | 33983 | miscellaneous |
 
 The builder is a web page on GitHub Pages, deployed on every push to `site/**`. Its Nexus file

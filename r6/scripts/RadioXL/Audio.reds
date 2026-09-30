@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The AudioXL bridge - the one place this framework talks about sound.
-// File Version: 0.5.1
+// File Version: 0.6.0
 // Credits: AudioXL by DigitalVixen.
 // ======================================================================================
 //
