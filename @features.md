@@ -34,7 +34,8 @@
   its extensions, 19 idents while muted, and a stream station's reads. Every event reached a CET
   Observe as often as a redscript listener; in a car no Radioport power event arrives. A song
   switched off through the API stays off after a save load. Not reached: CatalogRefreshed,
-  Silenced, and StreamState past Blocked. The description checked in `en-us` and `de-de`,
+  Silenced, and StreamState Connecting and Live. Blocked and Failed seen, each with its warning in
+  game (the Failed one both from the test and by hand). The description checked in `en-us` and `de-de`,
   switched live without a restart.
 - Manifest `description` (#60) and `extensions`, with builder support for the first.
 - Each track's length is read from its file at load, so a station runs on the world clock like a
