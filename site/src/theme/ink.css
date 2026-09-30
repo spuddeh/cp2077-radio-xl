@@ -239,6 +239,23 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 100%;
 }
 .slider output { min-width: 3.2em; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.slider .slider-value {
+  width: auto;
+  min-width: 4em;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  outline: 0;
+  color: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+}
+.slider .slider-value:hover:not(:disabled),
+.slider .slider-value:focus { border-bottom-color: var(--mild-blue); }
+.slider .slider-value:focus { color: var(--blue); }
+.slider .slider-value:disabled { cursor: default; opacity: 0.45; }
 .slider input[type='range'] {
   flex: 1;
   appearance: none;

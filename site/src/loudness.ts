@@ -226,6 +226,23 @@ export function suggestGain(m: Measurement, target: LevelTarget, margin = PEAK_M
   return { gain, landsAt, peakLimited: wantedDb > 0 && allowedDb < wantedDb }
 }
 
+/**
+ * A level typed beside a slider: a dB change (`+2.5 dB`, `-3db`) or a percentage (`133 %`, `133`),
+ * with a comma taken as the decimal point. Rounded to the two decimals the manifest carries and held
+ * to 0..4; null when the text is not a level.
+ */
+export function parseGain(text: string): number | null {
+  const t = text.trim().toLowerCase().replace(',', '.').replace(/\s+/g, '')
+  const db = t.match(/^([+-]?\d+(?:\.\d+)?)db$/)
+  const pct = t.match(/^([+-]?\d+(?:\.\d+)?)%?$/)
+  let gain: number
+  if (db) gain = Math.pow(10, Number(db[1]) / 20)
+  else if (pct) gain = Number(pct[1]) / 100
+  else return null
+  if (!Number.isFinite(gain)) return null
+  return Math.round(Math.min(4, Math.max(0, gain)) * 100) / 100
+}
+
 /** A gain as the page shows it: a percentage, and the level change it makes. */
 export function gainLabel(gain: number): string {
   const pct = `${Math.round(gain * 100)}%`

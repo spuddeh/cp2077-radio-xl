@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import warning from '../assets/warning-triangle.png'
 
 export function Row(props: { label: string; note?: ReactNode; fault?: string; notice?: ReactNode; children: ReactNode }) {
@@ -93,8 +93,21 @@ export function Slider(props: {
   step: number
   onChange: (v: number) => void
   format?: (v: number) => string
+  /** Given, the value beside the slider can be typed in: it returns the value, or null to refuse the text. */
+  parse?: (text: string) => number | null
   disabled?: boolean
 }) {
+  const shown = props.format ? props.format(props.value) : props.value.toFixed(2)
+  // While the field has focus it holds what is being typed; otherwise it shows the value.
+  const [draft, setDraft] = useState<string | null>(null)
+  const parse = props.parse
+  // Reads the field itself, not the draft: a blur that follows the last keystroke can run before
+  // React has rendered it. Focusing and leaving changes nothing unless the text says another value.
+  const commit = (text: string) => {
+    const v = parse ? parse(text) : null
+    if (v !== null && v !== Math.round(props.value * 100) / 100) props.onChange(v)
+    setDraft(null)
+  }
   return (
     <div className="slider">
       <input
@@ -106,7 +119,33 @@ export function Slider(props: {
         disabled={props.disabled}
         onChange={(e) => props.onChange(Number(e.target.value))}
       />
-      <output>{props.format ? props.format(props.value) : props.value.toFixed(2)}</output>
+      {parse ? (
+        <input
+          type="text"
+          className="slider-value"
+          value={draft ?? shown}
+          disabled={props.disabled}
+          spellCheck={false}
+          aria-label="Level, as a percentage or in dB"
+          title="Type a level: 133%, or +2.5 dB"
+          size={Math.max(4, (draft ?? shown).length)}
+          onFocus={(e) => {
+            setDraft(`${Math.round(props.value * 100)}%`)
+            requestAnimationFrame(() => e.target.select())
+          }}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={(e) => commit(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              setDraft(null)
+              e.currentTarget.blur()
+            }
+          }}
+        />
+      ) : (
+        <output>{shown}</output>
+      )}
     </div>
   )
 }

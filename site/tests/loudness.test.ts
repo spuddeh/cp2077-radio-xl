@@ -11,7 +11,7 @@
 import { strict as assert } from 'node:assert'
 import { test } from 'node:test'
 
-import { gainLabel, integratedLoudness, kWeighting, measure, suggestGain, truePeakDb } from '../src/loudness.ts'
+import { gainLabel, integratedLoudness, parseGain, kWeighting, measure, suggestGain, truePeakDb } from '../src/loudness.ts'
 
 const RATE = 48000
 
@@ -143,4 +143,28 @@ test('the gain label reads as the station slider does', () => {
   assert.equal(gainLabel(0.5), '50% (-6.0 dB)')
   assert.equal(gainLabel(2), '200% (+6.0 dB)')
   assert.equal(gainLabel(0), '0% (silent)')
+})
+
+// #53: a level the slider's step cannot land on is typed beside it.
+test('a typed level reads as dB or a percentage, rounded to two decimals', () => {
+  assert.equal(parseGain('+2.5 dB'), 1.33)
+  assert.equal(parseGain('2,5dB'), 1.33)
+  assert.equal(parseGain('-3 db'), 0.71)
+  assert.equal(parseGain('133%'), 1.33)
+  assert.equal(parseGain(' 133 % '), 1.33)
+  assert.equal(parseGain('133'), 1.33)
+  assert.equal(parseGain('0'), 0)
+})
+
+test('a typed level is held to 0..4, and text that is not a level is refused', () => {
+  assert.equal(parseGain('+20 dB'), 4)
+  assert.equal(parseGain('500%'), 4)
+  assert.equal(parseGain('-5%'), 0)
+  assert.equal(parseGain('loud'), null)
+  assert.equal(parseGain(''), null)
+  assert.equal(parseGain('3 dBFS'), null)
+})
+
+test('the label of a typed level shows what was typed', () => {
+  assert.equal(gainLabel(parseGain('+2.5 dB') ?? 0), '133% (+2.5 dB)')
 })

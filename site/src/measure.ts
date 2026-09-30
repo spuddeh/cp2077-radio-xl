@@ -67,6 +67,11 @@ export function measureFile(blob: Blob): Promise<Measurement | null> {
  * level its slider holds. Starting a track stops whichever was playing.
  */
 class Preview {
+  // A stream plays through a plain element: routing it through the gain node needs the station to
+  // allow cross-origin reads, which a radio stream rarely does.
+  private stream: HTMLAudioElement | null = null
+  /** The stream track that failed to play last, until another is started. */
+  failed: number | null = null
   private element: HTMLAudioElement | null = null
   private gain: GainNode | null = null
   private url: string | null = null
@@ -107,12 +112,44 @@ class Preview {
     }
   }
 
+  /** Plays a stream track, at the gain as far as full volume allows. */
+  async playStream(id: number, url: string, gain: number, onChange: () => void): Promise<void> {
+    this.stop()
+    this.failed = null
+    const element = this.stream ?? new Audio()
+    this.stream = element
+    const fail = () => {
+      if (this.playing !== id) return
+      this.failed = id
+      this.stop()
+    }
+    element.onerror = fail
+    element.src = url
+    element.volume = Math.min(1, Math.max(0, gain))
+    this.playing = id
+    this.onChange = onChange
+    onChange()
+    try {
+      await element.play()
+    } catch {
+      fail()
+    }
+  }
+
   /** The gain the playing track is heard at, live as the slider moves. */
   setGain(id: number, gain: number): void {
-    if (this.playing === id && this.gain) this.gain.gain.value = gain
+    if (this.playing !== id) return
+    if (this.gain) this.gain.gain.value = gain
+    if (this.stream && this.stream.src) this.stream.volume = Math.min(1, Math.max(0, gain))
   }
 
   stop(): void {
+    if (this.stream) {
+      this.stream.onerror = null
+      this.stream.pause()
+      this.stream.removeAttribute('src')
+      this.stream.load()
+    }
     if (this.element) {
       this.element.pause()
       this.element.removeAttribute('src')

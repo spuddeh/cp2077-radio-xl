@@ -12,7 +12,7 @@ import { importRadioExt } from './importRadioExt'
 import { BuildError, buildZip, checkReadable, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
 import { archiveHasPath, iconFromArchive } from './readArchive'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
-import { gainLabel } from './loudness'
+import { gainLabel, parseGain } from './loudness'
 
 const SOURCES: { value: Source; label: string }[] = [
   { value: 'new', label: 'New station' },
@@ -417,7 +417,7 @@ export function App() {
                 label="Volume"
                 note="One trim for the whole station, on top of each track's own level below. 100% leaves the tracks as set. Above 100% the loudest sample must stay under full scale or it crackles: a file mastered to 0 dBFS cannot go up at all."
               >
-                <Slider value={s.gain} min={0} max={4} step={0.05} onChange={(v) => s.set({ gain: v })} format={gainLabel} />
+                <Slider value={s.gain} min={0} max={4} step={0.01} onChange={(v) => s.set({ gain: v })} format={gainLabel} parse={parseGain} />
               </Row>
               <Row label="Icon" fault={faultFor('icon')}>
                 <Stepper options={ICON_MODES} value={s.iconMode} onChange={(v) => s.set({ iconMode: v })} />

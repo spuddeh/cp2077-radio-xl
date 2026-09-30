@@ -36,7 +36,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
   /** The form's text inputs, in the order the page lays them out. */
   const setField = (index, value) =>
     page.evaluate(`(() => {
-      const el = [...document.querySelectorAll('.form input[type=text]')][${index}]
+      const el = [...document.querySelectorAll('.form input[type=text]:not(.slider-value)')][${index}]
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)})
       el.dispatchEvent(new Event('input', { bubbles: true }))
       return el.value
@@ -204,7 +204,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
 
     const read = JSON.parse(
       await page.evaluate(`(() => JSON.stringify({
-        fields: [...document.querySelectorAll('.form input[type=text]')].slice(0, 5).map((i) => i.value),
+        fields: [...document.querySelectorAll('.form input[type=text]:not(.slider-value)')].slice(0, 5).map((i) => i.value),
         tracks: [...document.querySelectorAll('.track-title')].map((e) => e.textContent),
         notes: [...document.querySelectorAll('.open-notes li')].map((e) => e.textContent),
         manifest: document.querySelector('.json pre').textContent,
@@ -235,7 +235,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     await page.waitFor(`(() => {
       const replace = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Replace')
       if (replace) replace.click()
-      return !replace && [...document.querySelectorAll('.form input[type=text]')].some((i) => i.value.startsWith('base\\\\'))
+      return !replace && [...document.querySelectorAll('.form input[type=text]:not(.slider-value)')].some((i) => i.value.startsWith('base\\\\'))
     })()`)
     // Own atlas is one step past From an image on the icon stepper.
     await page.evaluate(`(async () => {
@@ -245,7 +245,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     })()`)
     await page.setFile('.file-pick input[type=file]', files.icon)
     await page.waitFor("document.querySelector('.footer-state').textContent.includes('is ready')")
-    const fields = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.form input[type=text]')].map((i) => i.value))"))
+    const fields = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.form input[type=text]:not(.slider-value)')].map((i) => i.value))"))
     assert.ok(fields.some((v) => v === 'radio_station_dock_station\\gui\\radio_station_dock_station.inkatlas'), `the atlas should be the station's own: ${JSON.stringify(fields)}`)
     assert.ok(!fields.some((v) => v.startsWith('base\\')), `the imported base\\ path should be gone: ${JSON.stringify(fields)}`)
     assert.deepEqual(zipNames(await build()).filter((n) => n.endsWith('.archive')), ['archive/pc/mod/DockStation.archive'])
@@ -259,7 +259,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       await new Promise((r) => setTimeout(r, 150))
       return 1
     })()`)
-    await page.waitFor("[...document.querySelectorAll('.form input[type=text]')].length >= 5")
+    await page.waitFor("[...document.querySelectorAll('.form input[type=text]:not(.slider-value)')].length >= 5")
     await setField(3, 'ownstation\\gui\\wrong.inkatlas')
     await setField(4, 'icon_part')
     await page.setFile('.file-pick input[accept=".archive"]', files.ownArchive)
@@ -347,6 +347,38 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     assert.equal(layout.items, 2, 'a warning row holds the icon and one block of text')
     assert.equal(layout.looseText, 0, 'text loose in the row becomes a flex item per word')
     assert.equal(layout.overflow, 0, 'the page should not scroll sideways')
+    assert.deepEqual(await page.errors(), [])
+  })
+
+  // Runs after the stream test, so the form holds one stream track.
+  test('a level can be typed as dB or a percentage (#53), and a stream can be played (#55)', async () => {
+    const type = (selector, index, text) =>
+      page.evaluate(`(() => {
+        const el = [...document.querySelectorAll(${JSON.stringify(selector)})][${index}]
+        el.focus()
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(text)})
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        // A headless page may never focus the field, so the blur is sent as the event React listens for.
+        el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+        return el.value
+      })()`)
+    const read = async () => JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
+
+    await type('.row .slider .slider-value', 0, '+2.5 dB')
+    await page.waitFor(`document.querySelector('.json pre').textContent.includes('"gain": 1.33')`)
+    assert.equal((await read()).gain, 1.33, 'the station Volume takes a dB value')
+
+    await type('.track-level .slider-value', 0, '71%')
+    await page.waitFor(`document.querySelector('.json pre').textContent.includes('"gain": 0.71')`)
+    assert.equal((await read()).tracks[0].gain, 0.71, 'a track level takes a percentage')
+
+    await type('.track-level .slider-value', 0, 'loud')
+    assert.equal((await read()).tracks[0].gain, 0.71, 'text that is not a level leaves the value alone')
+
+    const notice = await page.evaluate("[...document.querySelectorAll('.row-note.notice')].map((e) => e.textContent).join(' ')")
+    assert.ok(notice.includes('redirect'), `the stream notice should say a stream can redirect: ${notice}`)
+    const play = await page.evaluate("document.querySelector('.track-play').disabled")
+    assert.equal(play, false, 'an https stream can be played from the page')
     assert.deepEqual(await page.errors(), [])
   })
 })

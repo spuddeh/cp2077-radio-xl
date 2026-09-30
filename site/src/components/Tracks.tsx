@@ -11,7 +11,7 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
-import { gainLabel, suggestGain, type Suggestion } from '../loudness'
+import { gainLabel, parseGain, suggestGain, type Suggestion } from '../loudness'
 import { measureFile, preview } from '../measure'
 import { Bool, Fault, Notice, Slider } from './Controls'
 import { Tooltip } from './Tooltip'
@@ -184,7 +184,11 @@ export function Tracks() {
           <code>red4ext\plugins\AudioXL\AudioXL.ini</code> carries{' '}
           <code>allowHttpConnections = true</code> and <code>allowedHost = {streamHost}</code>. No mod can set that,
           so say it on the station&apos;s own page. AudioXL writes that file on first start with everything off; under
-          Mod Organizer 2 it is in Overwrite.
+          Mod Organizer 2 it is in Overwrite.{' '}
+          <strong>A stream can redirect to another host</strong>, and each host needs its own{' '}
+          <code>allowedHost</code> line. To find them, allow this one, start the game and tune in: AudioXL&apos;s log
+          names any host it refused, and RadioXL shows a warning in game. <code>*.example.com</code> covers every
+          subdomain but not <code>example.com</code> itself.
         </Notice>
       )}
 
@@ -257,7 +261,10 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
   const t = props.track
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: t.id })
   const suggestion = suggestionFor(t)
-  const canPlay = !t.url && !!t.source
+  // A page served over https may not play an http stream: the browser blocks the mixed content.
+  const blockedHere = !!t.url && location.protocol === 'https:' && /^http:/i.test(t.url)
+  const canPlay = t.url ? !blockedHere : !!t.source
+  const failed = !!t.url && preview.failed === t.id && !props.playing
   // Auto level owns the slider of a track it has measured; a stream or an unreadable file is the author's.
   const automatic = props.auto && suggestion !== null
   return (
@@ -310,7 +317,14 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
       <button type="button" className="track-remove" aria-label={`Remove ${t.file}`} onClick={() => removeTrack(t.id)} />
 
       <div className="track-level">
-        <Tooltip title={props.playing ? 'Stop' : 'Play'} text="Hear this track at the level set here. Starting one stops any other.">
+        <Tooltip
+          title={props.playing ? 'Stop' : 'Play'}
+          text={
+            t.url
+              ? 'Hear the stream, to check it is the station you meant. Above 100% it plays at 100%. Starting one stops any other.'
+              : 'Hear this track at the level set here. Starting one stops any other.'
+          }
+        >
           <button
             type="button"
             className="ink-frame track-play"
@@ -319,6 +333,7 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
             disabled={!canPlay}
             onClick={() => {
               if (props.playing) preview.stop()
+              else if (t.url) void preview.playStream(t.id, t.url, t.gain, props.onPlaying)
               else if (t.source) void preview.play(t.id, t.source, t.gain, props.onPlaying)
             }}
           />
@@ -327,17 +342,31 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
           value={t.gain}
           min={0}
           max={4}
-          step={0.05}
+          step={0.01}
           disabled={automatic}
           onChange={(v) => {
             updateTrack(t.id, { gain: v })
             preview.setGain(t.id, v)
           }}
           format={gainLabel}
+          parse={parseGain}
         />
         <span className="track-reading">
           {t.url ? (
-            'A stream cannot be measured ahead of time. Set its level by ear against a vanilla station.'
+            <>
+              {blockedHere ? (
+                <>
+                  This page cannot play an http:// stream, the browser blocks it here.{' '}
+                  <a href={t.url} target="_blank" rel="noreferrer">
+                    Open the stream
+                  </a>{' '}
+                  to hear it.{' '}
+                </>
+              ) : failed ? (
+                'The stream did not play: check the address, or whether the station is on air. '
+              ) : null}
+              A stream cannot be measured ahead of time. Set its level by ear against a vanilla station.
+            </>
           ) : !t.source ? (
             ''
           ) : t.level === undefined ? (
