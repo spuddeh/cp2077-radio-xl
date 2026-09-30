@@ -101,6 +101,11 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.noteHidden", "hidden now");
     this.Text("RadioXL.noteNeverAgain", "Switched off:");
 
+    // --- a stream station that cannot play; {station} is its name, {host} the host to allow ---
+    this.Text("RadioXL.warnStreamOff", "RadioXL: {station} can't play. Streams are off in AudioXL.ini: set allowHttpConnections = true.");
+    this.Text("RadioXL.warnStreamHost", "RadioXL: {station} can't play. Add allowedHost = {host} to AudioXL.ini.");
+    this.Text("RadioXL.warnStreamFailed", "RadioXL: {station} can't play: its stream didn't connect. If it moved to another host, AudioXL's log names the host to allow in AudioXL.ini.");
+
     // --- mute ---
     this.Text("RadioXL.optMuteIdents", "Mute station idents");
     this.Text("RadioXL.tipMuteIdents", "The station's own spot between songs: its name, its frequency and whatever its host says over them. Applies from the next song.");

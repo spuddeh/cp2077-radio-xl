@@ -360,6 +360,10 @@ public class RadioXLApiTest extends ScriptableService {
     } else {
       this.Note(s"AudioXL allows http; StreamState is \(EnumInt(state)) (2 connecting, 3 live, 4 failed)");
     }
+    if NotEquals(state, RadioXLStreamState.Live) && NotEquals(state, RadioXLStreamState.Connecting) {
+      let warnings = RadioXLWarnings.Get();
+      this.Check("a stream that cannot play has been warned about in game", IsDefined(warnings) && warnings.Warned(yumi), "");
+    }
     let streamTracks: array<CName> = RadioXLAPI.Tracks(yumi);
     if ArraySize(streamTracks) > 0 {
       let first: CName = streamTracks[0];
