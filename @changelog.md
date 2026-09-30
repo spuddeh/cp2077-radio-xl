@@ -2,7 +2,56 @@
 
 ## [Unreleased]
 
+### Added
+- The script API (#39). `RadioXLAPI` (`API.reds`) is the one class other mods may rely on; every
+  other member is public only because the module needs it. `Version()` is 1. Reads: `Stations()` in
+  dial order, `StationName`, `StationFrequency`, `StationDialPosition`, `StationIcon`,
+  `IsCustomStation`, `StationMod`, `StationHasNews` (true for the fourteen), `IsStreamStation`,
+  `StreamState`, `StationDescription`, `StationExtension`, `Tracks`, `Idents`, `TrackTitle`,
+  `TrackLength` (a vanilla song's is its event-table `maxDuration`), `IsStreamingFriendly`,
+  `TrackFile`, `TrackGain` (station × track), `SongState`, `IsSongPlayable`, `MyStation`,
+  `IsStationSkipped`, `IdentsMuted`, `NewsMuted`, `Receiver`, `CurrentStation`, `CurrentTrack`,
+  `Remaining`, `Position`, `History`, `HistoryCursor`, `SilencedBy`. Acts, all through the deck:
+  `NextSong`, `PreviousSong`, `PlaySong` (new `RadioXLDeck.Request`: refuses a song that is not
+  `CanPlay`, consumes and counts it, records it when the player is on that station), `NextStation`,
+  `PreviousStation`, `TuneStation` (new `RadioXLDeck.Tune`, split out of `JumpToMyStation`),
+  `SetSongState`, `SetStationSkipped`, `SetMyStation`, `SetIdentsMuted`, `SetNewsMuted`,
+  `ShowNowPlaying`. Stations are named by CName and songs by track event throughout.
+- Events (`Events.reds`): ten Codeware callback names, `RadioXL/Ready` (register sticky),
+  `SongChanged`, `StationChanged`, `RadioPower`, `CatalogRefreshed`, `SongStateChanged`,
+  `MutesChanged`, `Silenced`, `MyStationChanged`, `StationSkipChanged`, each registered with
+  `RegisterEvent` against its own event class and sent with `DispatchEventAs`. Every dispatch also
+  calls a no-op instance method on the `RadioXLEvents` service for CET to `Observe`: CET refuses an
+  `Observe` on a static outright ("Function Total in class RadioXL.RadioXLDial does not exist").
+  Power and station are read from `RadioXLDeck.Receiver` and compared with the last announced
+  (`RadioXLEvents.Observe`), called from the Radioport poll every second and from the vehicle
+  station-change and toggle wraps and the Radioport toggle at once. Song changes are announced from
+  the vehicle popup's song-changed wrap and the Radioport poll, before the deck acts, so `requested`
+  reads the deck's pending set (`RadioXLDeck.IsPending`).
+- Manifest `description` (#60): one string, or an object of `xx-xx` language codes; 1000 characters
+  counted as code points (`kMaxDescription`), a longer one dropped with a warning and the station
+  kept. `radioxl::Description` picks the language, then the plain text, then `en-us`. Registered
+  per language through the Codeware provider under `<station key>-desc` (`RadioXL_DescriptionKey`);
+  `RadioXLTexts` carries its language. RadioXL shows it nowhere.
+- Manifest `extensions`: an object, each value handed to the named mod as compact JSON text
+  (`WriteJson` in `Json.hpp`) and never read.
+- Natives `RadioXL_Frequency` (enum value, vanilla table included), `RadioXL_StationSource`,
+  `RadioXL_StationDescription`, `RadioXL_StationExtension`, `RadioXL_StationPosition` (the clock at
+  `+0x14c` by station name, `SafeReadClock`). Tests for both manifest fields.
+- `RadioXLService` keeps the events table and the rows AudioXL refused; `RadioXLDial.StationRecord`
+  and `VanillaRecordName` give any station's record; the catalog gained `Owner`, `TitleOf` (moved
+  from the deck) and `Idents`; `RadioXLConfig.Persist` writes RCF's file through
+  `DVRCF_Store.PersistFrom`. `SetSongState` and `SetStationSkipped` return whether the value changed.
+- Station builder: a Description field with a character counter, and `extensions` and other
+  languages' descriptions carried through a reopen.
+
 ### Fixed
+- A song switched off with the never-again key was held in memory only: RCF's restore at the next
+  Session/Ready put the saved value back over it (read from the code). The key now calls
+  `RadioXLConfig.Persist`.
+- With no song switched off, `Arrived` returned before recording anything, so the history held only
+  the songs the keys asked for and previous skipped over the station's own picks. The
+  `DisabledCount() == 0` early return is gone; the switched-on check below it does the same job.
 - The station builder named no cause when a file could not be read (#45). A source file whose path
   passes Windows' 260 characters cannot be opened, and the browser surfaces that as
   `TypeError: network error` with nothing else, so the reported symptom was a build that stopped on

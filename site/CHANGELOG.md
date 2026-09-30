@@ -4,6 +4,10 @@ One entry per builder version. The version is in `package.json` and printed at t
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
 ## [Unreleased]
+- A Description field, for other mods to read, with a count against its 1000-character limit.
+  RadioXL shows the text nowhere.
+- Opening a station keeps what it carries for other mods (`extensions`), and a description written
+  in more than one language keeps its other languages; the field edits the `en-us` text.
 - A build that stops on a file the browser cannot open says why. A track name long enough to carry
   most of a 260-character Windows path is named with its length and what to do about it; a shorter
   one is told the file has been moved, renamed or deleted since it was added. The browser reports
