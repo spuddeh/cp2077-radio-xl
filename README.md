@@ -17,6 +17,9 @@ off and on; the settings panel carries the keys, the per-song switches, My stati
 What is still open is in the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), the
 working board, with what has been measured on each. Not on Nexus yet.
 
+**Writing a mod that works with RadioXL?** The script API, for redscript and CET, is in
+[API.md](API.md).
+
 ## What a station mod ships
 
 One manifest, its audio files, and at most an icon archive:
@@ -217,7 +220,8 @@ r6/scripts/RadioXL/
   Settings.reds              the settings panel, one provider, four tabs
   Localization.reds, translations/
                              the station names and titles, and the panel's strings
-  API.reds                   the 0.1.0 compatibility call
+  API.reds                   the script API (RadioXLAPI); see API.md
+  Events.reds                the script API's events
 r6/storages/RedscriptConfigFramework/
                              the panel's card and the in-game docs page
 red4ext/plugins/RadioXL/
