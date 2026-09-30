@@ -47,9 +47,9 @@ A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does n
 
 [list]
 [*][b]A new station.[/b] Give it a name and a frequency, drop in the songs, mark any of them as idents, and download the zip. The page shows the station on a Radioport and on a world radio as you go, so you see the label and the icon before the game does.[/*]
-[*][b]Levelled for you.[/b] Every song is measured as you add it and its level set to match the game's own stations, a loud one down and a quiet one up, with no change to the files. Turn Auto level off to set the sliders yourself: the suggested level stays shown on each track as a starting point, and a play button hears the track at the level you set. The measurement puts every song at the same loudness as the game's own stations, but how loud a song feels still depends on the song, and a file already mastered to full scale cannot be raised, so give the station a listen and adjust what your ears disagree with.[/*]
+[*][b]Levelled for you.[/b] Auto level measures every song and sets its level to match the game's own stations, a loud one down and a quiet one up, with no change to the files. It starts off, and Build .zip asks whether to use it, since measuring a big station takes a few minutes. A play button hears each track at the level set, and a level can be typed in as a percentage or in dB. How loud a song feels still depends on the song, and a file already mastered to full scale cannot be raised, so give the station a listen and adjust what your ears disagree with.[/*]
 [*][b]An icon from a picture.[/b] Choose an image and the page writes the texture, the atlas and the archive itself. Or pick one of the game's own station icons, or keep the RadioXL glyph.[/*]
-[*][b]A stream station.[/b] Paste the stream URL, and the page tells you which host the player has to allow in AudioXL's settings.[/*]
+[*][b]A stream station.[/b] Paste the stream URL and play it to check it is the right one. The page follows the stream and gives the exact lines the player adds to AudioXL's settings, every host included, in a box to copy.[/*]
 [*][b]From RadioExt.[/b] Drop a RadioExt station's zip, rar or 7z on the page and it comes across as a RadioXL station: its name, frequency, songs and icon, the archive included.[/*]
 [*][b]Open a station you made.[/b] Drop its zip back on the page to change it.[/*]
 [/list]
@@ -87,6 +87,8 @@ holding a [b]station.json[/b] and the audio files it names.
 [*][b]title[/b] is optional on a track. It is the song name in the radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
 [*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song and shows no title, exactly as the game's own station idents do.[/*]
 [*][b]news[/b] is optional. true lets the news reach the station - Stanley's bulletins and greetings, and N54 News - the same way it reaches the game's own stations.[/*]
+[*][b]description[/b] is optional: a few sentences about the station, up to 1000 characters, in one language or several. RadioXL shows it nowhere; it is for other mods to read.[/*]
+[*][b]extensions[/b] is optional: data for another mod, under that mod's name. RadioXL passes it on and reads none of it.[/*]
 [/list]
 No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
 
@@ -108,6 +110,21 @@ Add that host and start the game again. AudioXL reads the file once, at startup,
 [b]AudioXL creates AudioXL.ini on its first start[/b], with everything off, and an update leaves it alone. Under Mod Organizer 2 the file is in Overwrite.
 
 A stream station joins the broadcast live when you tune in, after a second or two of buffering, and shows the station's own title rather than the song playing.
+
+When a stream station cannot play, RadioXL shows a red warning in game a few seconds after loading, naming what to change: switching streams on, or the host to allow.
+
+
+[color=#ffff00][size=6][b]- For mod authors -[/b][/size][/color]
+
+Other mods can work with RadioXL through its script API, from redscript or CET:
+[list]
+[*][b]Read[/b] every station and song, the game's own and custom: names, frequencies, icons, titles, lengths, each station's description, and what is playing on which radio.[/*]
+[*][b]Respect the player's choices:[/b] which songs they switched off, and whether RadioXL would play a song right now.[/*]
+[*][b]Change what plays[/b] through RadioXL's own controls: next and previous song, a named song, a station.[/*]
+[*][b]Listen[/b] for a song or station change, the radio switching on or off, and a setting changing.[/*]
+[*][b]Carry your own data on a station:[/b] a station author adds it under your mod's name in their station.json, and RadioXL hands it to you as written.[/*]
+[/list]
+The documentation, with examples for both redscript and CET: [url=https://github.com/spuddeh/cp2077-radio-xl/blob/main/docs/script-api.md]docs/script-api.md[/url].
 
 
 [color=#ffff00][size=6][b]- Settings -[/b][/size][/color]
