@@ -82,6 +82,10 @@ protected cb func OnVehicleRadioSongChanged(evt: ref<VehicleRadioSongChanged>) -
   let popup = RadioXLPopup.Get();
   let ours: Bool = IsDefined(popup) && popup.ConsumeSuppress();
   let deck = RadioXLDeck.Get();
+  let events = RadioXLEvents.Get();
+  if IsDefined(events) && !ours && IsNameValid(evt.radioSongName) {
+    events.Song(this.GetPlayerControlledObject().GetGame(), NameToHash(evt.radioSongName));
+  }
   if IsDefined(deck) && !ours {
     let gi = this.GetPlayerControlledObject().GetGame();
     if IsNameValid(evt.radioSongName) {
@@ -193,6 +197,8 @@ public class RadioXLPocketWatch extends ScriptableService {
     let controls = RadioXLControls.Get();
     if !IsDefined(controls) { return; }
     let gi = GetGameInstance();
+    let events = RadioXLEvents.Get();
+    if IsDefined(events) { events.Observe(gi); }
     let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
     if !IsDefined(player) { return; }
     if IsDefined(player.GetMountedVehicle()) {
@@ -209,6 +215,9 @@ public class RadioXLPocketWatch extends ScriptableService {
     let first: Bool = Equals(this.m_lastTrack, n"None");
     this.m_lastTrack = track;
     if !IsNameValid(track) || Equals(track, n"Gameplay-Devices-Radio-NoneTrack") { return; }
+    if IsDefined(events) {
+      events.Song(gi, NameToHash(track));
+    }
     let deck = RadioXLDeck.Get();
     if IsDefined(deck) {
       deck.Arrived(gi, NameToHash(track));

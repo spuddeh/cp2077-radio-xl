@@ -169,13 +169,15 @@ public class RadioXLControls extends ScriptableService {
     return ArrayContains(this.m_skipped, station);
   }
 
-  public func SetStationSkipped(station: CName, skipped: Bool) -> Void {
-    if !IsNameValid(station) { return; }
+  // True when the value changed.
+  public func SetStationSkipped(station: CName, skipped: Bool) -> Bool {
+    if !IsNameValid(station) || Equals(skipped, this.IsStationSkipped(station)) { return false; }
     if skipped {
-      if !ArrayContains(this.m_skipped, station) { ArrayPush(this.m_skipped, station); }
+      ArrayPush(this.m_skipped, station);
     } else {
       ArrayRemove(this.m_skipped, station);
     }
+    return true;
   }
 
   // --- the song switches -----------------------------------------------------------------------
@@ -194,8 +196,9 @@ public class RadioXLControls extends ScriptableService {
     return at < 0 ? RadioXL_SongOn() : this.m_songState[at];
   }
 
-  public func SetSongState(event: CName, state: Int32) -> Void {
-    if !IsNameValid(event) { return; }
+  // True when the value changed.
+  public func SetSongState(event: CName, state: Int32) -> Bool {
+    if !IsNameValid(event) || state == this.SongState(event) { return false; }
     let at: Int32 = this.SongIndex(event);
     if at < 0 {
       ArrayPush(this.m_songEvent, event);
@@ -203,6 +206,7 @@ public class RadioXLControls extends ScriptableService {
     } else {
       this.m_songState[at] = state;
     }
+    return true;
   }
 
   public func IsTrackEnabled(event: CName) -> Bool {

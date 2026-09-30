@@ -271,10 +271,13 @@ public class RadioXLDeck extends ScriptableService {
       return;
     }
     let track = r.station.tracks[index];
-    controls.SetSongState(track.event, RadioXL_SongOff());
+    if controls.SetSongState(track.event, RadioXL_SongOff()) {
+      RadioXLConfig.Persist();
+      RadioXLEvents.SongStateChanged(track.event, RadioXL_SongOff());
+    }
     RadioXLLog(s"\(r.station.name): \(track.event) switched off from the key");
     // The key gives no other sign it worked, so the song's name goes on screen.
-    RadioXLNotify.Line(gi, RadioXLText("RadioXL.noteNeverAgain") + " " + this.TrackTitle(track));
+    RadioXLNotify.Line(gi, RadioXLText("RadioXL.noteNeverAgain") + " " + catalog.TitleOf(track));
     this.Step(gi, true);
   }
 
@@ -293,20 +296,97 @@ public class RadioXLDeck extends ScriptableService {
       RadioXLLog(s"my station key: \(state.rememberStation) is not installed");
       return;
     }
+    this.Tune(gi, station, "my station key");
+  }
+
+  // Tunes the receiver that is playing to a station, by its enum value, through the quick slots so
+  // the in-car display follows. False when nothing is playing or it is already there.
+  public func Tune(gi: GameInstance, station: Int32, source: String) -> Bool {
     let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
-    if !IsDefined(player) { return; }
+    if !IsDefined(player) { return false; }
     let r = this.Receiver(gi);
     if !IsDefined(r.vehicle) && !IsDefined(r.pocket) {
-      RadioXLLog("my station key: no receiver is playing");
-      return;
+      RadioXLLog(s"\(source): no receiver is playing");
+      return false;
     }
+    let name: CName = RadioStationDataProvider.GetStationName(IntEnum<ERadioStationList>(station));
     if r.stationIndex == station {
-      RadioXLLog(s"my station key: already on \(state.rememberStation)");
-      return;
+      RadioXLLog(s"\(source): already on \(name)");
+      return false;
     }
     let position: Int32 = RadioStationDataProvider.GetRadioStationUIIndex(station);
     player.GetQuickSlotsManager().SendRadioEvent(true, true, position);
-    RadioXLLog(s"my station key: tuned to \(state.rememberStation) (enum \(station), dial \(position))");
+    RadioXLLog(s"\(source): tuned to \(name) (enum \(station), dial \(position))");
+    return true;
+  }
+
+  // A named song on a named station, for the script API. It goes through the station's schedule
+  // like a key press: out of the remaining list, counted toward the next ident, and onto the
+  // history when the player is listening to that station. A song the player switched off, or one
+  // the game would not play now, is refused.
+  public func Request(gi: GameInstance, station: CName, event: CName) -> Bool {
+    let catalog = RadioXLCatalog.Get();
+    if !IsDefined(catalog) || !catalog.IsBuilt() { return false; }
+    let s = catalog.Station(station);
+    if !IsDefined(s) { return false; }
+    let index: Int32 = this.IndexOfEvent(s, event);
+    if index < 0 && catalog.Refresh(station) {
+      index = this.IndexOfEvent(s, event);
+    }
+    if index < 0 || !this.CanPlay(gi, s.tracks[index]) { return false; }
+    let r = this.Receiver(gi);
+    if r.IsValid() && Equals(r.station.name, station) {
+      this.KeepHistoryFor(station);
+      this.Record(index);
+      this.Play(gi, r, index, true, false);
+      return true;
+    }
+    GameInstance.GetAudioSystem(gi).RequestSongOnRadioStation(station, event);
+    RadioXL_StationConsume(station, event, true, false);
+    RadioXLLog(s"\(station): requested \(event) through the script API, no receiver on it");
+    return true;
+  }
+
+  private func IndexOfEvent(station: ref<RadioXLCatalogStation>, event: CName) -> Int32 {
+    let i: Int32 = 0;
+    while i < ArraySize(station.tracks) {
+      if Equals(station.tracks[i].event, event) { return i; }
+      i += 1;
+    }
+    return -1;
+  }
+
+  // Whether the deck itself would play this song now: the game would play it, and the player has
+  // not switched it off.
+  public func CanPlay(gi: GameInstance, track: ref<RadioXLCatalogTrack>) -> Bool {
+    if !IsDefined(track) { return false; }
+    let controls = RadioXLControls.Get();
+    if IsDefined(controls) && !controls.IsTrackEnabled(track.event) { return false; }
+    return this.IsPlayable(gi, track, this.IsStreamerMode(gi));
+  }
+
+  public func IsPending(key: Uint64) -> Bool {
+    return ArrayContains(this.m_pending, key);
+  }
+
+  // The songs played on the station the history belongs to, oldest first, and where the cursor is.
+  public func HistoryStation() -> CName {
+    return this.m_historyStation;
+  }
+
+  public func History() -> array<CName> {
+    let out: array<CName>;
+    let catalog = RadioXLCatalog.Get();
+    let station = IsDefined(catalog) ? catalog.Station(this.m_historyStation) : null;
+    if !IsDefined(station) { return out; }
+    for index in this.m_history {
+      if index >= 0 && index < ArraySize(station.tracks) { ArrayPush(out, station.tracks[index].event); }
+    }
+    return out;
+  }
+
+  public func HistoryCursor() -> Int32 {
+    return this.m_cursor;
   }
 
   // The engine has just started `key` on the receiver. If the player switched that track off and
@@ -314,7 +394,7 @@ public class RadioXLDeck extends ScriptableService {
   // handler and from the Radioport poll.
   public func Arrived(gi: GameInstance, key: Uint64) -> Void {
     let controls = RadioXLControls.Get();
-    if !IsDefined(controls) || controls.DisabledCount() == 0 { return; }
+    if !IsDefined(controls) { return; }
     let r = this.Receiver(gi);
     if !r.IsValid() { return; }
     let catalog = RadioXLCatalog.Get();
@@ -507,16 +587,6 @@ public class RadioXLDeck extends ScriptableService {
     if told == 0 { note = "not on the station's list"; }
     if told >= 0 && countPick { note += ", counted"; }
     RadioXLLog(s"\(r.station.name): requested track \(index) \(track.event) (\(note))");
-  }
-
-  // The same lookup the popup makes: the receiver reports the track as a CName built from
-  // primaryLocKey, and GetLocalizedTextByKey resolves that name; the event name is the fallback.
-  private func TrackTitle(track: ref<RadioXLCatalogTrack>) -> String {
-    let text: String = track.key != 0ul ? GetLocalizedTextByKey(HashToName(track.key)) : "";
-    if StrLen(text) == 0 && IsNameValid(track.title) {
-      text = GetLocalizedText(NameToString(track.title));
-    }
-    return StrLen(text) > 0 ? text : NameToString(track.event);
   }
 
   private func Now(gi: GameInstance) -> Float {

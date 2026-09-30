@@ -84,6 +84,14 @@ public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
 // catalog reads is a snapshot. Empty when the plugin cannot see the station.
 public native func RadioXL_StationTracks(station: CName) -> array<CName>;
 public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool, refill: Bool) -> Int32;
+// For the script API. Frequency takes the ERadioStationList value, vanilla or custom; the others a
+// custom station's index. Description falls back to the manifest's plain text, then its `en-us`
+// text. Position is seconds since the station's current slot began, negative when unreadable.
+public native func RadioXL_Frequency(station: Int32) -> Float;
+public native func RadioXL_StationSource(index: Int32) -> String;
+public native func RadioXL_StationDescription(index: Int32, language: String) -> String;
+public native func RadioXL_StationExtension(index: Int32, mod: String) -> String;
+public native func RadioXL_StationPosition(station: CName) -> Float;
 
 // A station is assembled out of the systems the game already has, in this order:
 //
@@ -140,6 +148,32 @@ public class RadioXLService extends ScriptableService {
   private let m_gainPending: Bool;
   private let m_gainPolls: Int32;
   private let m_ownType: Bool;
+  private let m_refused: array<CName>;
+  private let m_events: ref<audioAudioEventArray>;
+
+  public final static func Get() -> ref<RadioXLService> {
+    return GameInstance.GetScriptableServiceContainer()
+      .GetService(n"RadioXL.RadioXLService") as RadioXLService;
+  }
+
+  // Whether AudioXL refused this track's registration.
+  public func IsRefused(event: CName) -> Bool {
+    return ArrayContains(this.m_refused, event);
+  }
+
+  public func IsAudioDone() -> Bool {
+    return this.m_audioDone;
+  }
+
+  // The length the audio event table schedules a track against, vanilla tracks included; 0 when
+  // the table was not seen or has no row for it. A vanilla row is a little under the song.
+  public func EventDuration(event: CName) -> Float {
+    if !IsDefined(this.m_events) { return 0.0; }
+    for row in this.m_events.events {
+      if Equals(row.redId, event) { return row.maxDuration; }
+    }
+    return 0.0;
+  }
 
   private cb func OnLoad() {
     let cb = GameInstance.GetCallbackSystem();
@@ -248,6 +282,7 @@ public class RadioXLService extends ScriptableService {
               this.m_gainPending = true;
             }
           } else {
+            ArrayPush(this.m_refused, event);
             RadioXLLog(s"AudioXL refused \(event) - \(file)");
           }
         }
@@ -356,6 +391,7 @@ public class RadioXLService extends ScriptableService {
     let events = resource.root as audioAudioEventArray;
     if !IsDefined(events) { return; }
     this.m_eventsDone = true;
+    this.m_events = events;
 
     // **The custom-sound TYPE is posted by name, so it needs a row here exactly as a track does.**
     // AudioXL stores a row's type as the CName hash of the type string, and the engine resolves

@@ -48,20 +48,26 @@ public class RadioXLState extends ScriptableService {
   }
 
   public func SetRememberStation(station: CName) -> Void {
+    let changed: Bool = NotEquals(station, this.rememberStation);
     this.rememberStation = station;
     this.Write();
+    if changed { RadioXLEvents.MyStationChanged(station); }
   }
 
   public func SetMuteIdents(value: Bool) -> Void {
+    let changed: Bool = NotEquals(value, this.muteIdents);
     this.muteIdents = value;
     this.Write();
     this.Apply();
+    if changed { RadioXLEvents.MutesChanged(this.muteIdents, this.muteNews); }
   }
 
   public func SetMuteNews(value: Bool) -> Void {
+    let changed: Bool = NotEquals(value, this.muteNews);
     this.muteNews = value;
     this.Write();
     this.Apply();
+    if changed { RadioXLEvents.MutesChanged(this.muteIdents, this.muteNews); }
   }
 
   private func Apply() -> Void {

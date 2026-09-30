@@ -153,6 +153,7 @@ public class RadioXLCatalog extends ScriptableService {
     this.m_built = true;
     this.SeedStreamerFlags(stations);
     RadioXLLog(s"catalog built: \(ArraySize(stations)) stations, \(trackCount) tracks -\(names)");
+    RadioXLEvents.Ready(ArraySize(stations));
   }
 
   // The engine's streaming flag becomes the song's starting state, so one list answers what a
@@ -231,6 +232,7 @@ public class RadioXLCatalog extends ScriptableService {
     }
     RadioXLLog(s"\(name): track list refreshed from the engine, \(ArraySize(station.tracks)) to \(n) (\(added) new)");
     station.tracks = tracks;
+    RadioXLEvents.CatalogRefreshed(name, added);
     return true;
   }
 
@@ -280,6 +282,48 @@ public class RadioXLCatalog extends ScriptableService {
       i += 1;
     }
     return null;
+  }
+
+  // The station a track belongs to, or null. A track event belongs to one station only.
+  public func Owner(event: CName) -> ref<RadioXLCatalogStation> {
+    for station in this.m_stations {
+      if IsDefined(this.Track(station, event)) { return station; }
+    }
+    return null;
+  }
+
+  // The track the receiver would name, in the player's language: the receiver reports it as a
+  // CName built from primaryLocKey, and GetLocalizedTextByKey resolves that; the event name is the
+  // fallback.
+  public func TitleOf(track: ref<RadioXLCatalogTrack>) -> String {
+    if !IsDefined(track) { return ""; }
+    let text: String = track.key != 0ul ? GetLocalizedTextByKey(HashToName(track.key)) : "";
+    if StrLen(text) == 0 && IsNameValid(track.title) {
+      text = GetLocalizedText(NameToString(track.title));
+    }
+    return StrLen(text) > 0 ? text : NameToString(track.event);
+  }
+
+  // A station's idents by event name, including while the idents mute holds them aside.
+  public func Idents(name: CName) -> array<CName> {
+    let out: array<CName>;
+    let blips: array<audioRadioBlip>;
+    let kept = this.KeptIdents(name);
+    if IsDefined(kept) {
+      blips = kept.blips;
+    } else {
+      let cooked = this.Cooked();
+      if IsDefined(cooked) {
+        for entry in cooked.entries {
+          let meta = entry as audioRadioStationMetadata;
+          if IsDefined(meta) && Equals(meta.name, name) { blips = meta.blips; }
+        }
+      }
+    }
+    for blip in blips {
+      ArrayPush(out, blip.blipEventName);
+    }
+    return out;
   }
 
   // --- the two mutes ----------------------------------------------------------------------------

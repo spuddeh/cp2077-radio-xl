@@ -278,12 +278,16 @@ protected cb func OnVehicleRadioStationChanged(evt: ref<VehicleRadioStationChang
   if IsDefined(memory) {
     memory.OnStationChanged();
   }
+  let events = RadioXLEvents.Get();
+  if IsDefined(events) { events.Observe(this.GetGame()); }
   return result;
 }
 
 @wrapMethod(VehicleComponent)
 protected cb func OnRadioToggleEvent(evt: ref<RadioToggleEvent>) -> Bool {
   let result: Bool = wrappedMethod(evt);
+  let events = RadioXLEvents.Get();
+  if IsDefined(events) { events.Observe(GetGameInstance()); }
   let controls = RadioXLControls.Get();
   if IsDefined(controls) && controls.playOnVehiclePowerOn {
     let vehicle = this.GetVehicle();
@@ -316,6 +320,8 @@ protected func OnEnter(stateContext: ref<StateContext>, scriptInterface: ref<Sta
 public final func HandleRadioToggleEvent(evt: ref<RadioToggleEvent>) -> Void {
   let wasOn: Bool = this.m_isOn;
   wrappedMethod(evt);
+  let events = RadioXLEvents.Get();
+  if IsDefined(events) { events.Observe(GetGameInstance()); }
   let controls = RadioXLControls.Get();
   if IsDefined(controls) && controls.playOnPocketPowerOn && !wasOn && this.m_isOn {
     RadioXLMyStation.Get().Schedule(true, "the Radioport came on");

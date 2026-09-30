@@ -74,6 +74,19 @@ public class RadioXLDial {
     let slot: Int32 = RadioXLDial.Slot(station);
     return slot < 0 ? TDBID.None() : TDBID.Create(RadioXLDial.RecordName(slot));
   }
+
+  // The game's own RadioStation record for one of the fourteen, by enum value; "" past them.
+  public final static func VanillaRecordName(station: Int32) -> String {
+    let names: array<String> = ["AggroIndie", "ElectroIndie", "HipHop", "AggroTechno", "Downtempo", "AttRock", "Pop",
+                                "Latino", "Metal", "MinimTech", "Jazz", "GrowlFM", "DarkStar", "Impulse"];
+    return station >= 0 && station < ArraySize(names) ? "RadioStation." + names[station] : "";
+  }
+
+  // Any station's RadioStation record, vanilla or custom.
+  public final static func StationRecord(station: Int32) -> TweakDBID {
+    let vanilla: String = RadioXLDial.VanillaRecordName(station);
+    return StrLen(vanilla) > 0 ? TDBID.Create(vanilla) : RadioXLDial.Record(station);
+  }
 }
 
 // --- the TweakDB records -------------------------------------------------------------------------
@@ -124,11 +137,9 @@ public class RadioXLRecords extends ScriptableTweak {
   }
 
   private func Retune() -> Void {
-    let names: array<String> = ["AggroIndie", "ElectroIndie", "HipHop", "AggroTechno", "Downtempo", "AttRock", "Pop",
-                                "Latino", "Metal", "MinimTech", "Jazz", "GrowlFM", "DarkStar", "Impulse"];
     let station: Int32 = 0;
     while station < 14 {
-      let recordName: String = "RadioStation." + names[station];
+      let recordName: String = RadioXLDial.VanillaRecordName(station);
       let position: Int32 = RadioXL_DialPosition(station);
       if position >= 0 {
         TweakDBManager.SetFlat(TDBID.Create(recordName + ".index"), ToVariant(position));

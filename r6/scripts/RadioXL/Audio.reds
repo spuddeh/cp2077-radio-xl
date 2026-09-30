@@ -74,6 +74,11 @@ public class RadioXLAudio {
 
   // False means every URL row is refused: AudioXL.ini, which only the player edits, turns http on
   // and lists the hosts allowed.
+  // How many URL rows AudioXL is still trying to reach, without polling.
+  public final static func PendingStreams() -> Int32 {
+    return AudioXLNative.PendingRemote();
+  }
+
   public final static func HttpAllowed() -> Bool {
     return AudioXLNative.HttpAllowed();
   }

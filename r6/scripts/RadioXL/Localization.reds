@@ -28,11 +28,14 @@ public func RadioXLText(key: String) -> String {
   return StrLen(text) > 0 ? text : key;
 }
 
-// The same package for every language: a station's name and titles are the modder's text as
-// written, not translated. Codeware asks for the fallback and the current language and merges both.
+// A station's name and titles are the modder's text as written, the same in every language. Its
+// description may be written per language, so each package carries the one for its language.
+// Codeware asks for the fallback and the current language and merges both.
 public class RadioXLLocalizationProvider extends ModLocalizationProvider {
   public func GetPackage(language: CName) -> ref<ModLocalizationPackage> {
-    return new RadioXLTexts();
+    let package = new RadioXLTexts();
+    package.language = NameToString(language);
+    return package;
   }
 
   public func GetFallback() -> CName {
@@ -40,7 +43,14 @@ public class RadioXLLocalizationProvider extends ModLocalizationProvider {
   }
 }
 
+// The key a station's description is registered under: its name key with `-desc` after it.
+public func RadioXL_DescriptionKey(station: Int32) -> String {
+  return NameToString(RadioXL_StationKey(station)) + "-desc";
+}
+
 public class RadioXLTexts extends ModLocalizationPackage {
+  public let language: String;
+
   protected func DefineTexts() -> Void {
     let added: Int32 = 0;
     let station: Int32 = 0;
@@ -49,6 +59,11 @@ public class RadioXLTexts extends ModLocalizationPackage {
       let name: String = RadioXL_StationDisplayName(station);
       if StrLen(name) > 0 {
         this.Text(NameToString(RadioXL_StationKey(station)), name);
+        added += 1;
+      }
+      let description: String = RadioXL_StationDescription(station, this.language);
+      if StrLen(description) > 0 {
+        this.Text(RadioXL_DescriptionKey(station), description);
         added += 1;
       }
       let tracks: Int32 = RadioXL_StationTrackCount(station);

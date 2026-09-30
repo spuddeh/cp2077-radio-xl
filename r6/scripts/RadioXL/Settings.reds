@@ -96,6 +96,18 @@ public class RadioXLConfig extends ScriptableSystem {
       .SetLifetime(CallbackLifetime.Forever);
   }
 
+  // Writes the current values into RCF's file. A value changed anywhere but the panel (a key, the
+  // script API) is otherwise restored over at the next start.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  public static func Persist() -> Void {
+    let self = RadioXLConfig.Get();
+    if !IsDefined(self) || !IsDefined(self.m_provider) { return; }
+    DVRCF_Store.PersistFrom(self.GetGameInstance(), "RadioXL", self.m_provider, self.m_provider.BuildSchema());
+  }
+
+  @if(!ModuleExists("RedscriptConfigFramework"))
+  public static func Persist() -> Void {}
+
   @if(ModuleExists("RedscriptConfigFramework"))
   protected cb func OnSessionReady(event: ref<GameSessionEvent>) -> Void {
     if !IsDefined(this.m_provider) { return; }
@@ -488,7 +500,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return; }
     if StrBeginsWith(key, RadioXL_SkipPrefix()) {
-      s.SetStationSkipped(StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix()))), value);
+      let station: CName = StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix())));
+      if s.SetStationSkipped(station, value) && !this.m_restoring {
+        RadioXLEvents.StationSkipChanged(station, value);
+      }
       return;
     }
     if Equals(key, RadioXL_KeyUseModifiers()) { s.useModifiers = value; }
@@ -529,7 +544,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return; }
     if StrBeginsWith(key, RadioXL_SongPrefix()) {
-      s.SetSongState(this.SongEvent(key), value);
+      let event: CName = this.SongEvent(key);
+      if s.SetSongState(event, value) && !this.m_restoring {
+        RadioXLEvents.SongStateChanged(event, value);
+      }
       return;
     }
     if StrBeginsWith(key, RadioXL_ModifierPrefix()) {

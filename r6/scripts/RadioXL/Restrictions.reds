@@ -33,7 +33,12 @@ public class RadioXLRestrictions extends ScriptableSystem {
 
   public func Record(restriction: Int32, restricted: Bool) -> Void {
     if restriction >= 0 && restriction < ArraySize(this.m_actual) {
+      let changed: Bool = NotEquals(restricted, this.m_actual[restriction]);
       this.m_actual[restriction] = restricted;
+      let cfg = RadioXLConfig.Get();
+      if changed && IsDefined(cfg) && cfg.MutesOn(restriction) {
+        RadioXLEvents.Silenced(restriction, restricted);
+      }
     }
   }
 
