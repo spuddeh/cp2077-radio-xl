@@ -243,6 +243,14 @@ export function parseGain(text: string): number | null {
   return Math.round(Math.min(4, Math.max(0, gain)) * 100) / 100
 }
 
+/** A level change in dB as a person reads it: `+2.2 dB`, `-3.1 dB`, or `no change`. */
+export function dbChange(gain: number): string {
+  if (gain <= 0) return 'silent'
+  const db = 20 * Math.log10(gain)
+  if (Math.abs(db) < 0.05) return 'no change'
+  return `${db > 0 ? '+' : ''}${db.toFixed(1)} dB`
+}
+
 /** A gain as the page shows it: a percentage, and the level change it makes. */
 export function gainLabel(gain: number): string {
   const pct = `${Math.round(gain * 100)}%`

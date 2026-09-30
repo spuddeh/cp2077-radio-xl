@@ -224,6 +224,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .copy-block-button:hover { --edge-opacity: 1; }
 .notice-steps { margin: 4px 0; padding-left: 1.3em; }
 .notice-steps li { margin: 2px 0; }
+.notice-aside { display: block; margin-top: 2px; font-size: var(--font-readable-x-small); opacity: 0.85; }
 .cell input::placeholder,
 .cell textarea::placeholder { color: var(--grey); opacity: 0.55; }
 

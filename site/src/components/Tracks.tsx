@@ -11,9 +11,10 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStation, type Track } from '../store'
-import { gainLabel, parseGain, suggestGain, type Suggestion } from '../loudness'
+import { dbChange, gainLabel, parseGain, suggestGain, type Suggestion } from '../loudness'
 import { measureFile, preview } from '../measure'
 import { Bool, CopyBlock, Fault, Notice, Slider } from './Controls'
+import { followStream, hostOf, iniLines, type StreamCheck } from '../streamCheck'
 import { Tooltip } from './Tooltip'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
@@ -49,16 +50,23 @@ export function Tracks() {
     addStream(stream.trim())
     setStream('')
   }
-  // The host a player has to allow, taken from the stream the station carries.
-  const streamHost = (() => {
-    const url = tracks.find((t) => t.url)?.url
-    if (!url) return ''
-    try {
-      return new URL(url).hostname
-    } catch {
-      return ''
+  // The hosts a player has to allow: the stream's own, and where it leads, once the page has
+  // followed it. A check for an older address is dropped when the address changes.
+  const streamUrl = tracks.find((t) => t.url)?.url ?? ''
+  const streamHost = hostOf(streamUrl)
+  const [check, setCheck] = useState<{ url: string; result: StreamCheck } | null>(null)
+  useEffect(() => {
+    if (!streamUrl || !streamHost) return
+    let current = true
+    void followStream(streamUrl, location.protocol).then((result) => {
+      if (current) setCheck({ url: streamUrl, result })
+    })
+    return () => {
+      current = false
     }
-  })()
+  }, [streamUrl, streamHost])
+  const checked = check?.url === streamUrl ? check.result : null
+  const hosts = checked?.hosts ?? [streamHost]
   const sensors = useSensors(
     // A small travel before a drag starts, so a click on the handle is still a click.
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -187,13 +195,22 @@ export function Tracks() {
               Open <code>red4ext\plugins\AudioXL\AudioXL.ini</code>. With Mod Organizer 2 it is in Overwrite.
             </li>
             <li>
-              Set these two lines:
-              <CopyBlock text={`allowHttpConnections = true\nallowedHost = ${streamHost}`} />
+              Set these lines:
+              <CopyBlock text={iniLines(hosts)} />
+              {hosts.length > 1 && (
+                <span className="notice-aside">
+                  This stream moves on to <code>{hosts[hosts.length - 1]}</code>, so both hosts are listed.
+                </span>
+              )}
+              {!checked && <span className="notice-aside">Checking where the stream leads...</span>}
             </li>
-            <li>
-              Still silent? The stream moved to another host. AudioXL&apos;s log names it: add an{' '}
-              <code>allowedHost</code> line for that one too.
-            </li>
+            {checked && !checked.checked && (
+              <li>
+                Still silent in game? The stream may move to another host, which this page could not check
+                {checked.why === 'mixed' ? ' from an https page' : ''}. AudioXL&apos;s log names it: add an{' '}
+                <code>allowedHost</code> line for that one too.
+              </li>
+            )}
           </ol>
         </Notice>
       )}
@@ -371,32 +388,37 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
               ) : failed ? (
                 'The stream did not play: check the address, or whether the station is on air. '
               ) : null}
-              A stream cannot be measured ahead of time. Set its level by ear against a vanilla station.
+              Streams can&apos;t be measured. Set the level by ear.
             </>
           ) : !t.source ? (
             ''
           ) : t.level === undefined ? (
             props.auto ? 'Measuring' : ''
           ) : t.level === null ? (
-            'This browser could not read the file, so no level is suggested.'
+            "Can't measure this file. Set its level by ear."
           ) : (
-            <>
-              {t.level.lufs.toFixed(1)} LUFS, peak {t.level.peakDb > 0 ? '+' : ''}
-              {t.level.peakDb.toFixed(1)} dBFS.{' '}
+            // The measurement itself is for the curious, on hover; the line says what was done.
+            <span
+              title={`Measured ${t.level.lufs.toFixed(1)} LUFS, peak ${t.level.peakDb > 0 ? '+' : ''}${t.level.peakDb.toFixed(1)} dBFS`}
+            >
               {suggestion && automatic ? (
-                <span className="track-suggested">Levelled to {gainLabel(suggestion.gain)}{suggestion.peakLimited ? ', as far as the peak allows' : ''}.</span>
+                <span className="track-suggested">
+                  {suggestion.peakLimited
+                    ? `${dbChange(suggestion.gain)}, the most before it crackles`
+                    : `Matched to the game (${dbChange(suggestion.gain)})`}
+                </span>
               ) : suggestion && atSuggestion(t) ? (
-                <span className="track-suggested">At the suggested level{suggestion.peakLimited ? ', as far as the peak allows' : ''}.</span>
+                <span className="track-suggested">At the suggested level</span>
               ) : suggestion ? (
                 <>
-                  Suggested {gainLabel(suggestion.gain)}
-                  {suggestion.peakLimited ? ', limited by the peak' : ''}{' '}
+                  Suggested {dbChange(suggestion.gain)}
+                  {suggestion.peakLimited ? ', the most before it crackles' : ''}.{' '}
                   <button type="button" className="link track-use" onClick={() => updateTrack(t.id, { gain: suggestion.gain })}>
                     use it
                   </button>
                 </>
               ) : null}
-            </>
+            </span>
           )}
         </span>
       </div>

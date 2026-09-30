@@ -154,15 +154,17 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     })`)
     const seen = JSON.parse(during)
     if (seen.state.startsWith('Measuring')) assert.equal(seen.disabled, true, during)
-    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('LUFS'))`)
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Matched to the game'))`)
     await page.waitFor("document.querySelector('.footer-state').textContent.includes('is ready')")
 
     const readings = JSON.parse(await page.evaluate("JSON.stringify([...document.querySelectorAll('.track-reading')].map((e) => e.textContent))"))
-    const tone = readings.find((r) => r.includes('LUFS'))
-    assert.match(tone, /^-(19\.9|20\.0|20\.1) LUFS, peak -(19\.9|20\.0|20\.1) dBFS\./, tone)
-    assert.match(tone, /Levelled to 279% \(\+8\.9 dB\)/, tone)
+    const tone = readings.find((r) => r.includes('Matched to the game'))
+    assert.equal(tone, 'Matched to the game (+8.9 dB)', tone)
+    // The measurement itself is on hover.
+    const measured = await page.evaluate("[...document.querySelectorAll('.track-reading [title]')].map((e) => e.title).find((t) => t.startsWith('Measured'))")
+    assert.match(measured, /^Measured -(19\.9|20\.0|20\.1) LUFS, peak -(19\.9|20\.0|20\.1) dBFS$/, measured)
     // The stand-in mp3 is not audio the browser can decode, and says so without a fault.
-    assert.ok(readings.some((r) => r.includes('could not read the file')), JSON.stringify(readings))
+    assert.ok(readings.some((r) => r.includes("Can't measure this file")), JSON.stringify(readings))
     const state = await page.evaluate("document.querySelector('.footer-state').textContent")
     assert.match(state, /is ready/, state)
     let manifest = JSON.parse(await page.evaluate("document.querySelector('.json pre').textContent"))
@@ -182,7 +184,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       slider.dispatchEvent(new Event('input', { bubbles: true }))
       return 1
     })()`)
-    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Suggested 279%'))`)
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Suggested +8.9 dB'))`)
     await page.evaluate("document.querySelector('.use-suggested').click()")
     await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('At the suggested level'))`)
     assert.equal(await page.evaluate("document.querySelector('.use-suggested').disabled"), true)
@@ -195,7 +197,7 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
       document.querySelector('.auto-level .on').click()
       return 1
     })()`)
-    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Levelled to 279%'))`)
+    await page.waitFor(`[...document.querySelectorAll('.track-reading')].some((e) => e.textContent.includes('Matched to the game (+8.9 dB)'))`)
     assert.equal(await page.evaluate("!!document.querySelector('.use-suggested')"), false)
     assert.match(await page.evaluate("document.querySelector('.builder-version').textContent"), /^Station builder \d+\.\d+\.\d+$/)
     assert.deepEqual(await page.errors(), [])
@@ -392,6 +394,8 @@ describe('the station builder in a browser', { skip: chrome ? false : 'no Chrome
     await type('.track-level .slider-value', 0, 'loud')
     assert.equal((await read()).tracks[0].gain, 0.71, 'text that is not a level leaves the value alone')
 
+    // The page tries to follow the stream; the test's address leads nowhere, so it says it could not check.
+    await page.waitFor("[...document.querySelectorAll('.row-note.notice')].some((e) => e.textContent.includes('another host'))")
     const notice = await page.evaluate("[...document.querySelectorAll('.row-note.notice')].map((e) => e.textContent).join(' ')")
     assert.ok(notice.includes('another host'), `the stream notice should say a stream can move to another host: ${notice}`)
     const play = await page.evaluate("document.querySelector('.track-play').disabled")
