@@ -15,6 +15,10 @@
 // CName is asked for: `RadioXL_RadioXLAPI.Tracks("radio_station_01_att_rock")`. A returned CName
 // reads as text through `.value`. Events are in Events.reds.
 //
+// **Put an array these functions return into a `let` before `ArraySize`, `ArrayContains` or
+// an index.** Redscript reads such a call's result from uninitialised memory otherwise, which can
+// crash the game: `let tracks = RadioXLAPI.Tracks(station); ArraySize(tracks)`.
+//
 // `Version()` goes up only when something here changes in a way that breaks a caller. A function
 // added is not a break.
 //

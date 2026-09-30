@@ -269,14 +269,16 @@ public class RadioXLApiTest extends ScriptableService {
     this.Check(s"every track has a title, a length, a gain, and a file exactly when custom (\(trackCount) tracks)", tracksOk, "");
     if StrLen(bad) > 0 { this.Note("faults:" + bad); }
 
+    let noTracks: array<CName> = RadioXLAPI.Tracks(n"radioxl_no_such_station");
     this.Check("an unknown station reads empty", StrLen(RadioXLAPI.StationName(n"radioxl_no_such_station")) == 0
                && RadioXLAPI.StationFrequency(n"radioxl_no_such_station") < 0.0
-               && ArraySize(RadioXLAPI.Tracks(n"radioxl_no_such_station")) == 0, "");
+               && ArraySize(noTracks) == 0, "");
     this.Check("an unknown station is refused", !RadioXLAPI.TuneStation(n"radioxl_no_such_station")
                && !RadioXLAPI.PlaySong(n"radioxl_no_such_station", n"radioxl_no_such_track")
                && !RadioXLAPI.SetStationSkipped(n"radioxl_no_such_station", true), "");
     this.Check("StationExtension for a mod with nothing is empty", StrLen(RadioXLAPI.StationExtension(stations[0], "RadioXLApiTest")) == 0, "");
-    this.Note(s"SilencedBy: \(ArraySize(RadioXLAPI.SilencedBy())) situation(s); MyStation \(RadioXLAPI.MyStation()); idents muted \(RadioXLAPI.IdentsMuted()); news muted \(RadioXLAPI.NewsMuted())");
+    let silenced: array<CName> = RadioXLAPI.SilencedBy();
+    this.Note(s"SilencedBy: \(ArraySize(silenced)) situation(s); MyStation \(RadioXLAPI.MyStation()); idents muted \(RadioXLAPI.IdentsMuted()); news muted \(RadioXLAPI.NewsMuted())");
 
     if Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.Vehicle) {
       this.Note("In a vehicle: the receiver steps use the Radioport. Get out and run it again.");
@@ -291,7 +293,8 @@ public class RadioXLApiTest extends ScriptableService {
   private func PowerOn() -> Void {
     this.Mark();
     if !this.m_wasOn {
-      this.Radioport(RadioXLAPI.Stations()[0]);
+      let stations: array<CName> = RadioXLAPI.Stations();
+      this.Radioport(stations[0]);
       this.Next(2, 2.5);
       return;
     }
@@ -306,8 +309,10 @@ public class RadioXLApiTest extends ScriptableService {
     }
     let current: CName = RadioXLAPI.CurrentStation();
     let target: CName = n"None";
-    for st in RadioXLAPI.Stations() {
-      if NotEquals(st, current) && !RadioXLAPI.IsStreamStation(st) && ArraySize(RadioXLAPI.Tracks(st)) >= 3 {
+    let stations: array<CName> = RadioXLAPI.Stations();
+    for st in stations {
+      let tracks: array<CName> = RadioXLAPI.Tracks(st);
+      if NotEquals(st, current) && !RadioXLAPI.IsStreamStation(st) && ArraySize(tracks) >= 3 {
         if !IsNameValid(target) || (RadioXLAPI.IsCustomStation(st) && !RadioXLAPI.IsCustomStation(target)) { target = st; }
       }
     }
@@ -323,7 +328,8 @@ public class RadioXLApiTest extends ScriptableService {
     this.Check("CurrentStation is the tuned station", Equals(RadioXLAPI.CurrentStation(), this.m_station), s"\(RadioXLAPI.CurrentStation())");
     this.Check("StationChanged arrived once", this.Since("StationChanged") == 1, s"\(this.Since("StationChanged")): \(this.Last("StationChanged"))");
     this.m_track = RadioXLAPI.CurrentTrack();
-    this.Check("CurrentTrack is one of the station's songs", ArrayContains(RadioXLAPI.Tracks(this.m_station), this.m_track), s"\(this.m_track)");
+    let tracks: array<CName> = RadioXLAPI.Tracks(this.m_station);
+    this.Check("CurrentTrack is one of the station's songs", ArrayContains(tracks, this.m_track), s"\(this.m_track)");
     ArrayPush(this.m_seen, this.m_track);
     this.Mark();
     this.Check("NextSong", RadioXLAPI.NextSong(), "");
@@ -360,7 +366,8 @@ public class RadioXLApiTest extends ScriptableService {
     let now: CName = RadioXLAPI.CurrentTrack();
     let expected: CName = this.m_seen[ArraySize(this.m_seen) - 2];
     this.Check("PreviousSong went back one song", Equals(now, expected), s"\(now), expected \(expected)");
-    this.Check("HistoryCursor stepped back", RadioXLAPI.HistoryCursor() == ArraySize(RadioXLAPI.History()) - 2, s"\(RadioXLAPI.HistoryCursor())");
+    let history: array<CName> = RadioXLAPI.History();
+    this.Check("HistoryCursor stepped back", RadioXLAPI.HistoryCursor() == ArraySize(history) - 2, s"\(RadioXLAPI.HistoryCursor())");
     this.Mark();
     RadioXLAPI.NextSong();
     this.Next(7, 3.0);
@@ -370,7 +377,8 @@ public class RadioXLApiTest extends ScriptableService {
     let now: CName = RadioXLAPI.CurrentTrack();
     this.Check("NextSong after PreviousSong went forward through the history", Equals(now, this.m_track), s"\(now), expected \(this.m_track)");
     let pick: CName = n"None";
-    for t in RadioXLAPI.Tracks(this.m_station) {
+    let tracks: array<CName> = RadioXLAPI.Tracks(this.m_station);
+    for t in tracks {
       if !IsNameValid(pick) && NotEquals(t, now) && !ArrayContains(this.m_seen, t) && RadioXLAPI.IsSongPlayable(t) { pick = t; }
     }
     this.m_track = pick;
@@ -406,7 +414,8 @@ public class RadioXLApiTest extends ScriptableService {
     this.Check("StationSkipChanged arrived for both changes", this.Since("StationSkipChanged") == 2, s"\(this.Since("StationSkipChanged"))");
 
     let mine: CName = RadioXLAPI.MyStation();
-    let other: CName = Equals(mine, st) ? RadioXLAPI.Stations()[0] : st;
+    let stations: array<CName> = RadioXLAPI.Stations();
+    let other: CName = Equals(mine, st) ? stations[0] : st;
     this.Check("SetMyStation", RadioXLAPI.SetMyStation(other) && Equals(RadioXLAPI.MyStation(), other), s"\(other)");
     RadioXLAPI.SetMyStation(mine);
     this.Check("SetMyStation put back", Equals(RadioXLAPI.MyStation(), mine), s"\(RadioXLAPI.MyStation())");
@@ -421,8 +430,10 @@ public class RadioXLApiTest extends ScriptableService {
     this.Check("MutesChanged arrived for all four changes", this.Since("MutesChanged") == 4, s"\(this.Since("MutesChanged"))");
     this.Check("the mutes put back", Equals(RadioXLAPI.IdentsMuted(), idents) && Equals(RadioXLAPI.NewsMuted(), news), "");
 
-    this.Check("Idents answers", ArraySize(RadioXLAPI.Idents(st)) >= 0, s"\(ArraySize(RadioXLAPI.Idents(st))) ident(s)");
-    this.Note(s"Remaining on \(st): \(ArraySize(RadioXLAPI.Remaining(st))) of \(ArraySize(RadioXLAPI.Tracks(st)))");
+    let idents: array<CName> = RadioXLAPI.Idents(st);
+    let remaining: array<CName> = RadioXLAPI.Remaining(st);
+    let tracks: array<CName> = RadioXLAPI.Tracks(st);
+    this.Note(s"Idents on \(st): \(ArraySize(idents)); remaining \(ArraySize(remaining)) of \(ArraySize(tracks))");
     this.Check("ShowNowPlaying", RadioXLAPI.ShowNowPlaying(false), "the on-screen line should show now");
     this.m_track = RadioXLAPI.CurrentTrack();
     this.m_position = RadioXLAPI.Position(st);
@@ -448,7 +459,8 @@ public class RadioXLApiTest extends ScriptableService {
     this.Check("the Radioport is off", Equals(RadioXLAPI.Receiver(), RadioXLReceiverKind.None), s"\(EnumInt(RadioXLAPI.Receiver()))");
     this.Check("RadioPower off arrived", this.Since("RadioPower") >= 1 && StrContains(this.Last("RadioPower"), "on=false"), this.Last("RadioPower"));
     this.Check("NextSong with no radio on is refused", !RadioXLAPI.NextSong(), "");
-    this.Check("History is empty with no radio on", ArraySize(RadioXLAPI.History()) == 0, "");
+    let history: array<CName> = RadioXLAPI.History();
+    this.Check("History is empty with no radio on", ArraySize(history) == 0, "");
     this.Next(12, 0.1);
   }
 

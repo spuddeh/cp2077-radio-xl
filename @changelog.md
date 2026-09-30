@@ -46,6 +46,9 @@
   languages' descriptions carried through a reopen.
 
 ### Fixed
+- `RadioXLRestrictions.IsCompanionOfLifted` called `ArrayContains` straight on `Companions(s)`'s
+  return, the redscript rvalue bug that reads the array from uninitialised memory; bound to a local.
+  The same bug crashed the game three times in the API test harness, which is how it surfaced.
 - A song switched off with the never-again key was held in memory only: RCF's restore at the next
   Session/Ready put the saved value back over it (read from the code). The key now calls
   `RadioXLConfig.Persist`.

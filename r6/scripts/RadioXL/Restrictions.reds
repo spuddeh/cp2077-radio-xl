@@ -82,7 +82,8 @@ public class RadioXLRestrictions extends ScriptableSystem {
     let i: Int32 = 0;
     while i < ArraySize(situations) {
       let s: Int32 = situations[i];
-      if state.Actual(s) && !cfg.MutesOn(s) && ArrayContains(RadioXLRestrictions.Companions(s), restriction) {
+      let companions: array<Int32> = RadioXLRestrictions.Companions(s);
+      if state.Actual(s) && !cfg.MutesOn(s) && ArrayContains(companions, restriction) {
         return true;
       }
       i += 1;

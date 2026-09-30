@@ -28,7 +28,9 @@
 - `RadioXLAPI.RegisterStation(name)`: a RadioXL 0.1.0 station's script compiles and is logged; the
   station is not created (#10).
 - The script API (#39): `RadioXLAPI` reads, deck-backed acts and ten events, reachable from CET as
-  `RadioXL_RadioXLAPI` and `Observe("RadioXL.RadioXLEvents", ...)`. Compiles; in-game checks pending.
+  `RadioXL_RadioXLAPI` and `Observe("RadioXL.RadioXLEvents", ...)`. Verified in game by
+  `tests/api`: 62 checks pass, and every event reached a CET Observe as often as a redscript
+  listener. Not reached by the test: CatalogRefreshed, Silenced, the vehicle receiver.
 - Manifest `description` (#60) and `extensions`, with builder support for the first.
 - Each track's length is read from its file at load, so a station runs on the world clock like a
   vanilla one. No durations, event names, Wwise ids or records in a manifest.
@@ -101,7 +103,7 @@
 
 ## Awaiting in-game verification
 
-- The script API and its events (#39): reads, acts, and each event firing once per change.
+- The script API on the vehicle receiver, and the CatalogRefreshed and Silenced events (#39).
 - The never-again key's switch surviving a save load; previous stepping back over station picks.
 
 - The never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line
