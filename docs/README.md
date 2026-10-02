@@ -36,6 +36,9 @@ Every claim carries one of two marks:
   roster arrays are resolvable data symbols, so nothing is signature-scanned.
 - **Static disassembly** of the executable. No debugger. A station name is an FNV1a64 constant, so the
   roster was found by searching for the hash of `radio_station_12_growl_fm`.
+- **[cp2077-symbols](https://codeberg.org/bartmoss/cp2077-symbols)** for the C++ name of a function or
+  variable at an address: names recovered by matching candidates against both hashes in the address
+  database, so a listed name is exact. About a quarter of functions have none.
 - **The RTTI dump** (NativeDB) for every class and enum named here.
 - **SoundDB** (<https://sounddb.redmodding.org>) for what a Wwise event does.
 - **AudioXL's source** (<https://github.com/DigitalVixenSWE/cp2077-audio-xl>) for what its renderer does.

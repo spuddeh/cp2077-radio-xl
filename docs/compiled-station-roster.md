@@ -7,14 +7,23 @@ and nothing else: the station itself is then built by the engine like any other.
 
 ## The roster - identity
 
-`[M]` **A 14-slot `CName` array at RVA `0x3586d70`, indexed by `ERadioStationList`.** Zero on disk,
+Function and variable names below are the game's own C++ names, recovered by
+[cp2077-symbols](https://codeberg.org/bartmoss/cp2077-symbols) from the hashes CDPR ships in
+`cyberpunk2077_addresses.json`. A name says where to read, not what the code does; every claim here
+comes from the disassembly.
+
+`[M]` **`audio::c_radioStationNames`, a 14-slot `CName` array at RVA `0x3586d70`, indexed by
+`ERadioStationList`.** Zero on disk,
 filled by an initialiser at `0x13c30` that calls the magic-static CName accessor for each station
 name in turn. `ERadioStationList` has 14 members, 0 to 13; `radio_station_police` and
 `radio_station_kurtz` are in neither this array nor the enum and are reached by name only.
 
-It has exactly two consumers.
+It has exactly two consumers. A byte search for the array's RVA as a raw `disp32` finds no
+image-base-relative reader beside them.
 
-**Name to index, `0x4fe73c`** (RED4ext hash `4164035396`). A leaf function absent from `.pdata`:
+**Name to index, `0x4fe73c`** (RED4ext hash `4164035396`),
+`audio::RadioStationChannelData::TryGetRadioStationChannel(CName, Broadcast::Channel&)`. A leaf
+function absent from `.pdata`:
 
 ```c
 bool ResolveStation(CName name, int* out)
@@ -32,7 +41,8 @@ bool ResolveStation(CName name, int* out)
 non-dial stations and 255 for none. Slot 14 is id 22. All ten callers test the return value, so a
 name that misses here fails safely - this is not the function that kills the radios.
 
-**Index to name, `0x6bafe0`** (hash `2956468185`):
+**Index to name, `0x6bafe0`** (hash `2956468185`),
+`audio::RadioStationChannelData::GetRadioStationName(Broadcast::Channel)`:
 
 ```
 lea  eax, [rdx - 8]          ; undo the +8 bias
@@ -44,7 +54,8 @@ mov  rax, [rdx + rax*8]
 
 ## The name table - the label
 
-`[M]` **A second 14-slot `CName` array at `0x3586de0`** (hash `1433472801`), directly after the
+`[M]` **`audio::c_radioStationLocKeys`, a second 14-slot `CName` array at `0x3586de0`** (hash
+`1433472801`), directly after the
 roster, filled by an initialiser at `0x13b80` directly before the roster's. Each slot is a
 **localization key**, `Gameplay-Devices-Radio-RadioStationAggroIndie` and so on. Not text.
 
@@ -52,7 +63,8 @@ It has two readers, and **both reduce the index modulo fourteen before the bound
 unpatched slot 14 reports slot 0's label - Radio Vexelstrom. That was the whole wrong-label bug,
 on the dashboard and on the Radioport, and it was never a UI problem.
 
-**Reader one, `0x1c55420`** (hash `2735481579`):
+**Reader one, `0x1c55420`** (hash `2735481579`), the vehicle dashboard's. It has no recovered name;
+its only caller is `vehicle::VehicleAudioRadioController::GetRadioReceiverLocalizedStationName`:
 
 ```
 +0x00  44 8B C2            mov  r8d, edx           ; the station index
@@ -65,7 +77,8 @@ on the dashboard and on the Radioport, and it was never a UI problem.
 +0x29  4A 8B 04 C2         mov  rax, [rdx + r8*8]
 ```
 
-**Reader two, `0x1cb3320`** (hash `131147224`), the Radioport's. Missed for a long time because it
+**Reader two, `0x1cb3320`** (hash `131147224`), the Radioport's: `game::funcGetRadioStationLocalizedName`,
+the script native `GetRadioStationLocalizedName`. Missed for a long time because it
 reaches the table as `[r14 + rcx*8 + disp32]` with `r14` holding the image base, not through a
 `lea`. The same division, from `+0x5D`, with one difference:
 
@@ -89,7 +102,8 @@ nothing for the fourteen and stops the wrap for everything past them.
 
 ## The vehicle receiver's bound, and its next-station step
 
-`[M]` `0x25fdea8` (hash `4148435735`), the vehicle receiver's set-station:
+`[M]` `0x25fdea8` (hash `4148435735`), the vehicle receiver's set-station,
+`vehicle::VehicleAudioRadioController::SetRadioReceiverStation(uint, bool)`:
 
 ```
 +0x5E  83 FF 0E            cmp  edi, 0x0e          ; the requested index against 14  <- imm8
@@ -164,7 +178,8 @@ world device and the pocket radio step through one dial.
 
 ## Exactly three sites divide by fourteen
 
-`[M]` Across the whole binary:
+`[M]` Across the whole binary. The magic constant `0x24924925` appears 588 times, because it also
+divides by 7 and 28; these are the only three followed by `imul ..., 14`:
 
 | RVA | What | State |
 | --- | --- | --- |
@@ -202,8 +217,9 @@ replacing the readers rather than patching them. The vehicle step's bound is no 
 
 ## Two things this table is not
 
-- **The two specials.** `special_A`, `special_B` and `special_C` at `0x3462A10`, `0x3462A20` and the
-  Kurtz accessor's target are the separate handling for none, police and kurtz.
+- **The specials.** `special_A` and `special_B` are `audio::RadioStationChannelData::s_noneStation`
+  (`0x3462A10`) and `s_policeStation` (`0x3462A20`); `special_C` is the Kurtz accessor's target. They
+  are the separate handling for none, police and kurtz.
 - **The list the UI iterates.** `RadioStationDataProvider` (game redscript) holds the fourteen in
   switch bodies and `VehiclesManagerDataHelper` pushes fifteen literal TweakDB ids. Those are
   script, have no table behind them, and are the only things the framework wraps.

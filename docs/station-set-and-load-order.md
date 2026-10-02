@@ -119,8 +119,15 @@ seconds later still plays; a station that appears seconds later never exists.
   whole of development. The manifest's `news` chooses between `Stanley` and `None`.
 - `radio_station` and `radio_port_station` are **not Wwise switch groups**. Neither appears in
   `init.bnk`'s `STMG` chunk and no object in the radio banks references their ids. Both are handled by
-  the game's own audio layer, and one handler at `0x9d9c6c` serves both, calling the roster resolver
+  the game's own audio layer, and one handler at `0x9d9c6c` (`audio::RadioEmitter::HandleSwitchLogic`)
+  serves both, calling the roster resolver
   and parking the requested station at `+0x110` of a state object with a dirty flag.
+- **A random station can be a custom one** (read from the binary, not yet seen in game).
+  `audio::RadioSystem::GetRandomStation` has two forms: `0x219fc68`, called by `HandleSwitchLogic`
+  for a world device asking for a random station, and `0x9d8240`, called by
+  `audio::TrafficVehicleEmitter::PlayRadio` for a traffic car. Both build their candidates by walking
+  the radio system's own list of constructed stations (`+0x0`, count `+0xc`), skipping police, and
+  carry no bound of fourteen. Every station the engine built, custom ones included, is a candidate.
 - **`RequestSongOnRadioStation(CName station, CName song)`** on the audio system works from script:
   it forces a registered song onto a named station on demand.
 - `audioPlaylistEmitterMetadata` / `audioPlaylistMetadata` (157 and 53 entries) are a second audio
