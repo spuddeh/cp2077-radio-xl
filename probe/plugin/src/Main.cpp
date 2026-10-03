@@ -13,8 +13,10 @@
 #include <Windows.h>
 #include <RED4ext/RED4ext.hpp>
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <unordered_map>
 
@@ -759,7 +761,7 @@ RED4EXT_C_EXPORT void RED4EXT_CALL Query(RED4ext::v1::PluginInfo* aInfo)
 {
     aInfo->name = L"RadioStationProbe";
     aInfo->author = L"Spuddeh";
-    aInfo->version = RED4EXT_V1_SEMVER(0, 1, 0);
+    aInfo->version = RED4EXT_V1_SEMVER(0, 2, 0);
     aInfo->runtime = RED4EXT_V1_RUNTIME_VERSION_LATEST;
     aInfo->sdk = RED4EXT_V1_SDK_VERSION_CURRENT;
 }
@@ -806,6 +808,380 @@ void LogNativeHandlers()
 }
 } // namespace
 
+// --- traffic car radios ----------------------------------------------------------------------------
+// A traffic car's radio is started by `audio::TrafficVehicleEmitter::PlayRadio` when its engine sound
+// starts (by chance) and cut by `StopRadio` when the engine sound stops. Each is logged with the car's
+// distance from the audio listener, so a heard pop or cut can be matched to one line.
+//
+// The car is tied to its emitter by the entity id `InitializeAudio` posts as the
+// `traffic_vehicle_entity_id` switch, which the emitter keeps at +0x138. The car's position is the
+// argument of `UpdateAudio`, which hands it to the sound system every frame the car's audio is on.
+namespace
+{
+struct HookTarget
+{
+    const char* name;
+    uint32_t hash;
+    uintptr_t rva;
+    uint8_t prologue[8];
+};
+
+constexpr HookTarget kPlayRadio{"TrafficVehicleEmitter::PlayRadio", 2826768706, 0x9d8684,
+                                {0x4c, 0x8b, 0xdc, 0x49, 0x89, 0x5b, 0x10, 0x49}};
+constexpr HookTarget kStopRadio{"TrafficVehicleEmitter::StopRadio", 2874413394, 0x13e3868,
+                                {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
+constexpr HookTarget kPerformAudioAction{"TrafficDynamicMovementVehicles::PerformAudioAction", 115156017, 0x88d6c4,
+                                         {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x6c}};
+constexpr HookTarget kUpdateAudio{"TrafficDynamicMovementVehicles::UpdateAudio", 1823610974, 0x414224,
+                                  {0x48, 0x89, 0x5c, 0x24, 0x10, 0x55, 0x56, 0x41}};
+constexpr HookTarget kInitializeAudio{"TrafficDynamicMovementVehicles::InitializeAudio", 1133978076, 0x11b0e34,
+                                      {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
+constexpr HookTarget kGetRandomStation{"RadioSystem::GetRandomStation(ArraySpan<CName>)", 68099298, 0x9d8240,
+                                       {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
+
+// The emitter, as PlayRadio, StopRadio and HandleSwitchLogic read it.
+constexpr size_t kEmitterStation = 0x110;        // CName; s_noneStation when the radio is off
+constexpr size_t kEmitterEntityId = 0x138;       // traffic_vehicle_entity_id
+constexpr size_t kEmitterFlags = 0x150;          // bit 0: engine sound on
+constexpr size_t kEmitterRadioDisabled = 0x152;  // DisableAbilityToPlayRadio
+constexpr size_t kEmitterRadioOn = 0x153;        // set by PlayRadio
+
+// The traffic movement object and the audio data InitializeAudio is handed.
+constexpr size_t kMovementAudioActive = 0x430;
+constexpr size_t kAudioDataEntityId = 0x8;
+
+// The listener position, as audio::SoundSystem::GetListenerPosition reads it (engine root +0xa8).
+constexpr size_t kSoundSystemListener = 0x10;
+
+constexpr const char* kActionNames[] = {"StartEngine", "StopEngine", "StartWheel", "StopWheel", "StartRainLoop",
+                                        "StopRainLoop", "Horn", "HornForced", "DisableAbilityToPlayRadio",
+                                        "StartBrakeLoop", "EndBrakeLoop", "ApplyBrake", "ReleaseBrake"};
+
+using PlayRadioFn = void (*)(void* aEmitter);
+using StopRadioFn = void (*)(void* aEmitter);
+using PerformAudioActionFn = void (*)(void* aMovement, uint32_t aAction);
+using UpdateAudioFn = void (*)(void* aMovement, const float* aPosition);
+using InitializeAudioFn = void (*)(void* aMovement, const void* aAudioData);
+using GetRandomStationFn = void (*)(void* aRadioSystem, uint64_t* aOut, const uint64_t* const* aSpan);
+
+PlayRadioFn g_origPlayRadio = nullptr;
+StopRadioFn g_origStopRadio = nullptr;
+PerformAudioActionFn g_origPerformAudioAction = nullptr;
+UpdateAudioFn g_origUpdateAudio = nullptr;
+InitializeAudioFn g_origInitializeAudio = nullptr;
+GetRandomStationFn g_origGetRandomStation = nullptr;
+
+struct Car
+{
+    float pos[3];
+    bool hasPos;
+    uint64_t entityId;
+};
+
+SRWLOCK g_carsLock = SRWLOCK_INIT;
+std::unordered_map<uintptr_t, Car> g_cars;              // by movement object
+std::unordered_map<uint64_t, uintptr_t> g_carByEntity;  // entity id -> movement object
+std::string g_lastSpan;
+uint64_t g_startTick = 0;
+
+bool SafeReadListener(float* aOut)
+{
+    __try
+    {
+        const auto rootSlot = ResolveByHash(kHashEngineRoot);
+        const auto root = rootSlot ? Read<uintptr_t>(rootSlot) : 0;
+        const auto sound = root ? Read<uintptr_t>(root + kRootAudioSystem) : 0;
+        if (!sound)
+        {
+            return false;
+        }
+        for (int i = 0; i < 3; ++i)
+        {
+            aOut[i] = Read<float>(sound + kSoundSystemListener + i * 4);
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+struct EmitterState
+{
+    uint64_t station;
+    uint64_t entityId;
+    uint8_t flags;
+    uint8_t radioDisabled;
+    uint8_t radioOn;
+};
+
+bool SafeReadEmitter(void* aEmitter, EmitterState* aOut)
+{
+    __try
+    {
+        const auto e = reinterpret_cast<uintptr_t>(aEmitter);
+        aOut->station = Read<uint64_t>(e + kEmitterStation);
+        aOut->entityId = Read<uint64_t>(e + kEmitterEntityId);
+        aOut->flags = Read<uint8_t>(e + kEmitterFlags);
+        aOut->radioDisabled = Read<uint8_t>(e + kEmitterRadioDisabled);
+        aOut->radioOn = Read<uint8_t>(e + kEmitterRadioOn);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+bool SafeReadByte(uintptr_t aAddress, uint8_t* aOut)
+{
+    __try
+    {
+        *aOut = Read<uint8_t>(aAddress);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+bool SafeReadU64(uintptr_t aAddress, uint64_t* aOut)
+{
+    __try
+    {
+        *aOut = Read<uint64_t>(aAddress);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+// Seconds since the plugin loaded, and the distance from the listener to a car, or -1 when the car's
+// position is not known.
+std::string Stamp()
+{
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "t=%.3f", static_cast<double>(GetTickCount64() - g_startTick) / 1000.0);
+    return buf;
+}
+
+float DistanceTo(const Car* aCar)
+{
+    float listener[3];
+    if (!aCar || !aCar->hasPos || !SafeReadListener(listener))
+    {
+        return -1.0f;
+    }
+    const float dx = aCar->pos[0] - listener[0];
+    const float dy = aCar->pos[1] - listener[1];
+    const float dz = aCar->pos[2] - listener[2];
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// The car for an entity id, copied out under the lock.
+bool CarByEntity(uint64_t aEntityId, Car* aOut, uintptr_t* aMovement)
+{
+    AcquireSRWLockShared(&g_carsLock);
+    bool found = false;
+    const auto byEntity = g_carByEntity.find(aEntityId);
+    if (byEntity != g_carByEntity.end())
+    {
+        const auto car = g_cars.find(byEntity->second);
+        if (car != g_cars.end())
+        {
+            *aOut = car->second;
+            *aMovement = byEntity->second;
+            found = true;
+        }
+    }
+    ReleaseSRWLockShared(&g_carsLock);
+    return found;
+}
+
+std::string RadioLine(const char* aWhat, const EmitterState& aState, uint64_t aStation)
+{
+    Car car{};
+    uintptr_t movement = 0;
+    const bool known = CarByEntity(aState.entityId, &car, &movement);
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "traffic radio %s %s ent=%llx car=%llx dist=%.1f station=%s flags=%02x disabled=%u",
+                  aWhat, Stamp().c_str(), static_cast<unsigned long long>(aState.entityId),
+                  static_cast<unsigned long long>(movement), known ? DistanceTo(&car) : -1.0f, Text(aStation).c_str(),
+                  aState.flags, aState.radioDisabled);
+    return buf;
+}
+
+void DetourPlayRadio(void* aEmitter)
+{
+    g_origPlayRadio(aEmitter);
+    EmitterState state{};
+    if (SafeReadEmitter(aEmitter, &state))
+    {
+        // PlayRadio leaves the radio off when the pick was s_noneStation; only a station that started is a pop.
+        Log(RadioLine(state.radioOn ? "PLAY" : "PLAY-none", state, state.station));
+    }
+}
+
+void DetourStopRadio(void* aEmitter)
+{
+    EmitterState before{};
+    const bool read = SafeReadEmitter(aEmitter, &before);
+    g_origStopRadio(aEmitter);
+    EmitterState after{};
+    // StopRadio does nothing when the station is already none, so only a change is a cut.
+    if (read && SafeReadEmitter(aEmitter, &after) && after.station != before.station)
+    {
+        Log(RadioLine("STOP", before, before.station));
+    }
+}
+
+void DetourPerformAudioAction(void* aMovement, uint32_t aAction)
+{
+    g_origPerformAudioAction(aMovement, aAction);
+    // Engine edges and the radio switch-off only; the brake and wheel actions fire every few frames.
+    if (aAction != 0 && aAction != 1 && aAction != 8)
+    {
+        return;
+    }
+    AcquireSRWLockShared(&g_carsLock);
+    const auto found = g_cars.find(reinterpret_cast<uintptr_t>(aMovement));
+    const Car car = found != g_cars.end() ? found->second : Car{};
+    ReleaseSRWLockShared(&g_carsLock);
+    char buf[192];
+    std::snprintf(buf, sizeof(buf), "traffic action %s %s ent=%llx car=%llx dist=%.1f", kActionNames[aAction],
+                  Stamp().c_str(), static_cast<unsigned long long>(car.entityId),
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(aMovement)), DistanceTo(&car));
+    Log(buf);
+}
+
+void DetourUpdateAudio(void* aMovement, const float* aPosition)
+{
+    g_origUpdateAudio(aMovement, aPosition);
+    uint8_t active = 0;
+    if (!aPosition || !SafeReadByte(reinterpret_cast<uintptr_t>(aMovement) + kMovementAudioActive, &active) || !active)
+    {
+        return;
+    }
+    AcquireSRWLockExclusive(&g_carsLock);
+    Car& car = g_cars[reinterpret_cast<uintptr_t>(aMovement)];
+    car.pos[0] = aPosition[0];
+    car.pos[1] = aPosition[1];
+    car.pos[2] = aPosition[2];
+    car.hasPos = true;
+    ReleaseSRWLockExclusive(&g_carsLock);
+}
+
+void DetourInitializeAudio(void* aMovement, const void* aAudioData)
+{
+    g_origInitializeAudio(aMovement, aAudioData);
+    uint64_t entityId = 0;
+    if (!aAudioData || !SafeReadU64(reinterpret_cast<uintptr_t>(aAudioData) + kAudioDataEntityId, &entityId))
+    {
+        return;
+    }
+    const auto movement = reinterpret_cast<uintptr_t>(aMovement);
+    AcquireSRWLockExclusive(&g_carsLock);
+    Car& car = g_cars[movement];
+    if (car.entityId && car.entityId != entityId)
+    {
+        g_carByEntity.erase(car.entityId);
+    }
+    car.entityId = entityId;
+    g_carByEntity[entityId] = movement;
+    ReleaseSRWLockExclusive(&g_carsLock);
+}
+
+// The only caller is PlayRadio, which hands the vehicle's matchingStartupRadioStations as the span.
+// Logged whenever the span's contents change, so a run shows whether a custom station ever reaches it.
+bool SafeReadSpan(const uint64_t* const* aSpan, uint64_t* aOut, uint32_t aMax, uint32_t* aCount)
+{
+    __try
+    {
+        const uint64_t* begin = aSpan[0];
+        const uint64_t* end = aSpan[1];
+        const auto count = static_cast<uint32_t>(end - begin);
+        *aCount = count;
+        for (uint32_t i = 0; begin && i < count && i < aMax; ++i)
+        {
+            aOut[i] = begin[i];
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+void DetourGetRandomStation(void* aRadioSystem, uint64_t* aOut, const uint64_t* const* aSpan)
+{
+    uint64_t names[32] = {};
+    uint32_t count = 0;
+    const bool read = aSpan && SafeReadSpan(aSpan, names, 32, &count);
+    g_origGetRandomStation(aRadioSystem, aOut, aSpan);
+    if (!read)
+    {
+        return;
+    }
+    std::string span = std::to_string(count) + ":";
+    for (uint32_t i = 0; i < count && i < 32; ++i)
+    {
+        span += " " + Text(names[i]);
+    }
+    if (span != g_lastSpan)
+    {
+        g_lastSpan = span;
+        uint64_t picked = 0;
+        SafeReadU64(reinterpret_cast<uintptr_t>(aOut), &picked);
+        Log("traffic span " + span + " -> " + Text(picked));
+    }
+}
+
+template <typename Fn>
+void Attach(const HookTarget& aTarget, Fn aDetour, Fn* aOriginal)
+{
+    const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    const auto address = ResolveByHash(aTarget.hash);
+    char buf[192];
+    if (!address || address - base != aTarget.rva)
+    {
+        std::snprintf(buf, sizeof(buf), "traffic: %s did not resolve to 2.31's 0x%llx - not hooked", aTarget.name,
+                      static_cast<unsigned long long>(aTarget.rva));
+        Log(buf);
+        return;
+    }
+    if (std::memcmp(reinterpret_cast<void*>(address), aTarget.prologue, sizeof(aTarget.prologue)) != 0)
+    {
+        std::snprintf(buf, sizeof(buf), "traffic: %s does not start with 2.31's bytes (another hook?) - not hooked",
+                      aTarget.name);
+        Log(buf);
+        return;
+    }
+    if (!g_sdk->hooking->Attach(g_handle, reinterpret_cast<void*>(address), reinterpret_cast<void*>(aDetour),
+                                reinterpret_cast<void**>(aOriginal)))
+    {
+        Log(std::string("traffic: attach failed for ") + aTarget.name);
+        return;
+    }
+    Log(std::string("traffic: hooked ") + aTarget.name);
+}
+
+void InstallTrafficHooks()
+{
+    g_startTick = GetTickCount64();
+    Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
+    Attach(kUpdateAudio, &DetourUpdateAudio, &g_origUpdateAudio);
+    Attach(kPerformAudioAction, &DetourPerformAudioAction, &g_origPerformAudioAction);
+    Attach(kGetRandomStation, &DetourGetRandomStation, &g_origGetRandomStation);
+    Attach(kPlayRadio, &DetourPlayRadio, &g_origPlayRadio);
+    Attach(kStopRadio, &DetourStopRadio, &g_origStopRadio);
+}
+} // namespace
+
 RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
                                         RED4ext::v1::EMainReason aReason, const RED4ext::v1::Sdk* aSdk)
 {
@@ -814,6 +1190,7 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         g_sdk = aSdk;
         g_handle = aHandle;
         RED4ext::CRTTISystem::Get()->AddPostRegisterCallback(&LogNativeHandlers);
+        InstallTrafficHooks();
         static RED4ext::v1::GameState state{
             .OnEnter = nullptr,
             .OnUpdate = OnUpdate,
