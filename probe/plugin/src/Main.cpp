@@ -855,6 +855,22 @@ constexpr HookTarget kInitializeAudio{"TrafficDynamicMovementVehicles::Initializ
                                       {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
 constexpr HookTarget kGetRandomStation{"RadioSystem::GetRandomStation(ArraySpan<CName>)", 68099298, 0x9d8240,
                                        {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
+constexpr HookTarget kPostBroadcast{"RadioEmitter::PostRadioBroadcastEvent", 3062830569, 0x9da22c,
+                                    {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x7c}};
+
+// The car's receiver sound, as TrafficVehicleEmitter::IsRadioPlaying (0x9dadec) reads it: the emitter's
+// sounds (+0x58, count +0x64), each a pointer to a pointer to an entry with its event name at +0x8, the
+// Wwise playing id at +0x44 and a state byte at +0x59. The listener counts only for the entry named by the
+// vehicle audio data's +0x80 with a playing id and a state other than 4 or 5.
+constexpr size_t kEmitterSounds = 0x58;
+constexpr size_t kEmitterSoundCount = 0x64;
+constexpr size_t kEmitterBroadcastEvent = 0x120;  // RadioEmitter: the broadcast event PostRadioBroadcastEvent posts
+constexpr size_t kEmitterMetadata = 0x140;
+constexpr size_t kMetadataReceiverEvent = 0x80;
+constexpr size_t kSoundName = 0x8;
+constexpr size_t kSoundPlayingId = 0x44;
+constexpr size_t kSoundState = 0x59;
+constexpr uintptr_t kRvaTrafficEmitterVtbl = 0x2b458a0;
 
 // The emitter, as PlayRadio, StopRadio and HandleSwitchLogic read it.
 constexpr size_t kEmitterStation = 0x110;        // CName; s_noneStation when the radio is off
@@ -1047,7 +1063,61 @@ struct LiveRadio
     uint64_t startTick;
     bool audible;
     bool everAudible;
+    uintptr_t emitter;
+    std::string lastReceiver;
 };
+
+struct ReceiverState
+{
+    uint64_t receiverEvent;   // vehicle audio data +0x80, the name IsRadioPlaying looks for
+    uint64_t broadcastEvent;  // emitter +0x120
+    uint32_t count;
+    uint32_t listed;
+    uint64_t names[8];
+    uint32_t ids[8];
+    uint8_t states[8];
+};
+
+bool SafeReadReceiver(uintptr_t aEmitter, ReceiverState* aOut)
+{
+    __try
+    {
+        const auto metadata = Read<uintptr_t>(aEmitter + kEmitterMetadata);
+        aOut->receiverEvent = metadata ? Read<uint64_t>(metadata + kMetadataReceiverEvent) : 0;
+        aOut->broadcastEvent = Read<uint64_t>(aEmitter + kEmitterBroadcastEvent);
+        const auto sounds = Read<uintptr_t>(aEmitter + kEmitterSounds);
+        aOut->count = Read<uint32_t>(aEmitter + kEmitterSoundCount);
+        aOut->listed = 0;
+        for (uint32_t i = 0; sounds && i < aOut->count && i < 8; ++i)
+        {
+            const auto element = Read<uintptr_t>(sounds + i * 8);
+            const auto entry = element ? Read<uintptr_t>(element) : 0;
+            aOut->names[i] = entry ? Read<uint64_t>(entry + kSoundName) : 0;
+            aOut->ids[i] = entry ? Read<uint32_t>(entry + kSoundPlayingId) : 0;
+            aOut->states[i] = entry ? Read<uint8_t>(entry + kSoundState) : 0xff;
+            ++aOut->listed;
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+// `recv=<name>` is what IsRadioPlaying looks for; each sound is `name:id/state`, `*` marking the receiver.
+std::string ReceiverText(const ReceiverState& aState)
+{
+    std::string out = "recv=" + Text(aState.receiverEvent) + " bcast=" + Text(aState.broadcastEvent) +
+                      " sounds=" + std::to_string(aState.count) + ":";
+    for (uint32_t i = 0; i < aState.listed; ++i)
+    {
+        char buf[48];
+        std::snprintf(buf, sizeof(buf), ":%u/%u", aState.ids[i], aState.states[i]);
+        out += std::string(" ") + (aState.names[i] == aState.receiverEvent ? "*" : "") + Text(aState.names[i]) + buf;
+    }
+    return out;
+}
 
 SRWLOCK g_liveLock = SRWLOCK_INIT;
 std::unordered_map<uint64_t, LiveRadio> g_live;  // by entity id
@@ -1099,6 +1169,26 @@ void CheckLiveRadios()
     const uint64_t now = GetTickCount64();
     for (const auto& [entity, radio] : live)
     {
+        ReceiverState receiver{};
+        if (radio.emitter && SafeReadReceiver(radio.emitter, &receiver))
+        {
+            const std::string text = ReceiverText(receiver);
+            if (text != radio.lastReceiver)
+            {
+                AcquireSRWLockExclusive(&g_liveLock);
+                const auto found = g_live.find(entity);
+                if (found != g_live.end())
+                {
+                    found->second.lastReceiver = text;
+                }
+                ReleaseSRWLockExclusive(&g_liveLock);
+                char head[96];
+                std::snprintf(head, sizeof(head), "traffic receiver %s ent=%llx after=%.2fs ", Stamp().c_str(),
+                              static_cast<unsigned long long>(entity),
+                              static_cast<double>(now - radio.startTick) / 1000.0);
+                Log(head + text);
+            }
+        }
         bool playing = false;
         if (!SafeStationPlaying(radio.station, &playing) || playing == radio.audible)
         {
@@ -1134,7 +1224,8 @@ void DetourPlayRadio(void* aEmitter)
         if (state.radioOn)
         {
             AcquireSRWLockExclusive(&g_liveLock);
-            g_live[state.entityId] = LiveRadio{state.station, GetTickCount64(), false, false};
+            g_live[state.entityId] = LiveRadio{state.station, GetTickCount64(), false, false,
+                                               reinterpret_cast<uintptr_t>(aEmitter), std::string()};
             ReleaseSRWLockExclusive(&g_liveLock);
         }
         Log(RadioLine(state.radioOn ? "PLAY" : "PLAY-none", state, state.station));
@@ -1264,6 +1355,36 @@ void DetourGetRandomStation(void* aRadioSystem, uint64_t* aOut, const uint64_t* 
     }
 }
 
+using PostBroadcastFn = void (*)(void* aEmitter, uint64_t aStation);
+PostBroadcastFn g_origPostBroadcast = nullptr;
+
+// Every receiver retunes through here; only traffic emitters are logged. The receiver sound's state is read
+// straight after the post, so a post Wwise refuses shows as a zero playing id.
+void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
+{
+    g_origPostBroadcast(aEmitter, aStation);
+    static const uintptr_t trafficVtbl = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)) + kRvaTrafficEmitterVtbl;
+    uint64_t vtbl = 0;
+    if (!SafeReadU64(reinterpret_cast<uintptr_t>(aEmitter), &vtbl) || vtbl != trafficVtbl)
+    {
+        return;
+    }
+    EmitterState state{};
+    ReceiverState receiver{};
+    if (!SafeReadEmitter(aEmitter, &state) || !SafeReadReceiver(reinterpret_cast<uintptr_t>(aEmitter), &receiver))
+    {
+        return;
+    }
+    Car car{};
+    uintptr_t movement = 0;
+    const bool known = CarByEntity(state.entityId, &car, &movement);
+    char head[160];
+    std::snprintf(head, sizeof(head), "traffic post %s ent=%llx dist=%.1f station=%s ", Stamp().c_str(),
+                  static_cast<unsigned long long>(state.entityId), known ? DistanceTo(&car) : -1.0f,
+                  Text(aStation).c_str());
+    Log(head + ReceiverText(receiver));
+}
+
 template <typename Fn>
 void Attach(const HookTarget& aTarget, Fn aDetour, Fn* aOriginal)
 {
@@ -1302,6 +1423,7 @@ void InstallTrafficHooks()
     Attach(kGetRandomStation, &DetourGetRandomStation, &g_origGetRandomStation);
     Attach(kPlayRadio, &DetourPlayRadio, &g_origPlayRadio);
     Attach(kStopRadio, &DetourStopRadio, &g_origStopRadio);
+    Attach(kPostBroadcast, &DetourPostBroadcast, &g_origPostBroadcast);
 }
 } // namespace
 
