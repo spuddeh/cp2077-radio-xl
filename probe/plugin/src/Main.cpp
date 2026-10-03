@@ -720,8 +720,22 @@ bool SafeWalk(std::string& aReport)
     }
 }
 
+// Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
+void PollMarker()
+{
+    static bool down = false;
+    static uint32_t count = 0;
+    const bool now = (GetAsyncKeyState(VK_SCROLL) & 0x8000) != 0;
+    if (now && !down)
+    {
+        Log("MARK " + std::to_string(++count) + " - heard in game");
+    }
+    down = now;
+}
+
 bool OnUpdate(RED4ext::CGameApplication*)
 {
+    PollMarker();
     if (g_failed)
     {
         return false;
@@ -842,7 +856,9 @@ constexpr HookTarget kGetRandomStation{"RadioSystem::GetRandomStation(ArraySpan<
 // The emitter, as PlayRadio, StopRadio and HandleSwitchLogic read it.
 constexpr size_t kEmitterStation = 0x110;        // CName; s_noneStation when the radio is off
 constexpr size_t kEmitterEntityId = 0x138;       // traffic_vehicle_entity_id
-constexpr size_t kEmitterFlags = 0x150;          // bit 0: engine sound on
+constexpr size_t kEmitterFlags = 0x150;          // the state UpdateSounds compares against its last value
+constexpr size_t kEmitterLastFlags = 0x151;      // UpdateSounds' last value; a bit falling here is a stop
+constexpr size_t kEmitterForceOff = 0x155;       // while set, UpdateSounds treats every bit as off
 constexpr size_t kEmitterRadioDisabled = 0x152;  // DisableAbilityToPlayRadio
 constexpr size_t kEmitterRadioOn = 0x153;        // set by PlayRadio
 
@@ -912,6 +928,8 @@ struct EmitterState
     uint64_t station;
     uint64_t entityId;
     uint8_t flags;
+    uint8_t lastFlags;
+    uint8_t forceOff;
     uint8_t radioDisabled;
     uint8_t radioOn;
 };
@@ -924,6 +942,8 @@ bool SafeReadEmitter(void* aEmitter, EmitterState* aOut)
         aOut->station = Read<uint64_t>(e + kEmitterStation);
         aOut->entityId = Read<uint64_t>(e + kEmitterEntityId);
         aOut->flags = Read<uint8_t>(e + kEmitterFlags);
+        aOut->lastFlags = Read<uint8_t>(e + kEmitterLastFlags);
+        aOut->forceOff = Read<uint8_t>(e + kEmitterForceOff);
         aOut->radioDisabled = Read<uint8_t>(e + kEmitterRadioDisabled);
         aOut->radioOn = Read<uint8_t>(e + kEmitterRadioOn);
         return true;
@@ -1008,10 +1028,10 @@ std::string RadioLine(const char* aWhat, const EmitterState& aState, uint64_t aS
     uintptr_t movement = 0;
     const bool known = CarByEntity(aState.entityId, &car, &movement);
     char buf[256];
-    std::snprintf(buf, sizeof(buf), "traffic radio %s %s ent=%llx car=%llx dist=%.1f station=%s flags=%02x disabled=%u",
+    std::snprintf(buf, sizeof(buf), "traffic radio %s %s ent=%llx car=%llx dist=%.1f station=%s flags=%02x last=%02x off=%u disabled=%u",
                   aWhat, Stamp().c_str(), static_cast<unsigned long long>(aState.entityId),
                   static_cast<unsigned long long>(movement), known ? DistanceTo(&car) : -1.0f, Text(aStation).c_str(),
-                  aState.flags, aState.radioDisabled);
+                  aState.flags, aState.lastFlags, aState.forceOff, aState.radioDisabled);
     return buf;
 }
 
