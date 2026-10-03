@@ -735,6 +735,7 @@ bool SafeWalk(std::string& aReport)
 }
 
 void CheckLiveRadios();
+void SweepListeners();
 
 // Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
 void PollMarker()
@@ -762,6 +763,7 @@ bool OnUpdate(RED4ext::CGameApplication*)
         g_lastSchedule = now;
         Schedule();
         CheckLiveRadios();
+        SweepListeners();
     }
     if (now - g_lastTick < 1000)
     {
@@ -1492,6 +1494,196 @@ void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
                   static_cast<unsigned long long>(state.entityId), known ? DistanceTo(&car) : -1.0f,
                   Text(aStation).c_str());
     Log(head + ReceiverText(receiver));
+}
+
+// --- every listener on every station ---
+// Each 100 ms: every listener of every station, with its kind, whether it counts (vtable +0x100), where it
+// is (its position entry, emitter +0xb8, position at +0x10) and the state of the broadcast sound it posts
+// (name at +0x120, found in its sounds as for IsRadioPlaying). A listener is logged whenever its station,
+// whether it counts, whether its station plays or its sound's state changes, and when it leaves. The same
+// sweep is written to the live bridge's folder for the in-game markers, one line per listener:
+//   kind x y z counts playing station
+constexpr size_t kEmitterPositionEntry = 0xb8;
+constexpr size_t kPositionEntryPos = 0x10;
+constexpr uint32_t kMaxListeners = 512;
+
+struct ListenerSnap
+{
+    uintptr_t emitter;
+    uint64_t name;
+    uint64_t station;
+    uint8_t kind;
+    bool counts;
+    bool playing;      // the station is active and holds a voice
+    bool hasPos;
+    float pos[3];
+    uint64_t sound;    // the broadcast event
+    uint32_t soundId;
+    uint8_t soundState;
+    bool soundFound;
+};
+ListenerSnap g_listeners[kMaxListeners];
+std::unordered_map<uintptr_t, std::string> g_lastListener;
+bool g_listenerFailed = false;
+std::wstring g_livePath;
+
+uint32_t ReadListeners()
+{
+    const auto rootSlot = ResolveByHash(kHashEngineRoot);
+    const auto root = rootSlot ? Read<uintptr_t>(rootSlot) : 0;
+    const auto audio = root ? Read<uintptr_t>(root + kRootAudioSystem) : 0;
+    const auto manager = audio ? Read<uintptr_t>(audio + kAudioRadioManager) : 0;
+    if (!manager)
+    {
+        return 0;
+    }
+    const auto stations = Read<uintptr_t>(manager + kManagerStations);
+    const auto count = Read<uint32_t>(manager + kManagerCount);
+    uint32_t n = 0;
+    for (uint32_t i = 0; stations && i < count && i < kMaxStations; ++i)
+    {
+        const auto station = Read<uintptr_t>(stations + i * 8);
+        if (!station)
+        {
+            continue;
+        }
+        uint64_t stationName = 0;
+        Read<GetNameFn>(Read<uintptr_t>(station) + kVtblGetName)(reinterpret_cast<void*>(station), &stationName);
+        const bool playing = Read<uint8_t>(station + kStationActive) != 0 && Read<uint32_t>(station + kStationHandleCount) != 0;
+        const auto listeners = Read<uintptr_t>(station + kStationListeners);
+        const auto listenerCount = Read<uint32_t>(station + kStationListenerCount);
+        for (uint32_t l = 0; listeners && l < listenerCount && l < 64 && n < kMaxListeners; ++l)
+        {
+            const auto e = Read<uintptr_t>(listeners + l * 8);
+            if (!e)
+            {
+                continue;
+            }
+            ListenerSnap& s = g_listeners[n++];
+            s.emitter = e;
+            s.station = stationName;
+            s.playing = playing;
+            s.kind = Read<uint8_t>(e + kListenerKind);
+            const auto vtbl = Read<uintptr_t>(e);
+            uint64_t name = 0;
+            Read<GetNameFn>(vtbl + kVtblGetName)(reinterpret_cast<void*>(e), &name);
+            s.name = name;
+            s.counts = Read<ListenerActiveFn>(vtbl + kVtblListenerActive)(reinterpret_cast<void*>(e));
+            const auto entry = Read<uintptr_t>(e + kEmitterPositionEntry);
+            s.hasPos = entry != 0;
+            for (int k = 0; k < 3; ++k)
+            {
+                s.pos[k] = entry ? Read<float>(entry + kPositionEntryPos + k * 4) : 0.0f;
+            }
+            s.sound = Read<uint64_t>(e + kEmitterBroadcastEvent);
+            s.soundFound = false;
+            s.soundId = 0;
+            s.soundState = 0xff;
+            const auto sounds = Read<uintptr_t>(e + kEmitterSounds);
+            const auto soundCount = Read<uint32_t>(e + kEmitterSoundCount);
+            for (uint32_t k = 0; sounds && k < soundCount && k < 64; ++k)
+            {
+                const auto element = Read<uintptr_t>(sounds + k * 8);
+                const auto sound = element ? Read<uintptr_t>(element) : 0;
+                if (sound && Read<uint64_t>(sound + kSoundName) == s.sound)
+                {
+                    s.soundFound = true;
+                    s.soundId = Read<uint32_t>(sound + kSoundPlayingId);
+                    s.soundState = Read<uint8_t>(sound + kSoundState);
+                    break;
+                }
+            }
+        }
+    }
+    return n;
+}
+
+bool SafeReadListeners(uint32_t* aCount)
+{
+    __try
+    {
+        *aCount = ReadListeners();
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+void SweepListeners()
+{
+    if (g_listenerFailed)
+    {
+        return;
+    }
+    uint32_t n = 0;
+    if (!SafeReadListeners(&n))
+    {
+        g_listenerFailed = true;
+        Log("listeners: a read faulted - listener logging stopped");
+        return;
+    }
+    if (g_livePath.empty())
+    {
+        wchar_t exe[MAX_PATH];
+        GetModuleFileNameW(nullptr, exe, MAX_PATH);
+        std::wstring dir(exe);
+        dir = dir.substr(0, dir.find_last_of(L"\\/"));
+        g_livePath = dir + L"\\plugins\\cyber_engine_tweaks\\mods\\WkitLiveBridge\\radio_live.txt";
+    }
+    std::string live;
+    std::unordered_map<uintptr_t, bool> seen;
+    for (uint32_t i = 0; i < n; ++i)
+    {
+        const ListenerSnap& s = g_listeners[i];
+        seen[s.emitter] = true;
+        char line[96];
+        std::snprintf(line, sizeof(line), "%u %.1f %.1f %.1f %d %d %s\n", s.kind, s.pos[0], s.pos[1], s.pos[2],
+                      s.counts ? 1 : 0, s.playing ? 1 : 0, Text(s.station).c_str());
+        if (s.hasPos)
+        {
+            live += line;
+        }
+        char key[160];
+        std::snprintf(key, sizeof(key), "%llx|%d|%d|%d|%u", static_cast<unsigned long long>(s.station), s.counts,
+                      s.playing, s.soundId != 0, s.soundState);
+        auto& last = g_lastListener[s.emitter];
+        if (last == key)
+        {
+            continue;
+        }
+        last = key;
+        char buf[320];
+        std::snprintf(buf, sizeof(buf),
+                      "listener %s k%u %s station=%s counts=%s playing=%s sound=%s:%s:%u/%u pos=%.1f,%.1f,%.1f dist=%.1f",
+                      Stamp().c_str(), s.kind, Text(s.name).c_str(), Text(s.station).c_str(), s.counts ? "on" : "off",
+                      s.playing ? "yes" : "no", Text(s.sound).c_str(), s.soundFound ? "found" : "missing", s.soundId,
+                      s.soundState, s.pos[0], s.pos[1], s.pos[2], s.hasPos ? DistanceFromListener(s.pos) : -1.0f);
+        Log(buf);
+    }
+    for (auto it = g_lastListener.begin(); it != g_lastListener.end();)
+    {
+        if (!seen.count(it->first))
+        {
+            char buf[96];
+            std::snprintf(buf, sizeof(buf), "listener %s gone emitter=%llx", Stamp().c_str(),
+                          static_cast<unsigned long long>(it->first));
+            Log(buf);
+            it = g_lastListener.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    const std::wstring temp = g_livePath + L".tmp";
+    if (FILE* f = _wfopen(temp.c_str(), L"wb"))
+    {
+        std::fwrite(live.data(), 1, live.size(), f);
+        std::fclose(f);
+        MoveFileExW(temp.c_str(), g_livePath.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
 }
 
 template <typename Fn>
