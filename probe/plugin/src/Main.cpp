@@ -1523,6 +1523,13 @@ struct ListenerSnap
     bool soundFound;
 };
 ListenerSnap g_listeners[kMaxListeners];
+// The slot list as the same sweep saw it: the stations holding a slot, and the mode bytes that set the limit
+// (CalculateRadioDistanceToPlayer_NoLock 0x9da83c: +0x27c 0 -> 3; 1 -> +0x27d ? 3 : 4; otherwise 1).
+uint64_t g_slotNames[4];
+uint32_t g_slotCount = 0;
+uint8_t g_mode27c = 0;
+uint8_t g_mode27d = 0;
+uint64_t g_lastDemand = 0;
 std::unordered_map<uintptr_t, std::string> g_lastListener;
 bool g_listenerFailed = false;
 std::wstring g_livePath;
@@ -1539,6 +1546,13 @@ uint32_t ReadListeners()
     }
     const auto stations = Read<uintptr_t>(manager + kManagerStations);
     const auto count = Read<uint32_t>(manager + kManagerCount);
+    g_slotCount = Read<uint32_t>(manager + kManagerList + kManagerListCount);
+    for (uint32_t k = 0; k < 4; ++k)
+    {
+        g_slotNames[k] = k < g_slotCount ? Read<uint64_t>(manager + kManagerList + k * kManagerListStride) : 0;
+    }
+    g_mode27c = Read<uint8_t>(manager + 0x27c);
+    g_mode27d = Read<uint8_t>(manager + 0x27d);
     uint32_t n = 0;
     for (uint32_t i = 0; stations && i < count && i < kMaxStations; ++i)
     {
@@ -1675,6 +1689,53 @@ void SweepListeners()
         else
         {
             ++it;
+        }
+    }
+    // Once a second: every station something wants playing, against the slots. A station is wanted when it
+    // has a counting listener; `traffic-only` marks one whose every listener is a traffic car, which mode 1
+    // holds silent whatever the slots. `over` is wanted minus the limit, counting only what the limit decides.
+    const uint64_t nowTick = GetTickCount64();
+    if (nowTick - g_lastDemand >= 1000)
+    {
+        g_lastDemand = nowTick;
+        std::unordered_map<uint64_t, bool> wanted;     // station -> has a non-traffic listener
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const ListenerSnap& s = g_listeners[i];
+            if (s.counts)
+            {
+                wanted.try_emplace(s.station, false);
+            }
+        }
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            const ListenerSnap& s = g_listeners[i];
+            if (s.kind != 2 && wanted.count(s.station))
+            {
+                wanted[s.station] = true;
+            }
+        }
+        const uint32_t limit = g_mode27c == 0 ? 3 : (g_mode27c == 1 ? (g_mode27d ? 3 : 4) : 1);
+        uint32_t eligible = 0;
+        std::string list;
+        for (const auto& [station, nonTraffic] : wanted)
+        {
+            const bool counted = nonTraffic || g_mode27c == 0;
+            eligible += counted ? 1 : 0;
+            list += " " + Text(station) + (counted ? "" : "(traffic-only)");
+        }
+        if (!wanted.empty())
+        {
+            std::string slots;
+            for (uint32_t k = 0; k < g_slotCount && k < 4; ++k)
+            {
+                slots += " " + Text(g_slotNames[k]);
+            }
+            char head[160];
+            std::snprintf(head, sizeof(head), "demand %s wanted=%zu eligible=%u limit=%u held=%u over=%d |",
+                          Stamp().c_str(), wanted.size(), eligible, limit, g_slotCount,
+                          static_cast<int>(eligible) - static_cast<int>(limit));
+            Log(head + list + " | slots:" + slots);
         }
     }
     const std::wstring temp = g_livePath + L".tmp";
