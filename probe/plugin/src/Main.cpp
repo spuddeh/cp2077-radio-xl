@@ -869,6 +869,10 @@ constexpr HookTarget kInitializeAudio{"TrafficDynamicMovementVehicles::Initializ
                                       {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
 constexpr HookTarget kGetRandomStation{"RadioSystem::GetRandomStation(ArraySpan<CName>)", 68099298, 0x9d8240,
                                        {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
+constexpr HookTarget kAmbientPlay{"AmbientPaletteSpace::PostPlayRadioEvent", 1552948042, 0x9d7934,
+                                  {0x48, 0x8b, 0xc4, 0x48, 0x89, 0x58, 0x10, 0x48}};
+constexpr HookTarget kAmbientStop{"AmbientPaletteSpace::PostStopEvent", 2277250296, 0x9d7af8,
+                                  {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
 constexpr HookTarget kPostBroadcast{"RadioEmitter::PostRadioBroadcastEvent", 3062830569, 0x9da22c,
                                     {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x7c}};
 
@@ -1369,6 +1373,97 @@ void DetourGetRandomStation(void* aRadioSystem, uint64_t* aOut, const uint64_t* 
     }
 }
 
+// --- ambient palette radios ---
+// A palette space keeps five `ambient_palette_radio` emitters (slots 0-4). PostPlayRadioEvent moves one to a
+// tag's position and tunes it to the brush's station; PostStopEvent tunes it to station_none, which removes
+// it as a listener. Each is logged with the tag position and its distance from the listener, so a pop can
+// be found on the map. Slots 5 and up are the palette's other sounds and are not logged.
+using AmbientPlayFn = void (*)(void* aSpace, uint64_t aEvent, uint32_t aSlot, const float* aPosition, uint64_t aStation);
+using AmbientStopFn = void (*)(void* aSpace, uint64_t aEvent, uint32_t aSlot);
+AmbientPlayFn g_origAmbientPlay = nullptr;
+AmbientStopFn g_origAmbientStop = nullptr;
+
+struct AmbientSlot
+{
+    float pos[3];
+    uint64_t station;
+    uint64_t startTick;
+};
+SRWLOCK g_ambientLock = SRWLOCK_INIT;
+std::unordered_map<uint64_t, AmbientSlot> g_ambient;  // by space pointer and slot
+
+float DistanceFromListener(const float* aPos)
+{
+    float listener[3];
+    if (!SafeReadListener(listener))
+    {
+        return -1.0f;
+    }
+    const float dx = aPos[0] - listener[0];
+    const float dy = aPos[1] - listener[1];
+    const float dz = aPos[2] - listener[2];
+    return std::sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+bool SafeReadVec3(const float* aSource, float* aOut)
+{
+    __try
+    {
+        aOut[0] = aSource[0];
+        aOut[1] = aSource[1];
+        aOut[2] = aSource[2];
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+void DetourAmbientPlay(void* aSpace, uint64_t aEvent, uint32_t aSlot, const float* aPosition, uint64_t aStation)
+{
+    g_origAmbientPlay(aSpace, aEvent, aSlot, aPosition, aStation);
+    float pos[3] = {};
+    if (!aPosition || !SafeReadVec3(aPosition, pos))
+    {
+        return;
+    }
+    const uint64_t key = (reinterpret_cast<uint64_t>(aSpace) << 4) | (aSlot & 0xf);
+    AcquireSRWLockExclusive(&g_ambientLock);
+    g_ambient[key] = AmbientSlot{{pos[0], pos[1], pos[2]}, aStation, GetTickCount64()};
+    ReleaseSRWLockExclusive(&g_ambientLock);
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "ambient PLAY %s slot=%u station=%s event=%s pos=%.1f,%.1f,%.1f dist=%.1f",
+                  Stamp().c_str(), aSlot, Text(aStation).c_str(), Text(aEvent).c_str(), pos[0], pos[1], pos[2],
+                  DistanceFromListener(pos));
+    Log(buf);
+}
+
+void DetourAmbientStop(void* aSpace, uint64_t aEvent, uint32_t aSlot)
+{
+    g_origAmbientStop(aSpace, aEvent, aSlot);
+    if (aSlot >= 5)
+    {
+        return;
+    }
+    const uint64_t key = (reinterpret_cast<uint64_t>(aSpace) << 4) | (aSlot & 0xf);
+    AcquireSRWLockExclusive(&g_ambientLock);
+    const auto found = g_ambient.find(key);
+    const bool known = found != g_ambient.end();
+    const AmbientSlot slot = known ? found->second : AmbientSlot{};
+    if (known)
+    {
+        g_ambient.erase(found);
+    }
+    ReleaseSRWLockExclusive(&g_ambientLock);
+    char buf[256];
+    std::snprintf(buf, sizeof(buf), "ambient STOP %s slot=%u station=%s pos=%.1f,%.1f,%.1f dist=%.1f after=%.2fs",
+                  Stamp().c_str(), aSlot, known ? Text(slot.station).c_str() : "?", slot.pos[0], slot.pos[1],
+                  slot.pos[2], known ? DistanceFromListener(slot.pos) : -1.0f,
+                  known ? static_cast<double>(GetTickCount64() - slot.startTick) / 1000.0 : -1.0);
+    Log(buf);
+}
+
 using PostBroadcastFn = void (*)(void* aEmitter, uint64_t aStation);
 PostBroadcastFn g_origPostBroadcast = nullptr;
 
@@ -1438,6 +1533,8 @@ void InstallTrafficHooks()
     Attach(kPlayRadio, &DetourPlayRadio, &g_origPlayRadio);
     Attach(kStopRadio, &DetourStopRadio, &g_origStopRadio);
     Attach(kPostBroadcast, &DetourPostBroadcast, &g_origPostBroadcast);
+    Attach(kAmbientPlay, &DetourAmbientPlay, &g_origAmbientPlay);
+    Attach(kAmbientStop, &DetourAmbientStop, &g_origAmbientStop);
 }
 } // namespace
 
