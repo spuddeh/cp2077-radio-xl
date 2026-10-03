@@ -89,7 +89,8 @@ constexpr size_t kManagerListCount = 0x60;       // relative to kManagerList
 constexpr size_t kManagerListStride = 0x18;
 
 // A listener's kind byte and the flag beside it, as the station update reads them: kind 4 is
-// skipped by the update, kind 2 is the only kind that keeps a station active in manager mode 1.
+// skipped by the update; in radio mode 1 (+0x27b) a station whose every listener is kind 2 (traffic) is
+// held inactive (0x2a775c).
 constexpr size_t kListenerKind = 0x12c;
 constexpr size_t kListenerFlag = 0x12d;
 
