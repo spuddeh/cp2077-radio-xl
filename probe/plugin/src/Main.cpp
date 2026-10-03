@@ -720,6 +720,8 @@ bool SafeWalk(std::string& aReport)
     }
 }
 
+void CheckLiveRadios();
+
 // Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
 void PollMarker()
 {
@@ -745,6 +747,7 @@ bool OnUpdate(RED4ext::CGameApplication*)
     {
         g_lastSchedule = now;
         Schedule();
+        CheckLiveRadios();
     }
     if (now - g_lastTick < 1000)
     {
@@ -1035,6 +1038,92 @@ std::string RadioLine(const char* aWhat, const EmitterState& aState, uint64_t aS
     return buf;
 }
 
+// A traffic radio makes sound only while its station is active and holds a voice; a station that is not
+// among the ones the engine is playing leaves the car silent. Each radio between PLAY and STOP is checked
+// on the 100 ms schedule and logs when it turns audible or silent; STOP says whether it was ever heard.
+struct LiveRadio
+{
+    uint64_t station;
+    uint64_t startTick;
+    bool audible;
+    bool everAudible;
+};
+
+SRWLOCK g_liveLock = SRWLOCK_INIT;
+std::unordered_map<uint64_t, LiveRadio> g_live;  // by entity id
+
+bool SafeStationPlaying(uint64_t aStation, bool* aPlaying)
+{
+    __try
+    {
+        *aPlaying = false;
+        const auto rootSlot = ResolveByHash(kHashEngineRoot);
+        const auto root = rootSlot ? Read<uintptr_t>(rootSlot) : 0;
+        const auto audio = root ? Read<uintptr_t>(root + kRootAudioSystem) : 0;
+        const auto manager = audio ? Read<uintptr_t>(audio + kAudioRadioManager) : 0;
+        if (!manager)
+        {
+            return false;
+        }
+        const auto stations = Read<uintptr_t>(manager + kManagerStations);
+        const auto count = Read<uint32_t>(manager + kManagerCount);
+        for (uint32_t i = 0; stations && i < count && i < kMaxStations; ++i)
+        {
+            const auto station = Read<uintptr_t>(stations + i * 8);
+            if (!station)
+            {
+                continue;
+            }
+            uint64_t name = 0;
+            Read<GetNameFn>(Read<uintptr_t>(station) + kVtblGetName)(reinterpret_cast<void*>(station), &name);
+            if (name == aStation)
+            {
+                *aPlaying = Read<uint8_t>(station + kStationActive) != 0 &&
+                            Read<uint32_t>(station + kStationHandleCount) != 0;
+                return true;
+            }
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+void CheckLiveRadios()
+{
+    AcquireSRWLockShared(&g_liveLock);
+    const auto live = g_live;
+    ReleaseSRWLockShared(&g_liveLock);
+    const uint64_t now = GetTickCount64();
+    for (const auto& [entity, radio] : live)
+    {
+        bool playing = false;
+        if (!SafeStationPlaying(radio.station, &playing) || playing == radio.audible)
+        {
+            continue;
+        }
+        AcquireSRWLockExclusive(&g_liveLock);
+        const auto found = g_live.find(entity);
+        if (found != g_live.end())
+        {
+            found->second.audible = playing;
+            found->second.everAudible |= playing;
+        }
+        ReleaseSRWLockExclusive(&g_liveLock);
+        Car car{};
+        uintptr_t movement = 0;
+        const bool known = CarByEntity(entity, &car, &movement);
+        char buf[224];
+        std::snprintf(buf, sizeof(buf), "traffic %s %s ent=%llx dist=%.1f station=%s after=%.2fs",
+                      playing ? "AUDIBLE" : "SILENT", Stamp().c_str(), static_cast<unsigned long long>(entity),
+                      known ? DistanceTo(&car) : -1.0f, Text(radio.station).c_str(),
+                      static_cast<double>(now - radio.startTick) / 1000.0);
+        Log(buf);
+    }
+}
+
 void DetourPlayRadio(void* aEmitter)
 {
     g_origPlayRadio(aEmitter);
@@ -1042,6 +1131,12 @@ void DetourPlayRadio(void* aEmitter)
     if (SafeReadEmitter(aEmitter, &state))
     {
         // PlayRadio leaves the radio off when the pick was s_noneStation; only a station that started is a pop.
+        if (state.radioOn)
+        {
+            AcquireSRWLockExclusive(&g_liveLock);
+            g_live[state.entityId] = LiveRadio{state.station, GetTickCount64(), false, false};
+            ReleaseSRWLockExclusive(&g_liveLock);
+        }
         Log(RadioLine(state.radioOn ? "PLAY" : "PLAY-none", state, state.station));
     }
 }
@@ -1055,7 +1150,15 @@ void DetourStopRadio(void* aEmitter)
     // StopRadio does nothing when the station is already none, so only a change is a cut.
     if (read && SafeReadEmitter(aEmitter, &after) && after.station != before.station)
     {
-        Log(RadioLine("STOP", before, before.station));
+        AcquireSRWLockExclusive(&g_liveLock);
+        const auto found = g_live.find(before.entityId);
+        const char* heard = found == g_live.end() ? "?" : found->second.audible ? "now" : found->second.everAudible ? "earlier" : "never";
+        if (found != g_live.end())
+        {
+            g_live.erase(found);
+        }
+        ReleaseSRWLockExclusive(&g_liveLock);
+        Log(RadioLine("STOP", before, before.station) + " heard=" + heard);
     }
 }
 
