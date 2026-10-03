@@ -293,6 +293,19 @@ void Walk(std::string& aReport)
             aReport += list + "\n";
         }
     }
+    // The radio system's mode (+0x27b), recomputed every sound update by 0xbd054c from +0x27c, +0x27d and two
+    // mix buses: in mode 1 a station whose every listener is a traffic emitter (kind 2) is held inactive.
+    {
+        char mode[96];
+        std::snprintf(mode, sizeof(mode), "radio mode=%u 27c=%u 27d=%u", Read<uint8_t>(manager + 0x27b),
+                      Read<uint8_t>(manager + 0x27c), Read<uint8_t>(manager + 0x27d));
+        static std::string lastMode;
+        if (lastMode != mode)
+        {
+            lastMode = mode;
+            aReport += std::string(mode) + "\n";
+        }
+    }
     ++g_walks;
 }
 
