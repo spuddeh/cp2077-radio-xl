@@ -61,12 +61,13 @@ public class RadioXLConfig extends ScriptableSystem {
 
   // Dropdown index of `RadioXLTrafficMode`: 0 off, 1 the shared list, 2 every car.
   public let trafficStations: Int32 = 1;
-  public let trafficStreams: Bool = false;
+  public let randomWorldRadios: Bool = true;
+  public let randomStreams: Bool = false;
 
   public func ApplyTraffic() -> Void {
     let traffic = RadioXLTraffic.Get();
     if IsDefined(traffic) {
-      traffic.Set(IntEnum<RadioXLTrafficMode>(this.trafficStations), this.trafficStreams);
+      traffic.Set(IntEnum<RadioXLTrafficMode>(this.trafficStations), this.randomWorldRadios, this.randomStreams);
     }
   }
 
@@ -149,7 +150,8 @@ public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio
 public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
 public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
-public func RadioXL_KeyTrafficStreams() -> String { return "trafficStreams"; }
+public func RadioXL_KeyRandomWorldRadios() -> String { return "randomWorldRadios"; }
+public func RadioXL_KeyRandomStreams() -> String { return "randomStreams"; }
 // A song row's key is the event name behind a fixed prefix; a station's step-over row is its
 // event name behind another. The name comes back out of each unchanged.
 public func RadioXL_SongPrefix() -> String { return "song:"; }
@@ -226,11 +228,13 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
 
     // --- Stations ---
     b.Tab("RadioXL.tabStations");
-    b.Section("RadioXL.secTraffic");
+    b.Section("RadioXL.secRandom");
     b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
     b.Tip("RadioXL.tipTrafficStations");
-    b.Toggle(RadioXL_KeyTrafficStreams(), "RadioXL.optTrafficStreams");
-    b.Tip("RadioXL.tipTrafficStreams");
+    b.Toggle(RadioXL_KeyRandomWorldRadios(), "RadioXL.optRandomWorldRadios");
+    b.Tip("RadioXL.tipRandomWorldRadios");
+    b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
+    b.Tip("RadioXL.tipRandomStreams");
     this.AddStations(b, controls);
 
     // --- Mute ---
@@ -482,7 +486,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "mutePhoneNoCalling") { return c.mutePhoneNoCalling; }
       if Equals(key, "muteFastForward") { return c.muteFastForward; }
       if Equals(key, "muteFastForwardHintActive") { return c.muteFastForwardHintActive; }
-      if Equals(key, RadioXL_KeyTrafficStreams()) { return c.trafficStreams; }
+      if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
+      if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
     }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return false; }
@@ -507,8 +512,13 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   // run; it only touches the settings services.
   public func SetBool(key: String, value: Bool) -> Void {
     let c: wref<RadioXLConfig> = this.m_cfg;
-    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStreams()) {
-      c.trafficStreams = value;
+    if IsDefined(c) && Equals(key, RadioXL_KeyRandomWorldRadios()) {
+      c.randomWorldRadios = value;
+      c.ApplyTraffic();
+      return;
+    }
+    if IsDefined(c) && Equals(key, RadioXL_KeyRandomStreams()) {
+      c.randomStreams = value;
       c.ApplyTraffic();
       return;
     }

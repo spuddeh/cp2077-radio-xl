@@ -1,7 +1,8 @@
 // ======================================================================================
 // Mod Name: RadioXL
 // Author: Spuddeh
-// Description: Puts custom stations on the lists traffic cars tune to.
+// Description: Puts custom stations among the random picks: traffic car radios and world radios
+//              set to start on a random station.
 // File Version: 0.6.0
 // ======================================================================================
 //
@@ -10,6 +11,9 @@
 // share one list of nine vanilla stations, and a few carry a themed one. Every list keeps its
 // vanilla copy here and is rebuilt from it whenever a setting changes, so switching off returns it
 // to vanilla exactly.
+//
+// A world radio set to randomise picks once, in script, the first time its device initialises,
+// and saves the station's enum value with the device. A jukebox picks again on every attach.
 
 module RadioXL
 
@@ -28,9 +32,10 @@ public class RadioXLTrafficList {
 public class RadioXLTraffic extends ScriptableService {
 
   private let m_lists: array<ref<RadioXLTrafficList>>;
-  private let m_files: array<CName>;
-  private let m_streams: array<CName>;
+  private let m_files: array<Int32>;
+  private let m_streams: array<Int32>;
   private let m_mode: RadioXLTrafficMode = RadioXLTrafficMode.Shared;
+  private let m_worldRadios: Bool = true;
   private let m_allowStreams: Bool = false;
 
   public final static func Get() -> ref<RadioXLTraffic> {
@@ -48,13 +53,13 @@ public class RadioXLTraffic extends ScriptableService {
     ];
   }
 
-  // Called once, as the cooked metadata loads. `stations` are the custom stations that exist in it.
-  public func Capture(cooked: ref<audioCookedMetadataResource>, stations: array<CName>,
-                      streams: array<CName>) -> Void {
+  // Called once, as the cooked metadata loads. `slots` are the custom stations that exist in it.
+  public func Capture(cooked: ref<audioCookedMetadataResource>, slots: array<Int32>,
+                      streams: array<Int32>) -> Void {
     if ArraySize(this.m_lists) > 0 { return; }
     this.m_streams = streams;
-    for name in stations {
-      if !ArrayContains(streams, name) { ArrayPush(this.m_files, name); }
+    for slot in slots {
+      if !ArrayContains(streams, slot) { ArrayPush(this.m_files, slot); }
     }
     let shared: array<CName> = RadioXLTraffic.SharedStations();
     for entry in cooked.entries {
@@ -70,11 +75,25 @@ public class RadioXLTraffic extends ScriptableService {
     this.Apply();
   }
 
-  public func Set(mode: RadioXLTrafficMode, allowStreams: Bool) -> Void {
+  public func Set(mode: RadioXLTrafficMode, worldRadios: Bool, allowStreams: Bool) -> Void {
+    this.m_worldRadios = worldRadios;
     if Equals(mode, this.m_mode) && Equals(allowStreams, this.m_allowStreams) { return; }
     this.m_mode = mode;
     this.m_allowStreams = allowStreams;
     this.Apply();
+  }
+
+  // The custom stations a random pick may land on, as slots.
+  public func Candidates() -> array<Int32> {
+    let slots: array<Int32> = this.m_files;
+    if this.m_allowStreams {
+      for slot in this.m_streams { ArrayPush(slots, slot); }
+    }
+    return slots;
+  }
+
+  public func WorldRadios() -> Bool {
+    return this.m_worldRadios;
   }
 
   // An empty list means the car plays nothing, and a police list plays the scanner; neither takes
@@ -93,10 +112,7 @@ public class RadioXLTraffic extends ScriptableService {
   private func Apply() -> Void {
     let added: array<CName>;
     if !Equals(this.m_mode, RadioXLTrafficMode.Off) {
-      added = this.m_files;
-      if this.m_allowStreams {
-        for name in this.m_streams { ArrayPush(added, name); }
-      }
+      for slot in this.Candidates() { ArrayPush(added, RadioXL_StationName(slot)); }
     }
     let changed: Int32 = 0;
     for list in this.m_lists {
@@ -111,4 +127,18 @@ public class RadioXLTraffic extends ScriptableService {
     }
     RadioXLLog(s"traffic: \(ArraySize(added)) custom station(s) on \(changed) of \(ArraySize(this.m_lists)) vehicle list(s), mode \(EnumInt(this.m_mode)), streams \(this.m_allowStreams)");
   }
+}
+
+// Vanilla draws evenly from the fourteen, less Samizdat. Each custom station is one more equal
+// share of the draw.
+@wrapMethod(RadioStationDataProvider)
+public final static func GetRandomStation() -> ERadioStationList {
+  let random = RadioXLTraffic.Get();
+  if !IsDefined(random) || !random.WorldRadios() { return wrappedMethod(); }
+  let slots: array<Int32> = random.Candidates();
+  let pick: Int32 = RandRange(0, 13 + ArraySize(slots));
+  if pick < 13 { return wrappedMethod(); }
+  let station: ERadioStationList = IntEnum<ERadioStationList>(14 + slots[pick - 13]);
+  RadioXLLog(s"world radio: random start on \(RadioXL_StationName(slots[pick - 13]))");
+  return station;
 }

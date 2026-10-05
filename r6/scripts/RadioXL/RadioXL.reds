@@ -498,14 +498,14 @@ public class RadioXLService extends ScriptableService {
       i += 1;
     }
 
-    let stations: array<CName>;
-    let streams: array<CName>;
+    let stations: array<Int32>;
+    let streams: array<Int32>;
     i = 0;
     while i < count {
       let name: CName = RadioXL_StationName(i);
       if IsNameValid(name) && IsDefined(this.Find(cooked, name)) {
-        ArrayPush(stations, name);
-        if this.Streams(i) { ArrayPush(streams, name); }
+        ArrayPush(stations, i);
+        if this.Streams(i) { ArrayPush(streams, i); }
       }
       i += 1;
     }

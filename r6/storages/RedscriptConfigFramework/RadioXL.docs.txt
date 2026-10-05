@@ -110,7 +110,8 @@ Nothing is tuned while the game blocks radio input: in a police vehicle, during 
 
 [b]Stations[/b]
 [*][b]Custom stations on traffic cars.[/b] Which passing cars can tune to a custom station. [b]Cars with the usual nine[/b], the default, covers most of them: the cars that play the same nine of the game's stations. A few cars are set to a genre of their own, and [b]Every car[/b] adds custom stations to those too. [b]Off[/b] leaves traffic on the game's stations. Police cars keep the scanner whatever this is set to.[/*]
-[*][b]Stations that stream play on traffic.[/b] Off by default. On, a passing car tuned to a station that streams opens its connection while it plays.[/*]
+[*][b]World radios can start on a custom station.[/b] On by default. Radios and jukeboxes around the city that start on a random station can land on a custom one. A radio picks once, the first time it is set up, and keeps that station in your save, so one already set up keeps the station it has. A jukebox picks again each time it loads.[/*]
+[*][b]Include stations that stream.[/b] Off by default. On, traffic cars and world radios can pick a station that streams, and while one plays it, that station's connection stays open.[/*]
 Then one section per station, in dial order.
 [*][b]Keys step over this station.[/b] The next and previous station keys skip it. It can still be picked from the radio itself.[/*]
 [*][b]Its songs.[/b] One row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one.[/*]
