@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: A track's length read from its header, kept between launches and keyed by the
 //              file's size and modified time, so an unchanged file is not read again.
-// File Version: 0.6.0
+// File Version: 0.7.0
 // ======================================================================================
 //
 // The cache is a convenience and never a source of truth: a missing, unreadable or stale entry

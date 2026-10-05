@@ -16,7 +16,7 @@
       "primary_mod_manager_download": true,
       "show_requirements_pop_up": true,
       "update_mod_version": true,
-      "currentVersion": "0.6.0"
+      "currentVersion": "0.7.0"
     },
     "builder": {
       "displayName": "RadioXL Station Builder",
@@ -29,7 +29,7 @@
       "show_requirements_pop_up": false,
       "update_mod_version": false,
       "post_changelog": true,
-      "currentVersion": "0.2.1sb"
+      "currentVersion": "0.4.0sb"
     }
   },
   "$name_note": "Nexus v3 validates displayName against ^[a-zA-Z0-9 _'().-]+$ and rejects the upload with a 422 otherwise. No '&', no '/'."

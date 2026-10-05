@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: A red warning in game when a stream station cannot play, naming what AudioXL.ini
 //              needs. Shown once per station per game launch.
-// File Version: 0.6.0
+// File Version: 0.7.0
 // ======================================================================================
 //
 // A stream needs the player to allow it in AudioXL.ini, and a station that is not allowed is

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The playing length of an audio file, read from its headers.
-// File Version: 0.2.0
+// File Version: 0.7.0
 // ======================================================================================
 //
 // A station schedules its next track against the duration in the engine's event table, and that

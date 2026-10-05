@@ -1,5 +1,7 @@
 ### [Unreleased]
 
+### v0.7.0
+
 - New: passing traffic cars can be tuned to custom stations. A setting on the Stations tab chooses which cars: Most cars (the default), Every car, or Off. A passing car's radio is tuned but not heard in the game, and that is unchanged: this puts custom stations on those radios.
 - New: radios and jukeboxes around the city that start on a random station can start on a custom one. On by default, with its own switch.
 - New: a switch to let traffic and those radios pick stations that stream as well. Off by default.

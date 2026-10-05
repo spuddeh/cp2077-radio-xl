@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: Keeps a station's track list in step with its folder, for a station that opts in
 //              with "addUnlistedFiles": true. No filesystem calls: the caller lists the folder.
-// File Version: 0.6.0
+// File Version: 0.7.0
 // ======================================================================================
 
 #pragma once

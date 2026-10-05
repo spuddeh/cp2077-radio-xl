@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-05
+
 ### Added
 - Custom stations on traffic car radios (#63): `Traffic.reds`, `RadioXLTraffic`. A traffic car
   picks only from its `audioVehicleMetadata.matchingStartupRadioStations` (`TrafficVehicleEmitter::

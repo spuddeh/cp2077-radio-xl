@@ -207,6 +207,7 @@ If a station appears but sorts oddly against another one, check its frequency: t
 
 [color=#ffff00][size=6][b]- Updates -[/b][/size][/color]
 
+[i][u]0.7.0[/u][/i] - Custom stations on traffic car radios and on world radios that start at random, songs added by dropping them into a station's folder, remembered song lengths, and song settings that follow the file.
 [i][u]0.6.0[/u][/i] - A script API for other mods, station descriptions, and a warning in game when a stream station can't play.
 [i][u]0.5.1[/u][/i] - My station switches the car radio on when you get into a car whose radio is off.
 [i][u]0.5.0[/u][/i] - My station and the two mutes are remembered again, now through RedFunctions.

@@ -5,7 +5,7 @@
 //              it extends ScriptableSystem, and Codeware queues the registration itself. Every
 //              language falls through to English until a translation is dropped in. Station text
 //              has its own provider in Localization.reds, because that text is never translated.
-// File Version: 0.4.1
+// File Version: 0.7.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
