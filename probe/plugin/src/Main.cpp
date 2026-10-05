@@ -1191,6 +1191,144 @@ std::string ReceiverText(const ReceiverState& aState)
 
 SRWLOCK g_liveLock = SRWLOCK_INIT;
 std::unordered_map<uint64_t, LiveRadio> g_live;  // by entity id
+std::unordered_map<uintptr_t, uint64_t> g_others; // non-traffic receivers tuned to a station, by emitter
+
+// --- Wwise queries ---
+// AK::SoundEngine::Query, statically linked (2.31 RVAs, names from cp2077-symbols). Each is refused unless its
+// first bytes match. They take Wwise's own lock, so they are callable from the game thread.
+using AkGetGameObjectFromPlayingIDFn = uint64_t (*)(uint32_t aPlayingId);
+using AkGetRTPCValueFn = int (*)(uint32_t aRtpc, uint64_t aGameObject, uint32_t aPlayingId, float* aValue, int* aType);
+using AkGetIsGameObjectActiveFn = bool (*)(uint64_t aGameObject);
+using AkGetPlayingIDsFn = int (*)(uint64_t aGameObject, uint32_t* aCount, uint32_t* aIds);
+using AkGetListenersFn = int (*)(uint64_t aGameObject, uint64_t* aIds, uint32_t* aCount);
+using AkGetDryLevelFn = int (*)(uint64_t aEmitter, uint64_t aListener, float* aLevel);
+using AkGetEventIDFn = uint32_t (*)(uint32_t aPlayingId);
+using AkGetMaxRadiusFn = float (*)(uint64_t aGameObject);
+
+struct AkQuery
+{
+    AkGetGameObjectFromPlayingIDFn gameObject = nullptr;
+    AkGetRTPCValueFn rtpc = nullptr;
+    AkGetIsGameObjectActiveFn active = nullptr;
+    AkGetPlayingIDsFn playing = nullptr;
+    AkGetListenersFn listeners = nullptr;
+    AkGetDryLevelFn dry = nullptr;
+    AkGetEventIDFn event = nullptr;
+    AkGetMaxRadiusFn radius = nullptr;
+    bool ok = false;
+};
+
+template <typename T>
+T ResolveRva(uintptr_t aRva, std::initializer_list<uint8_t> aPrologue)
+{
+    const auto address = reinterpret_cast<uint8_t*>(reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)) + aRva);
+    size_t i = 0;
+    for (const auto b : aPrologue)
+    {
+        if (address[i++] != b)
+        {
+            return nullptr;
+        }
+    }
+    return reinterpret_cast<T>(address);
+}
+
+const AkQuery& Ak()
+{
+    static const AkQuery q = []()
+    {
+        AkQuery r;
+        r.gameObject = ResolveRva<AkGetGameObjectFromPlayingIDFn>(0x1ad2680, {0x8B, 0xD1, 0x48, 0x8B, 0x0D});
+        r.rtpc = ResolveRva<AkGetRTPCValueFn>(0x1ad2c60, {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C});
+        r.active = ResolveRva<AkGetIsGameObjectActiveFn>(0x1ad26a0, {0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B});
+        r.playing = ResolveRva<AkGetPlayingIDsFn>(0x1ad2a10, {0x48, 0x8B, 0xC1, 0x48, 0x8B, 0x0D});
+        r.listeners = ResolveRva<AkGetListenersFn>(0x1ad27c0, {0x48, 0x89, 0x5C, 0x24, 0x10, 0x48, 0x89, 0x6C});
+        r.dry = ResolveRva<AkGetDryLevelFn>(0x1ad25d0, {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x74});
+        r.event = ResolveRva<AkGetEventIDFn>(0x1ad2450, {0x8B, 0xD1, 0x48, 0x8B, 0x0D});
+        r.radius = ResolveRva<AkGetMaxRadiusFn>(0x1ad28b0, {0x40, 0x53, 0x48, 0x83, 0xEC, 0x30, 0x48, 0x8B});
+        r.ok = r.gameObject && r.rtpc && r.active && r.playing && r.listeners && r.dry && r.event && r.radius;
+        return r;
+    }();
+    return q;
+}
+
+// RTPC ids (FNV-1 of the names in eventsmetadata.json).
+constexpr uint32_t kRtpcBroadcastChannel = 3643107758;  // radio_broadcast_channel (mono receivers)
+constexpr uint32_t kRtpcBroadcastLeft = 975869506;      // radio_broadcast_channel_left (stereo receivers)
+constexpr uint32_t kRtpcEngageMovingFaster = 139023859; // veh_engage_moving_faster (NPC mixer volume)
+
+// One voice as Wwise sees it: its game object, whether that object is active, how many voices it holds, the
+// event, the channel RTPCs as resolved for this playing id (value and the scope it came from: 0 default,
+// 1 global, 2 game object, 3 playing id, 4 unavailable), the NPC volume RTPC, max radius, and the dry level to
+// each listener.
+bool SafeAkVoice(uint32_t aPlayingId, char* aBuf, size_t aSize)
+{
+    const auto& ak = Ak();
+    __try
+    {
+        const uint64_t go = ak.gameObject(aPlayingId);
+        if (go == ~0ull)
+        {
+            std::snprintf(aBuf, aSize, "pid=%u go=none", aPlayingId);
+            return true;
+        }
+        const bool active = ak.active(go);
+        uint32_t voices = 0;
+        ak.playing(go, &voices, nullptr);
+        const uint32_t eventId = ak.event(aPlayingId);
+        float chan = -1.0f, left = -1.0f, fast = -1.0f;
+        int chanType = 3, leftType = 3, fastType = 3;
+        ak.rtpc(kRtpcBroadcastChannel, go, aPlayingId, &chan, &chanType);
+        ak.rtpc(kRtpcBroadcastLeft, go, aPlayingId, &left, &leftType);
+        ak.rtpc(kRtpcEngageMovingFaster, go, aPlayingId, &fast, &fastType);
+        const float radius = ak.radius(go);
+        uint64_t listeners[4] = {};
+        uint32_t listenerCount = 4;
+        ak.listeners(go, listeners, &listenerCount);
+        int n = std::snprintf(aBuf, aSize,
+                              "pid=%u go=%llx active=%u voices=%u event=%u chan=%.0f/t%d left=%.0f/t%d fast=%.2f/t%d radius=%.1f listeners=%u",
+                              aPlayingId, static_cast<unsigned long long>(go), active ? 1u : 0u, voices, eventId,
+                              chan, chanType, left, leftType, fast, fastType, radius, listenerCount);
+        for (uint32_t i = 0; i < listenerCount && i < 4 && n > 0 && n < static_cast<int>(aSize) - 48; ++i)
+        {
+            float dry = -1.0f;
+            ak.dry(go, listeners[i], &dry);
+            n += std::snprintf(aBuf + n, aSize - n, " dry[%llx]=%.3f", static_cast<unsigned long long>(listeners[i]), dry);
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+std::string AkVoiceText(uint32_t aPlayingId)
+{
+    if (!Ak().ok)
+    {
+        return "ak=unresolved";
+    }
+    char buf[512];
+    if (!SafeAkVoice(aPlayingId, buf, sizeof(buf)))
+    {
+        std::snprintf(buf, sizeof(buf), "pid=%u ak=fault", aPlayingId);
+    }
+    return buf;
+}
+
+// The playing id of the sound named aName on the emitter, or 0 when it is not playing.
+uint32_t PlayingIdOf(const ReceiverState& aState, uint64_t aName)
+{
+    for (uint32_t i = 0; i < aState.listed; ++i)
+    {
+        if (aState.names[i] == aName && aState.ids[i] != 0 && aState.states[i] != 4 && aState.states[i] != 5)
+        {
+            return aState.ids[i];
+        }
+    }
+    return 0;
+}
 
 bool SafeStationPlaying(uint64_t aStation, bool* aPlaying)
 {
@@ -1235,8 +1373,54 @@ void CheckLiveRadios()
 {
     AcquireSRWLockShared(&g_liveLock);
     const auto live = g_live;
+    const auto others = g_others;
     ReleaseSRWLockShared(&g_liveLock);
     const uint64_t now = GetTickCount64();
+    // `wwise` lines, once a second: every playing traffic receiver and every other tuned receiver.
+    static uint64_t lastWwise = 0;
+    if (now - lastWwise >= 1000)
+    {
+        lastWwise = now;
+        for (const auto& [entity, radio] : live)
+        {
+            ReceiverState receiver{};
+            if (!radio.emitter || !SafeReadReceiver(radio.emitter, &receiver))
+            {
+                continue;
+            }
+            const uint32_t pid = PlayingIdOf(receiver, receiver.receiverEvent);
+            if (!pid)
+            {
+                continue;
+            }
+            Car car{};
+            uintptr_t movement = 0;
+            const bool known = CarByEntity(entity, &car, &movement);
+            char head[192];
+            std::snprintf(head, sizeof(head), "wwise traffic %s ent=%llx dist=%.1f station=%s recv=%s ", Stamp().c_str(),
+                          static_cast<unsigned long long>(entity), known ? DistanceTo(&car) : -1.0f,
+                          Text(radio.station).c_str(), Text(receiver.receiverEvent).c_str());
+            Log(head + AkVoiceText(pid));
+        }
+        for (const auto& [emitter, station] : others)
+        {
+            ReceiverState receiver{};
+            if (!SafeReadReceiver(emitter, &receiver))
+            {
+                continue;
+            }
+            const uint32_t pid = PlayingIdOf(receiver, receiver.broadcastEvent);
+            if (!pid)
+            {
+                continue;
+            }
+            char head[192];
+            std::snprintf(head, sizeof(head), "wwise other %s emitter=%llx station=%s bcast=%s ", Stamp().c_str(),
+                          static_cast<unsigned long long>(emitter), Text(station).c_str(),
+                          Text(receiver.broadcastEvent).c_str());
+            Log(head + AkVoiceText(pid));
+        }
+    }
     for (const auto& [entity, radio] : live)
     {
         ReceiverState receiver{};
@@ -1542,6 +1726,17 @@ void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
     if (vtbl != trafficVtbl)
     {
         Log(std::string("other post ") + Stamp() + " station=" + Text(aStation) + ids);
+        static const uint64_t none = RED4ext::CName("station_none").hash;
+        AcquireSRWLockExclusive(&g_liveLock);
+        if (aStation == 0 || aStation == none)
+        {
+            g_others.erase(reinterpret_cast<uintptr_t>(aEmitter));
+        }
+        else
+        {
+            g_others[reinterpret_cast<uintptr_t>(aEmitter)] = aStation;
+        }
+        ReleaseSRWLockExclusive(&g_liveLock);
         return;
     }
     EmitterState state{};
