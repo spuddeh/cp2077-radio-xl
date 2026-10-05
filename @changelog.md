@@ -2,6 +2,50 @@
 
 ## [Unreleased]
 
+### Added
+- Custom stations on traffic car radios (#63): `Traffic.reds`, `RadioXLTraffic`. A traffic car
+  picks only from its `audioVehicleMetadata.matchingStartupRadioStations` (`TrafficVehicleEmitter::
+  PlayRadio` reads `VehicleMetadata +0x88` through emitter `+0x140`), so the service keeps each
+  list's vanilla copy at metadata load (`Capture`, from `RadioXLService.Register`) and rebuilds the
+  lists from the setting: Most cars (lists holding all nine shared stations, 142 receivers), Every
+  car (every non-police, non-empty list), Off. Applied at load, on RCF restore and on every change;
+  a mid-session change reaches the next car (measured: 0 custom in 36 picks after Off).
+- World radios and jukeboxes that start on a random station can land on a custom one (#63): a wrap
+  of `RadioStationDataProvider.GetRandomStation` adds each custom station as one more equal share
+  beside the thirteen vanilla picks (Samizdat excluded). Logged as `world radio: random start on`.
+- `randomStreams` (off by default): stream stations count for both random picks.
+- Settings rows `trafficStations` (dropdown index 0 Most cars, 1 Every car, 2 Off),
+  `randomWorldRadios`, `randomStreams`, after the Stations section's text and a divider.
+- `addUnlistedFiles` (#66): a manifest key, off by default. `Folder.hpp` (`SyncFolder`, no
+  filesystem calls, tested) adds every unlisted WAV/MP3/OGG/FLAC under the station folder, titled
+  by the builder's `titleFromFile`, and removes listed files that are gone; a stream station is left
+  alone. `Main.cpp` `SyncStationFolder` rewrites `station.json` IN PLACE, laid out as the builder
+  writes it (`WriteJsonIndented`), only on a change and only when the new text reads back through
+  `ReadManifest`. Measured: the rewrite stays in the station's own MO2 folder.
+- Track length cache (#66): `Cache.hpp`, `red4ext/plugins/RadioXL/cache.json`, keyed
+  `<source>/<normalised path>` with size, modified time (ticks as text) and length. Unseen entries
+  pruned, written only on a change, gitignored. Measured: 131 lengths from the cache on a relaunch.
+- `RadioXL_StationTrackLegacy` native: a track's old position-based event name, for migration only.
+
+### Changed
+- A custom track's event name and title key come from its file (#65): `<station>_<8 hex>`,
+  FNV-1a 32 of the `file` path (forward slashes, ASCII lower case) or the `url`; a second track
+  with the same identity is dropped and logged. `RadioXLConfig.MigrateSongKeys` moves each stored
+  `song:<station>_NN` key to the new name in RCF's JSON before `RestoreInto` (RCF restores only
+  schema keys), keeping a new key already present, then drops the old one. Measured: 113 settings
+  moved, and removing Tool FM's first file left the others' settings on their songs. A mod that
+  hard-codes a custom track's event name sees it change.
+- Docs: world radios save their station by list position, a known limit (#62); deleting
+  `cache.json` as the fix for a song with the wrong length.
+- `release-check` (workspace): refuses any shipped file the mod's `.gitignore` excludes.
+
+### Investigated, no change
+- #64: announcement VO sets the same three channel RTPCs as `PlaySong`, so it routes like the
+  station's songs; `veh_radio_tier` is an RTPC on the car's own sound object, applied to its
+  receiver whatever the station.
+- #62: car radios save their station by name (`vehicleAudioPSData.activeRadioStation`); jukeboxes
+  re-pick on every attach; world radios keep `RadioControllerPS.activeStation` as an index.
+
 ## [0.6.0] - 2026-09-30
 
 ### Added

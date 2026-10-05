@@ -69,8 +69,21 @@
 - One dial on every receiver: a custom station sits at the frequency at the front of its display
   name, between the vanilla stations, in the vehicle list and in the next/previous order of a car,
   a world device and the pocket radio.
+- Custom stations on traffic car radios, by setting: Most cars (the shared nine-station lists),
+  Every car, Off; and world radios and jukeboxes that start at random can land on one. Stream
+  stations join both only with their own switch (#63).
+- A station with `addUnlistedFiles` keeps its track list in step with its folder, rewriting
+  `station.json` in place (#66); track lengths are cached between launches.
+- A custom track's name and the player's settings for it follow its file, not its position (#65).
 
 ## Verified in game
+
+- Traffic cars pick custom stations (4 of 34, then 149 of 337 with the player's car on one);
+  Off applies mid-session (0 in 36); jukeboxes started on OutrunWaves and PHONKWAVE (#63).
+- 113 song settings migrated to file-based names; removing Tool FM's first file left the others'
+  settings in place (#65).
+- `addUnlistedFiles` added a dropped file and removed a missing one, writing `station.json` in the
+  mod's own MO2 folder; the relaunch took 131 lengths from the cache (#66).
 
 - The player controls folded in from Simple Radio Control (#35), run inside RadioXL on
   2026-09-15: the four-tab panel with the modifier and Radioport key rows appearing behind their

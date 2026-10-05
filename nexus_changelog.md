@@ -1,5 +1,13 @@
 ### [Unreleased]
 
+- New: passing traffic cars can play custom stations. A setting on the Stations tab chooses which cars: Most cars (the default), Every car, or Off.
+- New: radios and jukeboxes around the city that start on a random station can start on a custom one. On by default, with its own switch.
+- New: a switch to let traffic and those radios pick stations that stream as well. Off by default.
+- New: a station can add the songs you drop into its folder by itself. With "addUnlistedFiles" in its station.json (or the station builder's "Add songs I drop into this folder later"), new audio files are added at the next launch and removed files are taken off.
+- New: song lengths are remembered between launches, so a song file that has not changed is not read again at each start.
+- Fix: removing, adding or reordering a station's songs no longer moves your per-song settings onto other songs. Settings you already have are carried over on the first launch.
+- Mod authors: a custom song's event name now comes from its file name rather than its place in the list.
+
 ### v0.6.0
 
 - New: a script API for other mods. A mod can read every station and song, the player's song settings, what is playing and where, and each station's description; change song or station through RadioXL's own controls; and hear when the song, the station, the radio's power or a setting changes. Mod authors: the API is documented at https://github.com/spuddeh/cp2077-radio-xl/blob/main/docs/script-api.md
