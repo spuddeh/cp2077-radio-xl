@@ -69,6 +69,7 @@ struct Station
     std::string icon;          // an inkatlas part name, a UIIcon record name, or empty for the framework's glyph
     std::string atlas;         // the inkatlas resource holding that part, or empty for the framework's
     bool news = false;         // Stanley's news and greetings may reach the station
+    bool addUnlistedFiles = false; // audio in the folder that `tracks` does not list is added at load
     float gain = kDefaultGain; // level trim applied to every track's samples, 0..kMaxGain; see RadioXL_StationGain
     std::vector<Track> tracks;
     std::string description;   // text for every language, or empty; see Description()
@@ -325,7 +326,7 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
     };
 
     unknownKeys(root, {"name", "frequency", "displayName", "showFrequency", "icon", "atlas", "news", "gain", "tracks",
-                       "description", "extensions"}, "manifest");
+                       "description", "extensions", "addUnlistedFiles"}, "manifest");
 
     if (const JsonValue* name = expect(root, "name", JsonValue::Kind::String, true))
     {
@@ -382,6 +383,10 @@ inline bool ReadManifest(std::string_view aText, const std::string& aWhere, Stat
             at(gain->line, "\"gain\" is 0 to 4 - clamped");
         }
         aOut.gain = std::clamp(static_cast<float>(gain->number), 0.0f, kMaxGain);
+    }
+    if (const JsonValue* add = expect(root, "addUnlistedFiles", JsonValue::Kind::Bool, false))
+    {
+        aOut.addUnlistedFiles = add->boolean;
     }
     if (const JsonValue* show = expect(root, "showFrequency", JsonValue::Kind::Bool, false))
     {

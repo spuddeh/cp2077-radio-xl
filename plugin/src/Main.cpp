@@ -21,8 +21,10 @@
 #include <Windows.h>
 #include <RED4ext/RED4ext.hpp>
 
+#include "Cache.hpp"
 #include "Clock.hpp"
 #include "Duration.hpp"
+#include "Folder.hpp"
 #include "Manifest.hpp"
 #include "Schedule.hpp"
 
@@ -337,6 +339,61 @@ std::filesystem::path PluginDirectory()
 // Every mod drops its own folder, so nothing is shared and nothing can collide.
 //   red4ext/plugins/RadioXL/stations/<ModName>/station.json
 
+// Every file under a station's folder, as paths relative to it with forward slashes.
+std::vector<std::string> ListFolder(const std::filesystem::path& aFolder)
+{
+    std::vector<std::string> files;
+    std::error_code ec;
+    for (auto it = std::filesystem::recursive_directory_iterator(aFolder, ec);
+         !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec))
+    {
+        if (it->is_regular_file(ec))
+        {
+            const auto relative = it->path().lexically_relative(aFolder).generic_u8string();
+            files.emplace_back(relative.begin(), relative.end());
+        }
+    }
+    return files;
+}
+
+// A station with "addUnlistedFiles": true has its `tracks` brought in step with its folder, and
+// station.json is written IN PLACE: under MO2 a new file lands in Overwrite and would shadow the
+// mod's own manifest, where an existing file written in place stays in its mod. Nothing is written
+// unless the new text reads back as a valid manifest.
+void SyncStationFolder(const std::filesystem::path& aFolder, const std::filesystem::path& aFile,
+                       const std::string& aSource, std::string& aText)
+{
+    if (aText.find("addUnlistedFiles") == std::string::npos)
+    {
+        return;
+    }
+    const auto sync = radioxl::SyncFolder(aText, ListFolder(aFolder));
+    if (!sync.changed)
+    {
+        return;
+    }
+    Station check;
+    if (!radioxl::ReadManifest(sync.text, aSource + "/station.json", check, [](const std::string&) {}))
+    {
+        Log(aSource + ": the track list built from the folder does not read back as a manifest - station.json left as it was");
+        return;
+    }
+    std::ofstream out(aFile, std::ios::binary | std::ios::trunc);
+    if (!out || !(out << sync.text))
+    {
+        Log(aSource + ": station.json could not be written - the folder's changes apply to this launch only");
+    }
+    for (const auto& path : sync.added)
+    {
+        Log(aSource + ": added '" + path + "' from the station folder - open the station in the builder to level it");
+    }
+    for (const auto& path : sync.removed)
+    {
+        Log(aSource + ": '" + path + "' is no longer in the station folder - removed from station.json");
+    }
+    aText = sync.text;
+}
+
 void LoadManifests()
 {
     const auto root = PluginDirectory() / "stations";
@@ -346,6 +403,8 @@ void LoadManifests()
         Log("no stations directory - nothing to register");
         return;
     }
+    radioxl::LengthCache cache;
+    cache.Load(PluginDirectory() / "cache.json");
 
     for (const auto& entry : std::filesystem::directory_iterator(root, ec))
     {
@@ -374,7 +433,9 @@ void LoadManifests()
         }
         std::stringstream buffer;
         buffer << in.rdbuf();
-        const std::string text = buffer.str();
+        in.close();
+        std::string text = buffer.str();
+        SyncStationFolder(entry.path(), file, station.source, text);
 
         // Every fault is logged as <Mod>/station.json:<line>: <what>, and a manifest with one is
         // skipped whole. A station loaded with a field missing looks like a bug somewhere else.
@@ -398,7 +459,9 @@ void LoadManifests()
                 ++it;
                 continue;
             }
-            it->duration = radioxl::AudioDuration(std::filesystem::u8path(station.folder) / std::filesystem::u8path(it->file));
+            it->duration = cache.Length(station.source + "/" + radioxl::NormalisePath(it->file),
+                                        std::filesystem::u8path(station.folder) / std::filesystem::u8path(it->file),
+                                        [](const std::filesystem::path& aPath) { return radioxl::AudioDuration(aPath); });
             if (it->duration <= 0.0f)
             {
                 Log(station.source + ": '" + it->file +
@@ -457,6 +520,11 @@ void LoadManifests()
                 (station.displayName.empty() ? " (NO displayName - the CName stands in)" : ""));
             g_stations.push_back(std::move(station));
         }
+    }
+    cache.Save();
+    if (cache.Hits() > 0)
+    {
+        Log(std::to_string(cache.Hits()) + " track length(s) taken from cache.json, unchanged since they were read");
     }
 }
 

@@ -69,7 +69,7 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | internal station id | slot + 8 | an engine bias, see the [roster page](compiled-station-roster.md) |
 | track event name | `<name>_<id>`, where `<id>` is 8 hex digits of FNV-1a 32 over the track's `file` (forward slashes, ASCII lower case) or its `url` | a filename with a space or an accent must never reach an event name, and a player's per-song settings are stored under it, so adding, removing or reordering files must not rename the other tracks. Two tracks with one identity in a station: the second is dropped and logged |
 | Wwise id of the event | FNV-1 32-bit of the lowercased event name, from AudioXL | it is a function of the name |
-| track duration | read from the file's headers at plugin load | the file is the only thing that can be right; see [station set](station-set-and-load-order.md) |
+| track duration | read from the file's headers at plugin load, and kept in `red4ext/plugins/RadioXL/cache.json` keyed by the file's size and modified time, so an unchanged file is not read again; a missing or stale entry means the header is read | the file is the only thing that can be right; see [station set](station-set-and-load-order.md) |
 | station label key | `Gameplay-Devices-Radio-RadioXL-<name>` | the engine's name table holds a key, and a key resolves by string only under `Gameplay-`, `UI-` or `Common-`; see [localization](localization-keys.md) |
 | title key | `Gameplay-Devices-Radio_tracks-RadioXL-<name>-<id>` | `audioRadioTrack` holds a key, in the same namespace as vanilla track keys |
 | both hashes of each key | FNV1a32 keeping the key text, FNV1a64 with it cleared | how `onscreens` rows are found; see [localization](localization-keys.md) |

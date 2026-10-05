@@ -7,6 +7,7 @@
 //
 // Built as RadioXLManifestTests by the plugin's CMake and run by ctest. Exit code is the failure count.
 
+#include "../src/Folder.hpp"
 #include "../src/Manifest.hpp"
 
 #include <cstdio>
@@ -467,6 +468,47 @@ void TestExtensions()
   "tracks": [ { "file": "a" } ]
 })json", "Mod/station.json:3: \"extensions\" must be");
 }
+
+void TestFolderSync()
+{
+    Check(radioxl::TitleFromFile("audio/My_Song.mp3") == "My Song", "title from file drops folder, extension, underscores",
+          radioxl::TitleFromFile("audio/My_Song.mp3"));
+    Check(radioxl::TitleFromFile("a\\b\\Song.flac") == "Song", "title from a backslash path");
+
+    const std::string plain = R"json({ "name": "radio_station_x", "frequency": 90.1, "displayName": "X",
+  "tracks": [ { "file": "audio/a.mp3" } ] })json";
+    Check(!radioxl::SyncFolder(plain, {"audio/b.mp3"}).changed, "a manifest without addUnlistedFiles is left alone");
+
+    const std::string opted = R"json({ "name": "radio_station_x", "frequency": 90.1, "displayName": "X",
+  "addUnlistedFiles": true,
+  "tracks": [
+    { "file": "Audio/A.mp3", "title": "Kept", "gain": 0.5 },
+    { "file": "audio/gone.mp3", "title": "Gone" }
+  ],
+  "extensions": { "SomeMod": { "x": 1 } } })json";
+    const auto sync = radioxl::SyncFolder(opted, {"audio/a.mp3", "audio/New_One.flac", "cover.png", "station.json"});
+    Check(sync.changed, "a folder change rewrites the manifest");
+    Check(sync.added.size() == 1 && sync.added[0] == "audio/New_One.flac", "an unlisted audio file is added, nothing else");
+    Check(sync.removed.size() == 1 && sync.removed[0] == "audio/gone.mp3", "a listed file not on disk is removed");
+    Check(sync.text.rfind("{\n  \"name\": ", 0) == 0, "the rewrite is laid out like the builder's", sync.text.substr(0, 20));
+
+    Read back(sync.text);
+    Check(back.ok, "the rewritten manifest reads back", back.ok ? "" : back.log.front());
+    Check(back.station.addUnlistedFiles, "addUnlistedFiles is read");
+    Check(back.station.tracks.size() == 2, "kept and added tracks", std::to_string(back.station.tracks.size()));
+    if (back.station.tracks.size() == 2)
+    {
+        Check(back.station.tracks[0].title == "Kept" && back.station.tracks[0].gain == 0.5f, "a kept track keeps its title and gain");
+        Check(back.station.tracks[1].title == "New One", "an added track is titled from its file", back.station.tracks[1].title);
+    }
+    Check(back.station.extensions.size() == 1, "extensions survive the rewrite");
+
+    Check(!radioxl::SyncFolder(sync.text, {"audio/a.mp3", "audio/New_One.flac"}).changed, "a folder in step changes nothing");
+
+    const std::string stream = R"json({ "name": "radio_station_x", "frequency": 90.1, "displayName": "X",
+  "addUnlistedFiles": true, "tracks": [ { "url": "https://example.com/stream" } ] })json";
+    Check(!radioxl::SyncFolder(stream, {"audio/a.mp3"}).changed, "a stream station is left alone");
+}
 } // namespace
 
 int main()
@@ -488,6 +530,7 @@ int main()
     TestEveryFaultIsReported();
     TestDescription();
     TestExtensions();
+    TestFolderSync();
     if (g_failures == 0)
     {
         std::printf("ok\n");

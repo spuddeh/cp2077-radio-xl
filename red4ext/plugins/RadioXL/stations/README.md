@@ -37,6 +37,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `icon` | Optional. An inkatlas part name, or an existing icon record such as `UIIcon.RadioHipHop`, which needs no archive. Defaults to the RadioXL glyph, which is also used when the named record does not exist. |
 | `atlas` | Optional. The inkatlas holding that part, as a depot path (`mymod\gui\icons.inkatlas`, no `base\`). Required when `icon` is a part name; ignored when it is a record. |
 | `description` | Optional. A few sentences about the station, up to 1000 characters, for other mods to read. RadioXL itself shows it nowhere. Either one text for every language, or an object of language codes: `{ "en-us": "...", "de-de": "..." }`. A player whose language is missing gets the plain text, else the `en-us` one. |
+| `addUnlistedFiles` | Optional. `true` keeps `tracks` in step with the folder: at each launch an audio file in the folder that `tracks` does not list is added, and a listed file that is gone is removed, and `station.json` is rewritten. Defaults to `false`. See [Adding songs by dropping them in](#adding-songs-by-dropping-them-in). |
 | `extensions` | Optional. An object with one key per mod that reads extra data from stations: `{ "SomeMod": { ... } }`. RadioXL hands each value to the mod it names, as written, and reads none of it. What goes inside is that mod's own format. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
@@ -172,6 +173,20 @@ anything.
 
 A track whose file AudioXL will not take is dropped, and the log names it. A station with no
 playable tracks is skipped rather than registered empty.
+
+## Adding songs by dropping them in
+
+With `"addUnlistedFiles": true`, a WAV, MP3, OGG or FLAC file put anywhere in the station's folder
+is added to `tracks` the next time the game starts, titled from its file name (folder and extension
+dropped, `_` read as a space) at gain 1. A listed file that is no longer in the folder is removed.
+The log names every file added or removed, and `station.json` is rewritten with the change, keeping
+every other key as it was. Nothing is written when nothing changed.
+
+The plugin reads a file's header and cannot measure its loudness, so open the station in the builder
+to level a song added this way. Idents are never guessed: mark one with `"ident": true` yourself.
+A station that streams is left alone.
+
+Leave it off for a station you publish, so a stray file on a player's machine never becomes a song.
 
 ## The order songs play in
 

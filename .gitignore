@@ -29,3 +29,6 @@ tools/level-target/work/
 # The station builder's Nexus misc file, made by site/scripts/nexus-builder-file.py
 /site/*.zip
 /site/RadioXL Station Builder *.txt
+
+# The plugin's track length cache, written at runtime beside the DLL; machine state, never shipped
+red4ext/plugins/RadioXL/cache.json
