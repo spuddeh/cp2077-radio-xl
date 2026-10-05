@@ -77,19 +77,17 @@ def report(path: pathlib.Path, window: float) -> None:
     hann = np.hanning(size)
     freqs = np.fft.rfftfreq(size, 1 / rate)
 
-    # A tone counts when its bin is within 30 dB of the loudest test tone on that side and above
-    # an absolute floor, so silence and the other side's leakage are not read as a station.
-    floor = size * 1e-4
-
+    # A tone counts when its bin stands at least 25 dB over the median of the bins around it: a
+    # steady sine is a needle in a 0.5 Hz-wide bin, game music and ambience are not.
     def present(spectrum: np.ndarray, targets: dict[int, int]) -> list[int]:
-        peaks = {}
+        found = []
         for station, hz in targets.items():
             k = int(round(hz / (rate / size)))
-            peaks[station] = spectrum[max(k - 1, 0):k + 2].max()
-        top = max(peaks.values())
-        if top < floor:
-            return []
-        return [s for s, p in peaks.items() if p >= floor and 20 * math.log10(p / top) > -30]
+            peak = spectrum[max(k - 1, 0):k + 2].max()
+            around = np.median(np.concatenate([spectrum[max(k - 60, 0):k - 4], spectrum[k + 5:k + 61]])) + 1e-12
+            if 20 * math.log10(peak / around + 1e-12) > 25:
+                found.append(station)
+        return found
 
     lefts = {i: left_hz(i) for i in range(1, 27)}
     rights = {i: right_hz(i) for i in range(1, 27)}
