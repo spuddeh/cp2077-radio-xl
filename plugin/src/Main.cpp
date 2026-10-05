@@ -81,6 +81,42 @@ constexpr uint8_t kTestDlJne[] = {0x84, 0xD2, 0x0F, 0x85};
 constexpr uint8_t kOnBlockStart[] = {0x4C, 0x8B, 0x01, 0x49, 0x8B, 0xC8};  // mov r8,[rcx]; mov rcx,r8
 constexpr uint8_t kCmpRdi0c[] = {0x83, 0x7F, 0x0C};
 
+// The same block's SECOND bound, after the random pick: the picked name is resolved, stored at
+// `[rdi+0xc]` and compared with 14 again, and at or past it the receiver stays off. A car whose own
+// list names a custom station came up silent when the pick landed on it.
+constexpr size_t kOnPickStore  = 0x171;  // 89 47 0C         mov [rdi+0xc], eax
+constexpr size_t kOnPickCmp    = 0x174;  // 83 7F 0C 0E      cmp dword [rdi+0xc], 14
+constexpr size_t kOnPickCmpImm = 0x177;
+constexpr size_t kOnPickJae    = 0x178;  // 0F 83 rel32      jae leave off
+constexpr uint8_t kMovRdi0cEax[] = {0x89, 0x47, 0x0C};
+constexpr uint8_t kJaeRel32[] = {0x0F, 0x83};
+
+// **The hand-over from a traffic car.** `vehicle::Audio::InitializeAudioSystem` gives the radio
+// system a callback taking an entity id and a station name, which sets that vehicle's receiver
+// station: resolved through the roster, then compared with 14, and at or past it the station is
+// dropped and the receiver later picks one of the car's own. A car taken from traffic on a custom
+// station came up on a random vanilla one (#68).
+constexpr uint32_t kHashTrafficHandover = 1585323804;  // 0xdc85dc
+constexpr size_t kHandoverCall   = 0x47;  // E8 rel32         call name -> index (0x100 on a miss)
+constexpr size_t kHandoverCmp    = 0x4E;  // 83 F8 0E         cmp eax, 14
+constexpr size_t kHandoverCmpImm = 0x50;
+constexpr size_t kHandoverJae    = 0x51;  // 73 rel8          jae drop
+
+// **A car loaded from a save.** `vehicle::Audio::LoadFromPSData` reads the saved station NAME and,
+// in a cold block reached through its `jne` at +0x110, resolves it and compares with 14 the same
+// way, so a car saved on a custom station loaded on a random vanilla one.
+constexpr uint32_t kHashVehicleLoad = 821564187;  // 0xdc8328, vehicle::Audio::LoadFromPSData
+constexpr size_t kLoadJne       = 0x110;  // 0F 85 rel32      jne cold block
+constexpr size_t kLoadJneNext   = 0x116;
+constexpr size_t kLoadColdCmpRcx = 0x00;  // 48 3B 0D         cmp rcx, [rip+disp32]   the none station
+constexpr size_t kLoadColdCall  = 0x0D;   // E8 rel32         call name -> index
+constexpr size_t kLoadColdCmp   = 0x12;   // 83 F8 0E         cmp eax, 14
+constexpr size_t kLoadColdCmpImm = 0x14;
+constexpr size_t kLoadColdJae   = 0x15;   // 0F 83 rel32
+constexpr uint8_t kJneRel32[] = {0x0F, 0x85};
+constexpr uint8_t kCmpRcxRip[] = {0x48, 0x3B, 0x0D};
+constexpr uint8_t kJaeRel8[] = {0x73};
+
 // The vehicle receiver's NEXT-station step, `+0x68` to `+0x92` of the same function. It takes the
 // current index through a dial-order table (a switch on 0..13), adds one, reduces modulo 14 with a
 // magic-number division, maps back through the inverse table (another switch on 0..13) and drops
@@ -770,9 +806,11 @@ void PatchRoster()
     const auto nameReader = reinterpret_cast<uint8_t*>(ResolveByHash(kHashNameReader));
     const auto nameReader2 = reinterpret_cast<uint8_t*>(ResolveByHash(kHashNameReader2));
     const auto receiverEnable = reinterpret_cast<uint8_t*>(ResolveByHash(kHashReceiverEnable));
+    const auto handover = reinterpret_cast<uint8_t*>(ResolveByHash(kHashTrafficHandover));
+    const auto vehicleLoad = reinterpret_cast<uint8_t*>(ResolveByHash(kHashVehicleLoad));
 
     if (!roster || !resolve || !indexToName || !vehicleSet || !nameTable || !nameReader ||
-        !nameReader2 || !receiverEnable)
+        !nameReader2 || !receiverEnable || !handover || !vehicleLoad)
     {
         Log("address resolution failed - is RED4ext's address database present for this build?");
         return;
@@ -787,6 +825,16 @@ void PatchRoster()
     int32_t onDisp = 0;
     std::memcpy(&onDisp, receiverEnable + kEnableJne + 2, sizeof(onDisp));
     const auto receiverOn = receiverEnable + kEnableJneNext + onDisp;
+
+    // So is the load path's.
+    if (std::memcmp(vehicleLoad + kLoadJne, kJneRel32, sizeof(kJneRel32)) != 0)
+    {
+        Log("byte check FAILED at vehicleLoad: jne cold block - nothing patched");
+        return;
+    }
+    int32_t loadDisp = 0;
+    std::memcpy(&loadDisp, vehicleLoad + kLoadJne + 2, sizeof(loadDisp));
+    const auto vehicleLoadCold = vehicleLoad + kLoadJneNext + loadDisp;
 
     // Both tables are filled by startup initialisers. Copying zeroes would erase every station.
     for (int i = 0; i < kVanillaCount; ++i)
@@ -839,6 +887,16 @@ void PatchRoster()
         {nameReader2 + kName2Mov, kMovR14Rcx, sizeof(kMovR14Rcx), "nameReader2: mov rbx, [r14+rcx*8+disp32]"},
         {receiverOn, kOnBlockStart, sizeof(kOnBlockStart), "receiverOn: mov r8, [rcx]; mov rcx, r8"},
         {receiverOn + kOnCmpOpcode, kCmpRdi0c, sizeof(kCmpRdi0c), "receiverOn: cmp dword [rdi+0xc], imm8"},
+        {receiverOn + kOnPickStore, kMovRdi0cEax, sizeof(kMovRdi0cEax), "receiverOn: mov [rdi+0xc], eax"},
+        {receiverOn + kOnPickCmp, kCmpRdi0c, sizeof(kCmpRdi0c), "receiverOn: pick cmp dword [rdi+0xc], imm8"},
+        {receiverOn + kOnPickJae, kJaeRel32, sizeof(kJaeRel32), "receiverOn: pick jae"},
+        {handover + kHandoverCall, kCallRel32, sizeof(kCallRel32), "handover: call name->index"},
+        {handover + kHandoverCmp, kCmpEax, sizeof(kCmpEax), "handover: cmp eax, imm8"},
+        {handover + kHandoverJae, kJaeRel8, sizeof(kJaeRel8), "handover: jae"},
+        {vehicleLoadCold + kLoadColdCmpRcx, kCmpRcxRip, sizeof(kCmpRcxRip), "vehicleLoad cold: cmp rcx, [rip+disp32]"},
+        {vehicleLoadCold + kLoadColdCall, kCallRel32, sizeof(kCallRel32), "vehicleLoad cold: call name->index"},
+        {vehicleLoadCold + kLoadColdCmp, kCmpEax, sizeof(kCmpEax), "vehicleLoad cold: cmp eax, imm8"},
+        {vehicleLoadCold + kLoadColdJae, kJaeRel32, sizeof(kJaeRel32), "vehicleLoad cold: jae"},
     };
     for (const auto& c : checks)
     {
@@ -850,9 +908,11 @@ void PatchRoster()
     }
     if (resolve[kResolveCmpImm] != kVanillaCount || indexToName[kIndexCmpImm] != kVanillaCount - 1 ||
         vehicleSet[kVehicleCmpImm] != kVanillaCount || nameReader[kNameCmpImm] != kVanillaCount - 1 ||
-        nameReader2[kName2CmpImm] != kVanillaCount - 1 || receiverOn[kOnCmpImm] != kVanillaCount)
+        nameReader2[kName2CmpImm] != kVanillaCount - 1 || receiverOn[kOnCmpImm] != kVanillaCount ||
+        receiverOn[kOnPickCmpImm] != kVanillaCount || handover[kHandoverCmpImm] != kVanillaCount ||
+        vehicleLoadCold[kLoadColdCmpImm] != kVanillaCount)
     {
-        Log("bounds are not the expected 14/13/14/13/13/14 - already patched, or a different build. Abandoned.");
+        Log("bounds are not the expected 14/13/14/13/13/14/14/14/14 - already patched, or a different build. Abandoned.");
         return;
     }
 
@@ -981,6 +1041,9 @@ void PatchRoster()
                     WriteBytes(nameReader + kNameCmpImm, &boundLast, 1) &&
                     WriteBytes(vehicleSet + kVehicleCmpImm, &boundTotal, 1) &&
                     WriteBytes(receiverOn + kOnCmpImm, &boundTotal, 1) &&
+                    WriteBytes(receiverOn + kOnPickCmpImm, &boundTotal, 1) &&
+                    WriteBytes(handover + kHandoverCmpImm, &boundTotal, 1) &&
+                    WriteBytes(vehicleLoadCold + kLoadColdCmpImm, &boundTotal, 1) &&
                     WriteBytes(vehicleSet + kVehicleStepFrom, detour, sizeof(detour));
 
     if (!ok)
@@ -1003,8 +1066,11 @@ void PatchRoster()
     }
     Log("roster patched to " + std::to_string(total) + " stations at " +
         Hex(reinterpret_cast<uintptr_t>(table)) + ", vehicle next-station step detoured to " +
-        Hex(reinterpret_cast<uintptr_t>(stub)) + ", receiver turn-on bound at " +
-        Hex(reinterpret_cast<uintptr_t>(receiverOn + kOnCmpImm)) + ", dial order " + dial);
+        Hex(reinterpret_cast<uintptr_t>(stub)) + ", receiver turn-on bounds at " +
+        Hex(reinterpret_cast<uintptr_t>(receiverOn + kOnCmpImm)) + " and " +
+        Hex(reinterpret_cast<uintptr_t>(receiverOn + kOnPickCmpImm)) + ", traffic hand-over bound at " +
+        Hex(reinterpret_cast<uintptr_t>(handover + kHandoverCmpImm)) + ", save load bound at " +
+        Hex(reinterpret_cast<uintptr_t>(vehicleLoadCold + kLoadColdCmpImm)) + ", dial order " + dial);
 }
 
 // --- the script side of the manifest -----------------------------------------------------------
