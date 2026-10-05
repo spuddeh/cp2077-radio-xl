@@ -1204,6 +1204,9 @@ using AkGetListenersFn = int (*)(uint64_t aGameObject, uint64_t* aIds, uint32_t*
 using AkGetDryLevelFn = int (*)(uint64_t aEmitter, uint64_t aListener, float* aLevel);
 using AkGetEventIDFn = uint32_t (*)(uint32_t aPlayingId);
 using AkGetMaxRadiusFn = float (*)(uint64_t aGameObject);
+// AkWorldTransform: front float[3] at 0, top float[3] at 0xc, position double[3] at 0x18 (0x30 bytes, read from
+// GetPosition's copy of AkSoundPositionRef::GetDefaultPosition). An object with no position gets that default.
+using AkGetPositionFn = int (*)(uint64_t aGameObject, uint8_t* aTransform);
 
 struct AkQuery
 {
@@ -1215,6 +1218,7 @@ struct AkQuery
     AkGetDryLevelFn dry = nullptr;
     AkGetEventIDFn event = nullptr;
     AkGetMaxRadiusFn radius = nullptr;
+    AkGetPositionFn position = nullptr;
     bool ok = false;
 };
 
@@ -1246,7 +1250,9 @@ const AkQuery& Ak()
         r.dry = ResolveRva<AkGetDryLevelFn>(0x1ad25d0, {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x74});
         r.event = ResolveRva<AkGetEventIDFn>(0x1ad2450, {0x8B, 0xD1, 0x48, 0x8B, 0x0D});
         r.radius = ResolveRva<AkGetMaxRadiusFn>(0x1ad28b0, {0x40, 0x53, 0x48, 0x83, 0xEC, 0x30, 0x48, 0x8B});
-        r.ok = r.gameObject && r.rtpc && r.active && r.playing && r.listeners && r.dry && r.event && r.radius;
+        r.position = ResolveRva<AkGetPositionFn>(0x1ad2a40, {0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83});
+        r.ok = r.gameObject && r.rtpc && r.active && r.playing && r.listeners && r.dry && r.event && r.radius &&
+               r.position;
         return r;
     }();
     return q;
@@ -1289,11 +1295,21 @@ bool SafeAkVoice(uint32_t aPlayingId, char* aBuf, size_t aSize)
                               "pid=%u go=%llx active=%u voices=%u event=%u chan=%.0f/t%d left=%.0f/t%d fast=%.2f/t%d radius=%.1f listeners=%u",
                               aPlayingId, static_cast<unsigned long long>(go), active ? 1u : 0u, voices, eventId,
                               chan, chanType, left, leftType, fast, fastType, radius, listenerCount);
-        for (uint32_t i = 0; i < listenerCount && i < 4 && n > 0 && n < static_cast<int>(aSize) - 48; ++i)
+        alignas(8) uint8_t at[0x30] = {};
+        const int atResult = ak.position(go, at);
+        const auto* pos = reinterpret_cast<const double*>(at + 0x18);
+        n += std::snprintf(aBuf + n, aSize - n, " pos=%d:%.1f,%.1f,%.1f", atResult, pos[0], pos[1], pos[2]);
+        for (uint32_t i = 0; i < listenerCount && i < 4 && n > 0 && n < static_cast<int>(aSize) - 96; ++i)
         {
             float dry = -1.0f;
             ak.dry(go, listeners[i], &dry);
-            n += std::snprintf(aBuf + n, aSize - n, " dry[%llx]=%.3f", static_cast<unsigned long long>(listeners[i]), dry);
+            alignas(8) uint8_t lt[0x30] = {};
+            ak.position(listeners[i], lt);
+            const auto* lp = reinterpret_cast<const double*>(lt + 0x18);
+            const double dx = pos[0] - lp[0], dy = pos[1] - lp[1], dz = pos[2] - lp[2];
+            n += std::snprintf(aBuf + n, aSize - n, " dry[%llx]=%.3f lpos=%.1f,%.1f,%.1f wdist=%.1f",
+                               static_cast<unsigned long long>(listeners[i]), dry, lp[0], lp[1], lp[2],
+                               std::sqrt(dx * dx + dy * dy + dz * dz));
         }
         return true;
     }
