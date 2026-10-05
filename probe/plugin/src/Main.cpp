@@ -26,7 +26,7 @@ namespace
 constexpr uint32_t kHashEngineRoot = 2549221846;
 
 // The radio mode's inputs (0xbd054c): GSoundSystem, its +0x90 flag, and the mix metrics at [+0x140] +0x90.
-constexpr uint32_t kHashIsBusSilent = 3822666350;
+constexpr uint32_t kHashIsBusSilent = 1559499847;
 constexpr uintptr_t kRvaGSoundSystem = 0x3429620;
 constexpr size_t kSoundSystemFlag90 = 0x90;
 constexpr size_t kSoundSystemMixOwner = 0x140;
