@@ -943,6 +943,8 @@ constexpr uintptr_t kRvaTrafficEmitterVtbl = 0x2b458a0;
 // The emitter, as PlayRadio, StopRadio and HandleSwitchLogic read it.
 constexpr size_t kEmitterStation = 0x110;        // CName; s_noneStation when the radio is off
 constexpr size_t kEmitterEntityId = 0x138;       // traffic_vehicle_entity_id
+constexpr size_t kEmitterParamEntityId = 0x108;  // RadioEmitter::GetEntityId, the RTPC key
+constexpr size_t kEmitterBroadcastChannel = 0x128; // channel stored by PostRadioBroadcastEvent (uint32)
 constexpr size_t kEmitterFlags = 0x150;          // the state UpdateSounds compares against its last value
 constexpr size_t kEmitterLastFlags = 0x151;      // UpdateSounds' last value; a bit falling here is a stop
 constexpr size_t kEmitterForceOff = 0x155;       // while set, UpdateSounds treats every bit as off
@@ -1524,8 +1526,22 @@ void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
     g_origPostBroadcast(aEmitter, aStation);
     static const uintptr_t trafficVtbl = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)) + kRvaTrafficEmitterVtbl;
     uint64_t vtbl = 0;
-    if (!SafeReadU64(reinterpret_cast<uintptr_t>(aEmitter), &vtbl) || vtbl != trafficVtbl)
+    if (!SafeReadU64(reinterpret_cast<uintptr_t>(aEmitter), &vtbl))
     {
+        return;
+    }
+    // SetBroadcastChannelParam keys the channel RTPC on GetEntityId (+0x108), and SetSoundParameter drops the
+    // call when that id is 0, so `param_ent=0` means the receiver never learns its channel (+0x128).
+    uint64_t paramEntity = 0;
+    uint64_t channel = 0;
+    SafeReadU64(reinterpret_cast<uintptr_t>(aEmitter) + kEmitterParamEntityId, &paramEntity);
+    SafeReadU64(reinterpret_cast<uintptr_t>(aEmitter) + kEmitterBroadcastChannel, &channel);
+    char ids[96];
+    std::snprintf(ids, sizeof(ids), " param_ent=%llx chan=%u", static_cast<unsigned long long>(paramEntity),
+                  static_cast<uint32_t>(channel));
+    if (vtbl != trafficVtbl)
+    {
+        Log(std::string("other post ") + Stamp() + " station=" + Text(aStation) + ids);
         return;
     }
     EmitterState state{};
@@ -1541,7 +1557,7 @@ void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
     std::snprintf(head, sizeof(head), "traffic post %s ent=%llx dist=%.1f station=%s ", Stamp().c_str(),
                   static_cast<unsigned long long>(state.entityId), known ? DistanceTo(&car) : -1.0f,
                   Text(aStation).c_str());
-    Log(head + ReceiverText(receiver));
+    Log(head + ReceiverText(receiver) + ids);
 }
 
 // --- every listener on every station ---
