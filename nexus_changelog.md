@@ -1,5 +1,8 @@
 ### [Unreleased]
 
+- Fix: a car you take from traffic while it plays a custom station keeps that station. It came up on a random station of the game's, or with the radio off.
+- Fix: a car saved while on a custom station is still on it when the save loads.
+
 ### v0.7.0
 
 - New: passing traffic cars can be tuned to custom stations. A setting on the Stations tab chooses which cars: Most cars (the default), Every car, or Off. A passing car's radio is tuned but not heard in the game, and that is unchanged: this puts custom stations on those radios.

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Fixed
+- A car taken from traffic on a custom station came up on a random vanilla station from its own
+  list, or with the radio off (#68). `Main.cpp` `PatchRoster` raises three more 14 bounds with the
+  station total, byte-verified with the rest: the traffic hand-over callback that
+  `vehicle::Audio::InitializeAudioSystem` stores on the radio system (`0xdc85dc`, hash 1585323804,
+  `cmp eax, 14` at +0x4E), the receiver turn-on block's second check after its random pick
+  (`+0x174`, `cmp dword [rdi+0xc], 14`), and `vehicle::Audio::LoadFromPSData`'s cold block (hash
+  821564187, reached through its `jne` at +0x110, `cmp eax, 14` at +0x12), which loaded a car saved
+  on a custom station on a random vanilla one. The block's `cmp edx, 14` at +0x6F caps a 14-slot
+  stack buffer and stays. Measured on Testing: two Tool FM hijacks and a Pacific Dreams control kept
+  their station. The save load is not checked in game.
+
 ## [0.7.0] - 2026-10-05
 
 ### Added

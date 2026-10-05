@@ -73,6 +73,8 @@
   Every car, Off; and world radios and jukeboxes that start at random can land on one. Stream
   stations join both only with their own switch (#63). A traffic radio is tuned but not heard in
   the game; this is groundwork for making traffic radios heard.
+- A car taken from traffic keeps the custom station it was playing, and a car saved on a custom
+  station loads on it (#68).
 - A station with `addUnlistedFiles` keeps its track list in step with its folder, rewriting
   `station.json` in place (#66); track lengths are cached between launches.
 - A custom track's name and the player's settings for it follow its file, not its position (#65).
