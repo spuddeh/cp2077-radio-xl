@@ -22,6 +22,7 @@
 #include <RED4ext/RED4ext.hpp>
 
 #include "Cache.hpp"
+#include "Channels.hpp"
 #include "Clock.hpp"
 #include "Duration.hpp"
 #include "Folder.hpp"
@@ -1124,6 +1125,20 @@ void RadioXL_DialPosition(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, i
     }
 }
 
+// A broadcast channel the loaded audio metadata uses (a playlist's or a reflection's), so no custom
+// station is given it. True when it was not already known.
+void RadioXL_ReserveChannel(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    int32_t channel = -1;
+    RED4ext::GetParameter(aFrame, &channel);
+    ++aFrame->code;
+    const bool added = radioxl::channels::Reserve(channel);
+    if (aOut)
+    {
+        *aOut = added;
+    }
+}
+
 void RadioXL_DialStation(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
 {
     int32_t position = -1;
@@ -1537,6 +1552,7 @@ void RegisterNatives()
     };
 
     reg("RadioXL_StationCount", &RadioXL_StationCount, "Int32", 0);
+    reg("RadioXL_ReserveChannel", &RadioXL_ReserveChannel, "Bool", 1);
     reg("RadioXL_DialPosition", &RadioXL_DialPosition, "Int32", 1);
     reg("RadioXL_DialStation", &RadioXL_DialStation, "Int32", 1);
     reg("RadioXL_StationName", &RadioXL_StationName, "CName", 1);
@@ -1650,6 +1666,11 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
 
         LoadManifests();
         PatchRoster();
+        if (g_patched)
+        {
+            radioxl::channels::Init(static_cast<int>(g_stations.size()), &Log);
+            radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
+        }
         // The engine names a station's current track by the 32-bit hash its localization row is
         // indexed by, so that is the key the clock matches on.
         radioxl::clock::Start(aSdk, aHandle, g_stations, &TrackEvent,
