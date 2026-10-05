@@ -1154,11 +1154,15 @@ struct ReceiverState
     uint8_t states[8];
 };
 
+// The vehicle audio data at +0x140 exists only on a TrafficVehicleEmitter; on any other radio emitter (a player
+// car's receiver, a world device) that slot is something else, so it is read only behind the vtable check.
 bool SafeReadReceiver(uintptr_t aEmitter, ReceiverState* aOut)
 {
+    static const uintptr_t trafficVtbl = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr)) + kRvaTrafficEmitterVtbl;
     __try
     {
-        const auto metadata = Read<uintptr_t>(aEmitter + kEmitterMetadata);
+        const bool traffic = Read<uintptr_t>(aEmitter) == trafficVtbl;
+        const auto metadata = traffic ? Read<uintptr_t>(aEmitter + kEmitterMetadata) : 0;
         aOut->receiverEvent = metadata ? Read<uint64_t>(metadata + kMetadataReceiverEvent) : 0;
         aOut->broadcastEvent = Read<uint64_t>(aEmitter + kEmitterBroadcastEvent);
         const auto sounds = Read<uintptr_t>(aEmitter + kEmitterSounds);
