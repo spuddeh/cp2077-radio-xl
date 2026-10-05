@@ -337,6 +337,21 @@ void Walk(std::string& aReport)
             const auto sub = Read<uintptr_t>(sound + kSoundSystemMixOwner);
             const auto metrics = sub ? Read<uintptr_t>(sub + kMixOwnerMetrics) : 0;
             const auto isBusSilent = ResolveIsBusSilent();
+            // The raw levels each meter holds (MixBusMeter +0x18 and +0x38, linear; CollectMeteringData turns a
+            // value under its floor into -200 dB), once a second: NPC vehicle radios (+0x68) and combat (+0x58).
+            static uint64_t lastMeter = 0;
+            const uint64_t nowTick = GetTickCount64();
+            if (metrics && nowTick - lastMeter >= 1000)
+            {
+                lastMeter = nowTick;
+                const auto npc = Read<uintptr_t>(metrics + 0x68);
+                const auto combat = Read<uintptr_t>(metrics + 0x58);
+                char meter[160];
+                std::snprintf(meter, sizeof(meter), "meter npc=%.6g/%.6g combat=%.6g/%.6g",
+                              npc ? Read<float>(npc + 0x18) : -1.0f, npc ? Read<float>(npc + 0x38) : -1.0f,
+                              combat ? Read<float>(combat + 0x18) : -1.0f, combat ? Read<float>(combat + 0x38) : -1.0f);
+                aReport += std::string(meter) + "\n";
+            }
             if (metrics && isBusSilent)
             {
                 combatSilent = isBusSilent(reinterpret_cast<void*>(metrics), kMixConfigSystemicMusic) ? 1 : 0;
