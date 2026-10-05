@@ -355,8 +355,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     return options;
   }
 
-  // The random picks open the Stations section; a divider separates them from the rows per station.
+  // The random picks follow the Stations section's text, behind a divider; each station's own
+  // section comes after them.
   private func AddRandom(b: ref<DVRCF_SchemaBuilder>) -> Void {
+    b.Divider();
     b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
     b.Tip("RadioXL.tipTrafficStations");
     b.Label("RadioXL.labTrafficMost");
@@ -364,7 +366,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tip("RadioXL.tipRandomWorldRadios");
     b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
     b.Tip("RadioXL.tipRandomStreams");
-    b.Divider();
   }
 
   private func TrafficOptions() -> array<String> {
@@ -402,21 +403,21 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     let catalog = RadioXLCatalog.Get();
     if !IsDefined(catalog) || !catalog.IsBuilt() || !IsDefined(controls) {
       b.Section("RadioXL.tabStations");
-      this.AddRandom(b);
       b.Label("RadioXL.noteNoCatalog");
+      this.AddRandom(b);
       return;
     }
     // The schema is rebuilt on every panel open, so this is where a track a quest added since
     // the catalog was built gets its row.
     catalog.RefreshAll();
     b.Section("RadioXL.tabStations");
-    this.AddRandom(b);
     b.Label("RadioXL.labStations1");
     b.Label("RadioXL.labStations2");
     b.Label("RadioXL.labStations3");
     b.Label("RadioXL.labStations4");
     b.Label("RadioXL.labStations5");
     b.Label(this.IsStreamerMode() ? "RadioXL.noteStreamerOn" : "RadioXL.noteStreamerOff");
+    this.AddRandom(b);
     let options: array<String> = this.SongOptions();
     let count: Int32 = RadioStationDataProvider.GetStationsCount();
     let position: Int32 = 0;
