@@ -2174,6 +2174,10 @@ struct BusMeter
     std::atomic<float> peak{0.0f};
     std::atomic<float> rms{0.0f};
     std::atomic<float> peakHold{0.0f};
+    std::atomic<float> rmsL{0.0f};    // channels 0 and 1: front left and front right in Wwise order
+    std::atomic<float> rmsR{0.0f};
+    std::atomic<float> peakL{0.0f};
+    std::atomic<float> peakR{0.0f};
     std::atomic<uint32_t> calls{0};
 };
 BusMeter g_diegetic{"diegetic", 1151059771};
@@ -2200,6 +2204,10 @@ void ReadBusMeter(void* aInfo, BusMeter& aOut)
     }
     aOut.peak.store(p);
     aOut.rms.store(r);
+    aOut.rmsL.store(rms ? rms[0] : 0.0f);
+    aOut.peakL.store(peak ? peak[0] : 0.0f);
+    aOut.rmsR.store(channels > 1 && rms ? rms[1] : 0.0f);
+    aOut.peakR.store(channels > 1 && peak ? peak[1] : 0.0f);
     if (p > aOut.peakHold.load())
     {
         aOut.peakHold.store(p);
@@ -2226,7 +2234,8 @@ float ToDb(float aLinear)
     return aLinear <= 0.000001f ? -120.0f : 20.0f * std::log10(aLinear);
 }
 
-// Each 100 ms: meter_live.txt beside radio_live.txt, one line per bus: name rms_db peak_db peak_hold_db calls.
+// Each 100 ms: meter_live.txt beside radio_live.txt, one line per bus:
+//   name rms_db peak_db peak_hold_db calls rms_left_db rms_right_db peak_left_db peak_right_db
 // Once a second a `bus meter` log line, while any of them is calling back.
 void WriteMeters()
 {
@@ -2254,11 +2263,12 @@ void WriteMeters()
             " (1 = registered)");
     }
     std::string text;
-    char line[128];
+    char line[160];
     for (BusMeter* m : {&g_diegetic, &g_systemic, &g_player})
     {
-        std::snprintf(line, sizeof(line), "%s %.1f %.1f %.1f %u\n", m->name, ToDb(m->rms.load()),
-                      ToDb(m->peak.load()), ToDb(m->peakHold.load()), m->calls.load());
+        std::snprintf(line, sizeof(line), "%s %.1f %.1f %.1f %u %.1f %.1f %.1f %.1f\n", m->name, ToDb(m->rms.load()),
+                      ToDb(m->peak.load()), ToDb(m->peakHold.load()), m->calls.load(), ToDb(m->rmsL.load()),
+                      ToDb(m->rmsR.load()), ToDb(m->peakL.load()), ToDb(m->peakR.load()));
         text += line;
     }
     std::wstring path = g_livePath.substr(0, g_livePath.find_last_of(L"\\/")) + L"\\meter_live.txt";
@@ -2282,13 +2292,15 @@ void WriteMeters()
     {
         return;
     }
-    char wide[224];
+    char wide[320];
     std::snprintf(wide, sizeof(wide),
-                  "bus meter %s diegetic rms=%.1f max=%.1f calls=%u  systemic rms=%.1f max=%.1f calls=%u  "
-                  "player rms=%.1f max=%.1f calls=%u",
-                  Stamp().c_str(), ToDb(g_diegetic.rms.load()), ToDb(g_diegetic.peakHold.exchange(0.0f)), dc,
-                  ToDb(g_systemic.rms.load()), ToDb(g_systemic.peakHold.exchange(0.0f)), sc,
-                  ToDb(g_player.rms.load()), ToDb(g_player.peakHold.exchange(0.0f)), pc);
+                  "bus meter %s diegetic rms=%.1f L=%.1f R=%.1f max=%.1f calls=%u  systemic rms=%.1f L=%.1f R=%.1f "
+                  "max=%.1f calls=%u  player rms=%.1f L=%.1f R=%.1f max=%.1f calls=%u",
+                  Stamp().c_str(), ToDb(g_diegetic.rms.load()), ToDb(g_diegetic.rmsL.load()),
+                  ToDb(g_diegetic.rmsR.load()), ToDb(g_diegetic.peakHold.exchange(0.0f)), dc,
+                  ToDb(g_systemic.rms.load()), ToDb(g_systemic.rmsL.load()), ToDb(g_systemic.rmsR.load()),
+                  ToDb(g_systemic.peakHold.exchange(0.0f)), sc, ToDb(g_player.rms.load()), ToDb(g_player.rmsL.load()),
+                  ToDb(g_player.rmsR.load()), ToDb(g_player.peakHold.exchange(0.0f)), pc);
     Log(wide);
 }
 

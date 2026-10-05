@@ -7,7 +7,7 @@
 --
 -- Radio Station Probe (RED4ext) writes two files into this folder every 100 ms:
 --   radio_live.txt   one line per listener: kind x y z counts playing station
---   meter_live.txt   one line per bus: name rms_db peak_db peak_hold_db calls
+--   meter_live.txt   one line per bus: name rms_db peak_db peak_hold_db calls rms_left rms_right peak_left peak_right
 -- This mod only reads and draws them. Both are on by default; each has a hotkey to hide it.
 
 local showMarkers = true
@@ -52,7 +52,11 @@ local function readFiles()
         local byName = {}
         for line in f:lines() do
             local n, r, p, h = line:match("^(%S+) (%S+) (%S+) (%S+)")
-            if n then byName[n] = { rms = tonumber(r), peak = tonumber(p), hold = tonumber(h) } end
+            local l, rr = line:match("^%S+ %S+ %S+ %S+ %S+ (%S+) (%S+)")
+            if n then
+                byName[n] = { rms = tonumber(r), peak = tonumber(p), hold = tonumber(h),
+                    left = tonumber(l), right = tonumber(rr) }
+            end
         end
         f:close()
         meters = byName
@@ -92,9 +96,10 @@ local function drawMarkers(dl, player)
     end
 end
 
--- A bar runs from -60 dB (empty) to 0 dB (full); the white tick is the last second's peak.
+-- A bar runs from -60 dB (empty) to 0 dB (full); the white tick is the last second's peak. Under it,
+-- two thin bars are the left and right channels' RMS, when the probe writes them.
 local function drawMeters(dl)
-    local x0, y0, bw, bh = 40, 300, 320, 18
+    local x0, y0, bw, bh, ch = 40, 300, 320, 18, 5
     local th = ImGui.GetTextLineHeight()
     local white = ImGui.GetColorU32(1, 1, 1, 1)
     local bg = ImGui.GetColorU32(0, 0, 0, 0.55)
@@ -105,15 +110,24 @@ local function drawMeters(dl)
     end
     for i, def in ipairs(METERS) do
         local m = meters[def.name] or { rms = -120, peak = -120, hold = -120 }
-        local y = y0 + (i - 1) * (th + bh + 16)
+        local y = y0 + (i - 1) * (th + bh + 2 * ch + 20)
+        local lr = m.left and string.format("   L %.1f  R %.1f", m.left, m.right) or ""
         ImGui.ImDrawListAddText(dl, x0, y, white,
-            string.format("%s   rms %.1f dB   peak %.1f dB", def.label, m.rms, m.hold))
+            string.format("%s   rms %.1f dB   peak %.1f dB%s", def.label, m.rms, m.hold, lr))
         local by = y + th + 4
         local c = def.colour
         ImGui.ImDrawListAddRectFilled(dl, x0, by, x0 + bw, by + bh, bg)
         ImGui.ImDrawListAddRectFilled(dl, x0, by, x0 + bw * frac(m.rms), by + bh, ImGui.GetColorU32(c[1], c[2], c[3], 1))
         local hx = x0 + bw * frac(m.hold)
         ImGui.ImDrawListAddLine(dl, hx, by, hx, by + bh, white, 2)
+        if m.left then
+            local col = ImGui.GetColorU32(c[1], c[2], c[3], 0.8)
+            for j, db in ipairs({ m.left, m.right }) do
+                local cy = by + bh + 2 + (j - 1) * (ch + 1)
+                ImGui.ImDrawListAddRectFilled(dl, x0, cy, x0 + bw, cy + ch, bg)
+                ImGui.ImDrawListAddRectFilled(dl, x0, cy, x0 + bw * frac(db), cy + ch, col)
+            end
+        end
     end
 end
 
