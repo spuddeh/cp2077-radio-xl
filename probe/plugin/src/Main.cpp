@@ -1908,7 +1908,7 @@ void DetourPostBroadcast(void* aEmitter, uint64_t aStation)
 // is (its position entry, emitter +0xb8, position at +0x10) and the state of the broadcast sound it posts
 // (name at +0x120, found in its sounds as for IsRadioPlaying). A listener is logged whenever its station,
 // whether it counts, whether its station plays or its sound's state changes, and when it leaves. The same
-// sweep is written to the live bridge's folder for the in-game markers, one line per listener:
+// sweep is written to the RadioProbeOverlay CET mod's folder for its in-game markers, one line per listener:
 //   kind x y z counts playing station
 constexpr size_t kEmitterPositionEntry = 0xb8;
 constexpr size_t kPositionEntryPos = 0x10;
@@ -2051,7 +2051,7 @@ void SweepListeners()
         GetModuleFileNameW(nullptr, exe, MAX_PATH);
         std::wstring dir(exe);
         dir = dir.substr(0, dir.find_last_of(L"\\/"));
-        g_livePath = dir + L"\\plugins\\cyber_engine_tweaks\\mods\\WkitLiveBridge\\radio_live.txt";
+        g_livePath = dir + L"\\plugins\\cyber_engine_tweaks\\mods\\RadioProbeOverlay\\radio_live.txt";
     }
     std::string live;
     std::unordered_map<uintptr_t, bool> seen;
@@ -2158,9 +2158,10 @@ void SweepListeners()
 // AK::SoundEngine::RegisterBusMeteringCallback (0x1acb900). A bus with no effect never calls back for 3D
 // voices, so each meter sits on the nearest ancestor that has one:
 //   Music_Diagetic_RTPC  (1151059771): NPC car radios, world radios, shops, clubs, arcades - not the player's car
-//   Music_Systemic       (2321364702): combat and police music, the two buses that duck the NPC car radios
+//   Music_Systemic       (2321364702): combat, police and open-world music; combat and police duck NPC car radios
+//   Music_Radio_Car_Player_DVR (4067771226): the player's own radio - car inside and outside, pocket radio, metro
 // Wwise keeps one callback per bus. The engine's own MixBusMeters (0x93f03d) sit on Music_Systemic_Combat,
-// _Police, Music_Diagetic_Radios_Vehicle_NPC and VO_Important_Somi_Holo, so these two replace none of them.
+// _Police, Music_Diagetic_Radios_Vehicle_NPC and VO_Important_Somi_Holo, so these three replace none of them.
 // Callback info: AkMetering at +0x10 (peak vector at +0, RMS at +0x10, linear per channel), channel count in
 // the low byte of +0x18.
 using RegisterMeterFn = int (*)(uint32_t aBus, void (*aCallback)(void*), uint32_t aFlags, void* aCookie);
@@ -2177,6 +2178,7 @@ struct BusMeter
 };
 BusMeter g_diegetic{"diegetic", 1151059771};
 BusMeter g_systemic{"systemic", 2321364702};
+BusMeter g_player{"player", 4067771226};
 
 void ReadBusMeter(void* aInfo, BusMeter& aOut)
 {
@@ -2214,13 +2216,18 @@ void SystemicMeterCallback(void* aInfo)
     ReadBusMeter(aInfo, g_systemic);
 }
 
+void PlayerMeterCallback(void* aInfo)
+{
+    ReadBusMeter(aInfo, g_player);
+}
+
 float ToDb(float aLinear)
 {
     return aLinear <= 0.000001f ? -120.0f : 20.0f * std::log10(aLinear);
 }
 
 // Each 100 ms: meter_live.txt beside radio_live.txt, one line per bus: name rms_db peak_db peak_hold_db calls.
-// Once a second a `bus meter` log line, while either bus is calling back.
+// Once a second a `bus meter` log line, while any of them is calling back.
 void WriteMeters()
 {
     static bool registered = false;
@@ -2243,11 +2250,12 @@ void WriteMeters()
         Log("bus meter: diegetic " + std::to_string(reg(g_diegetic.bus, &DiegeticMeterCallback, kMeterPeakAndRms,
                                                          nullptr)) +
             ", systemic " + std::to_string(reg(g_systemic.bus, &SystemicMeterCallback, kMeterPeakAndRms, nullptr)) +
+            ", player " + std::to_string(reg(g_player.bus, &PlayerMeterCallback, kMeterPeakAndRms, nullptr)) +
             " (1 = registered)");
     }
     std::string text;
     char line[128];
-    for (BusMeter* m : {&g_diegetic, &g_systemic})
+    for (BusMeter* m : {&g_diegetic, &g_systemic, &g_player})
     {
         std::snprintf(line, sizeof(line), "%s %.1f %.1f %.1f %u\n", m->name, ToDb(m->rms.load()),
                       ToDb(m->peak.load()), ToDb(m->peakHold.load()), m->calls.load());
@@ -2269,14 +2277,19 @@ void WriteMeters()
     lastLog = now;
     const uint32_t dc = g_diegetic.calls.exchange(0);
     const uint32_t sc = g_systemic.calls.exchange(0);
-    if (!dc && !sc)
+    const uint32_t pc = g_player.calls.exchange(0);
+    if (!dc && !sc && !pc)
     {
         return;
     }
-    std::snprintf(line, sizeof(line), "bus meter %s diegetic rms=%.1f max=%.1f calls=%u  systemic rms=%.1f max=%.1f calls=%u",
+    char wide[224];
+    std::snprintf(wide, sizeof(wide),
+                  "bus meter %s diegetic rms=%.1f max=%.1f calls=%u  systemic rms=%.1f max=%.1f calls=%u  "
+                  "player rms=%.1f max=%.1f calls=%u",
                   Stamp().c_str(), ToDb(g_diegetic.rms.load()), ToDb(g_diegetic.peakHold.exchange(0.0f)), dc,
-                  ToDb(g_systemic.rms.load()), ToDb(g_systemic.peakHold.exchange(0.0f)), sc);
-    Log(line);
+                  ToDb(g_systemic.rms.load()), ToDb(g_systemic.peakHold.exchange(0.0f)), sc,
+                  ToDb(g_player.rms.load()), ToDb(g_player.peakHold.exchange(0.0f)), pc);
+    Log(wide);
 }
 
 template <typename Fn>
