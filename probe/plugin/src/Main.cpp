@@ -925,6 +925,10 @@ constexpr HookTarget kAmbientStop{"AmbientPaletteSpace::PostStopEvent", 22772502
                                   {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x74}};
 constexpr HookTarget kPostBroadcast{"RadioEmitter::PostRadioBroadcastEvent", 3062830569, 0x9da22c,
                                     {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x7c}};
+// Every radio emitter dies here: TrafficVehicleEmitter's destructor (0x9d8910) tail-jumps into it. A car that
+// despawns frees its emitter without StopRadio, so stored emitter pointers are dropped here, before the free.
+constexpr HookTarget kRadioEmitterDtor{"RadioEmitter::~RadioEmitter", 2727086681, 0x9d9ef0,
+                                       {0x40, 0x53, 0x48, 0x83, 0xec, 0x20, 0x48, 0x8d}};
 
 // The car's receiver sound, as TrafficVehicleEmitter::IsRadioPlaying (0x9dadec) reads it: the emitter's
 // sounds (+0x58, count +0x64), each a pointer to a pointer to an entry with its event name at +0x8, the
@@ -964,6 +968,7 @@ constexpr const char* kActionNames[] = {"StartEngine", "StopEngine", "StartWheel
 
 using PlayRadioFn = void (*)(void* aEmitter);
 using StopRadioFn = void (*)(void* aEmitter);
+using EmitterDtorFn = void (*)(void* aEmitter);
 using PerformAudioActionFn = void (*)(void* aMovement, uint32_t aAction);
 using UpdateAudioFn = void (*)(void* aMovement, const float* aPosition);
 using InitializeAudioFn = void (*)(void* aMovement, const void* aAudioData);
@@ -971,6 +976,7 @@ using GetRandomStationFn = void (*)(void* aRadioSystem, uint64_t* aOut, const ui
 
 PlayRadioFn g_origPlayRadio = nullptr;
 StopRadioFn g_origStopRadio = nullptr;
+EmitterDtorFn g_origEmitterDtor = nullptr;
 PerformAudioActionFn g_origPerformAudioAction = nullptr;
 UpdateAudioFn g_origUpdateAudio = nullptr;
 InitializeAudioFn g_origInitializeAudio = nullptr;
@@ -1385,6 +1391,25 @@ bool SafeStationPlaying(uint64_t aStation, bool* aPlaying)
     }
 }
 
+// Reads a stored emitter only while it is still stored, holding the lock the destructor hook takes, so the
+// emitter cannot be freed during the read.
+bool ReadStoredReceiver(uintptr_t aEmitter, ReceiverState* aOut)
+{
+    if (!aEmitter)
+    {
+        return false;
+    }
+    AcquireSRWLockShared(&g_liveLock);
+    bool stored = g_others.count(aEmitter) != 0;
+    for (auto it = g_live.begin(); !stored && it != g_live.end(); ++it)
+    {
+        stored = it->second.emitter == aEmitter;
+    }
+    const bool read = stored && SafeReadReceiver(aEmitter, aOut);
+    ReleaseSRWLockShared(&g_liveLock);
+    return read;
+}
+
 void CheckLiveRadios()
 {
     AcquireSRWLockShared(&g_liveLock);
@@ -1400,7 +1425,7 @@ void CheckLiveRadios()
         for (const auto& [entity, radio] : live)
         {
             ReceiverState receiver{};
-            if (!radio.emitter || !SafeReadReceiver(radio.emitter, &receiver))
+            if (!ReadStoredReceiver(radio.emitter, &receiver))
             {
                 continue;
             }
@@ -1421,7 +1446,7 @@ void CheckLiveRadios()
         for (const auto& [emitter, station] : others)
         {
             ReceiverState receiver{};
-            if (!SafeReadReceiver(emitter, &receiver))
+            if (!ReadStoredReceiver(emitter, &receiver))
             {
                 continue;
             }
@@ -1440,7 +1465,7 @@ void CheckLiveRadios()
     for (const auto& [entity, radio] : live)
     {
         ReceiverState receiver{};
-        if (radio.emitter && SafeReadReceiver(radio.emitter, &receiver))
+        if (ReadStoredReceiver(radio.emitter, &receiver))
         {
             const std::string text = ReceiverText(receiver);
             if (text != radio.lastReceiver)
@@ -1500,6 +1525,21 @@ void DetourPlayRadio(void* aEmitter)
         }
         Log(RadioLine(state.radioOn ? "PLAY" : "PLAY-none", state, state.station));
     }
+}
+
+// The game's vectored handler ends the process on a first-chance access violation before SEH runs, so a freed
+// emitter must never be read: every stored emitter pointer leaves g_live and g_others here.
+void DetourEmitterDtor(void* aEmitter)
+{
+    const auto emitter = reinterpret_cast<uintptr_t>(aEmitter);
+    AcquireSRWLockExclusive(&g_liveLock);
+    g_others.erase(emitter);
+    for (auto it = g_live.begin(); it != g_live.end();)
+    {
+        it = it->second.emitter == emitter ? g_live.erase(it) : std::next(it);
+    }
+    ReleaseSRWLockExclusive(&g_liveLock);
+    g_origEmitterDtor(aEmitter);
 }
 
 void DetourStopRadio(void* aEmitter)
@@ -2061,6 +2101,7 @@ void InstallTrafficHooks()
     Attach(kPlayRadio, &DetourPlayRadio, &g_origPlayRadio);
     Attach(kStopRadio, &DetourStopRadio, &g_origStopRadio);
     Attach(kPostBroadcast, &DetourPostBroadcast, &g_origPostBroadcast);
+    Attach(kRadioEmitterDtor, &DetourEmitterDtor, &g_origEmitterDtor);
     Attach(kAmbientPlay, &DetourAmbientPlay, &g_origAmbientPlay);
     Attach(kAmbientStop, &DetourAmbientStop, &g_origAmbientStop);
 }
