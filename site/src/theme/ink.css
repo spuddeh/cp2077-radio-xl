@@ -114,7 +114,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .row-note {
   grid-column: 1 / -1;
   padding: 4px 14px 0;
-  font-size: var(--font-readable-x-small);
+  font-size: var(--font-readable-xsmall);
   color: var(--neutral);
   opacity: 0.6;
 }
@@ -203,7 +203,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   flex: 1;
   margin: 0;
   color: var(--blue);
-  font-size: var(--font-readable-x-small);
+  font-size: var(--font-readable-xsmall);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: all;
@@ -217,14 +217,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: none;
   padding: 3px 10px;
   cursor: pointer;
-  font-size: var(--font-readable-x-small);
+  font-size: var(--font-readable-xsmall);
   text-transform: uppercase;
   color: var(--blue);
 }
 .copy-block-button:hover { --edge-opacity: 1; }
 .notice-steps { margin: 4px 0; padding-left: 1.3em; }
 .notice-steps li { margin: 2px 0; }
-.notice-aside { display: block; margin-top: 2px; font-size: var(--font-readable-x-small); opacity: 0.85; }
+.notice-aside { display: block; margin-top: 2px; font-size: var(--font-readable-xsmall); opacity: 0.85; }
 .cell input::placeholder,
 .cell textarea::placeholder { color: var(--grey); opacity: 0.55; }
 
@@ -347,7 +347,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   grid-column: 2;
   grid-row: 2;
   text-align: center;
-  font-size: var(--font-readable-x-small);
+  font-size: var(--font-readable-xsmall);
   opacity: 0.5;
 }
 .stepper-dots span { width: 22px; height: 3px; background: var(--red); opacity: 0.3; }
@@ -367,7 +367,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: var(--font-readable-font-size);
   letter-spacing: 0.02em;
 }
-.section .count { font-size: var(--font-readable-x-small); color: var(--neutral); opacity: 0.6; font-weight: var(--weight-body); }
+.section .count { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.6; font-weight: var(--weight-body); }
 
 /* --- input hints: inputHints + inputDisplayController ---------------------------------- */
 
@@ -398,7 +398,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   min-width: 26px;
   height: 24px;
   padding: 0 6px;
-  font: var(--weight-header) var(--font-readable-x-small) var(--font-ui);
+  font: var(--weight-header) var(--font-readable-xsmall) var(--font-ui);
 }
 .hint:hover { color: var(--blue); }
 .hint:disabled { color: var(--grey); cursor: default; opacity: 0.6; }
