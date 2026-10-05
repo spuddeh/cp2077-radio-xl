@@ -94,7 +94,7 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.noteStreamerOff", "Streamer Mode is off. Songs set to Off while streaming are playing normally.");
     this.Text("RadioXL.noteNoCatalog", "The station list is read when a game is loaded. Load a save and open this panel again.");
     this.Text("RadioXL.optTrafficStations", "Custom stations on traffic cars");
-    this.Text("RadioXL.tipTrafficStations", "Which passing cars can tune to a custom station. Police cars keep the scanner either way. The game rarely lets you hear a passing car's radio, and this does not change that.");
+    this.Text("RadioXL.tipTrafficStations", "Which passing cars are tuned to a custom station. Police cars keep the scanner either way. A passing car's radio is not heard in the game, and this does not change that.");
     this.Text("RadioXL.labTrafficMost", "Most cars: the cars that play the same nine of the game's stations. A few cars are set to a genre of their own and keep it; Every car adds custom stations to those too.");
     this.Text("RadioXL.trafficMost", "Most cars");
     this.Text("RadioXL.trafficAll", "Every car");

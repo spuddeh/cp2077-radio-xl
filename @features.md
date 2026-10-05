@@ -29,7 +29,7 @@
   station is not created (#10).
 - The script API (#39): `RadioXLAPI` reads, deck-backed acts and ten events, reachable from CET as
   `RadioXL_RadioXLAPI` and `Observe("RadioXL.RadioXLEvents", ...)`. Verified in game by
-  `tests/api`, run both ways: 63 checks pass in a car, and 75 on foot now that it also reads an
+  `tests/api`, run both ways: 63 checks pass in a car, and 75 on foot, where it also reads an
   installed station's description (API and `-desc` key, through Codeware and GetLocalizedTextByKey),
   its extensions, 19 idents while muted, and a stream station's reads. Every event reached a CET
   Observe as often as a redscript listener; in a car no Radioport power event arrives. A song
@@ -43,7 +43,7 @@
 - Station name and song titles are real localization entries, resolved wherever a vanilla one is.
 - A song's title is optional: an untitled song plays at world radios and in Streamer Mode, and its
   name reads blank in the radio popup (#33). Verified in game.
-- The station appears on the vehicle radio wheel, sorted by frequency, with its own name and icon.
+- The station appears in the vehicle's station selection UI, sorted by frequency, with its own name and icon.
 - A vehicle radio switched off and on stays on the custom station it was on. Verified in game.
 - `news: true` lets Stanley's news and greetings reach a station, under the same engine rules as
   vanilla stations (#16). A greeting reaching a custom station is verified in game.
@@ -71,11 +71,34 @@
   a world device and the pocket radio.
 - Custom stations on traffic car radios, by setting: Most cars (the shared nine-station lists),
   Every car, Off; and world radios and jukeboxes that start at random can land on one. Stream
-  stations join both only with their own switch (#63). Traffic radios stay as quiet as the game
-  keeps them; this is groundwork for making them heard.
+  stations join both only with their own switch (#63). A traffic radio is tuned but not heard in
+  the game; this is groundwork for making traffic radios heard.
 - A station with `addUnlistedFiles` keeps its track list in step with its folder, rewriting
   `station.json` in place (#66); track lengths are cached between launches.
 - A custom track's name and the player's settings for it follow its file, not its position (#65).
+- Keys for next/previous song, next/previous station, show what's playing, never play this song
+  again and jump to my station. One set serves both radios, picked by whether a car radio is on;
+  each key can carry a held modifier, and the Radioport can have its own set. Next and previous
+  song default to F3 and F2; the rest start unbound (#35).
+- Every song on every station, vanilla included, is On, Off or Off while streaming; the game's
+  streamer-unfriendly songs start on Off while streaming, and a song hidden while Streamer Mode is
+  on is marked in its row. The deck skips past a song that is off (#35).
+- A station can be set aside so the station keys step over it; it stays pickable from the radio.
+- My station: the radio tunes to a remembered station, by name, on getting into a car, on car radio
+  power-on or on Radioport power-on; a car radio that is off is switched on.
+- The car's song popup can show for the Radioport too, on a song change and as it comes on, and the
+  station and song can show as an on-screen message.
+- Mute station idents (from the next song), and mute DJ announcements (Stanley's news, Maximum Mike,
+  Growl FM's Ash; Kurt Hansen's Dogtown broadcasts are kept), both kept in `state.json`.
+- A stream station that cannot play puts a red warning on screen once per launch, naming the
+  AudioXL.ini line it needs (#55).
+- `showFrequency: false` shows the station's name alone as its label; the frequency still places it
+  on the dial (#49). `description` is one text or an object of language codes, 1000 characters each.
+- A second track naming the same file as an earlier one is dropped and logged.
+- The station builder (`site/`, its own version and `site/CHANGELOG.md`) writes a station.json, icon
+  archive and zip from a form, imports RadioExt stations, measures each file to the game's level,
+  previews the station on a Radioport and world radios, and on opening a station offers to add audio
+  files its tracks miss and remove tracks whose file is gone (#67).
 
 ## Verified in game
 
@@ -86,8 +109,7 @@
 - `addUnlistedFiles` added a dropped file and removed a missing one, writing `station.json` in the
   mod's own MO2 folder; the relaunch took 131 lengths from the cache (#66).
 
-- The player controls folded in from Simple Radio Control (#35), run inside RadioXL on
-  2026-09-15: the four-tab panel with the modifier and Radioport key rows appearing behind their
+- The player controls folded in from Simple Radio Control (#35): the four-tab panel with the modifier and Radioport key rows appearing behind their
   switches; a song switched Off and skipped; next and previous song on Tool FM in a car and on the
   Radioport, and the station keys stepping over a station set aside; My station tuning on getting
   into a car; both talk mutes; the remembered station and the mutes back after a relaunch from
@@ -127,7 +149,7 @@
 - The never-again key's switch surviving a save load; previous stepping back over station picks.
 
 - The never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line
-  rows. (The Radioport popup on switch-on is measured: it shows the moment the Radioport comes on.)
+  rows.
 
 
 ## Planned
@@ -137,8 +159,6 @@
 - Panel translations beyond English (`translations/`).
 - Replace the two roster readers rather than patching their bounds, which lifts the 127-station
   ceiling. The vehicle step already carries a 32-bit total.
-- Adopt RadioXL station definitions unchanged, starting with Outrun Waves 93.7.
 - Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
-- The RadioExt parity audit is `concepts/radioext-parity-audit` in the vault (#20). Its two gaps are
-  closed: an existing `UIIcon` record as the icon (#21), and shuffle (#22), which the engine already
-  does for every station.
+- Open enhancement issues: stream song titles (#51), radio processing presets (#52), a shared ident
+  pool (#56), an all-news station (#57), a rotating song subset (#58), a segment-started event (#61).

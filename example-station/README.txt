@@ -32,8 +32,8 @@ RadioXL reads each track's length from the file and builds the rest when the
 game loads.
 
 The file must be plain JSON: double quotes, no comments, no trailing commas.
-If something is wrong, the station is skipped and RedLogger's
-r6\logs\mods\RadioXL.log names the file and the line.
+If something is wrong, the station is skipped and
+red4ext\logs\radioxl-<date>.log names the file and the line.
 
 Optional, on the same lines:
 
@@ -41,6 +41,9 @@ Optional, on the same lines:
                                         leave it out for the RadioXL glyph.
       "news": true                      lets Stanley's bulletins and greetings
                                         reach the station, as on the game's own.
+      "addUnlistedFiles": true          songs dropped into the folder are added
+                                        at the next launch and removed ones taken
+                                        off; station.json is rewritten to match.
 
 The station builder page makes all of this from a form, with an icon of your own
 from a picture: https://spuddeh.github.io/cp2077-radio-xl/
