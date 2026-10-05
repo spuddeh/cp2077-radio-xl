@@ -29,6 +29,14 @@
   pruned, written only on a change, gitignored. Measured: 131 lengths from the cache on a relaunch.
 - `RadioXL_StationTrackLegacy` native: a track's old position-based event name, for migration only.
 
+### Fixed
+- A WAV AudioXL refuses was listed and scheduled, and played nothing: AudioXL accepts the
+  registration and rejects the file only when it loads it, after the station is built, and logs it
+  in its own log. `Duration.hpp` `WavRefusal` mirrors AudioXL's `ValidateWav` (fmt chunk first,
+  format tag 1, 1 to 8 channels, 16 or 24 bits) and the loader drops a failing WAV before the length
+  lookup, logging `is a WAV AudioXL will not play (<why>) - dropped`. Measured against AudioXL 0.5.1
+  with a 32-bit float WAV: `rejected WAV: format tag must be 1`.
+
 ### Changed
 - A custom track's event name and title key come from its file (#65): `<station>_<8 hex>`,
   FNV-1a 32 of the `file` path (forward slashes, ASCII lower case) or the `url`; a second track

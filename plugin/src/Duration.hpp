@@ -472,6 +472,44 @@ inline float OggDuration(const std::filesystem::path& aPath)
 
 } // namespace detail
 
+// Why AudioXL will refuse this WAV, or empty when it will take it. AudioXL accepts a WAV only as plain
+// PCM (format tag 1) at 16 or 24 bits, 1 to 8 channels, with the fmt chunk first, and it says so in
+// its own log only once the file is loaded, after the station is built. A file that fails here is
+// dropped at load like a missing one.
+inline std::string WavRefusal(const std::filesystem::path& aPath)
+{
+    std::ifstream in(aPath, std::ios::binary);
+    uint8_t h[36];
+    if (!in || !in.read(reinterpret_cast<char*>(h), sizeof(h)))
+    {
+        return "too short to be a WAV";
+    }
+    if (std::memcmp(h, "RIFF", 4) != 0 || std::memcmp(h + 8, "WAVE", 4) != 0 || std::memcmp(h + 12, "fmt ", 4) != 0)
+    {
+        return "not a RIFF/WAVE file with its fmt chunk first";
+    }
+    const uint16_t tag = detail::LE16(h + 20);
+    const uint16_t channels = detail::LE16(h + 22);
+    const uint16_t bits = detail::LE16(h + 34);
+    if (tag == 3)
+    {
+        return "32-bit float, not PCM";
+    }
+    if (tag != 1)
+    {
+        return "format tag " + std::to_string(tag) + ", not plain PCM";
+    }
+    if (channels == 0 || channels > 8)
+    {
+        return std::to_string(channels) + " channels, not 1 to 8";
+    }
+    if (bits != 16 && bits != 24)
+    {
+        return std::to_string(bits) + "-bit, not 16 or 24";
+    }
+    return {};
+}
+
 // Seconds, or 0 when the file is missing, unsupported, or has no readable length.
 inline float AudioDuration(const std::filesystem::path& aPath)
 {

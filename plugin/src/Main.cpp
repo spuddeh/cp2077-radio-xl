@@ -459,8 +459,21 @@ void LoadManifests()
                 ++it;
                 continue;
             }
-            it->duration = cache.Length(station.source + "/" + radioxl::NormalisePath(it->file),
-                                        std::filesystem::u8path(station.folder) / std::filesystem::u8path(it->file),
+            const auto path = std::filesystem::u8path(station.folder) / std::filesystem::u8path(it->file);
+            const std::string lower = radioxl::NormalisePath(it->file);
+            const bool wav = lower.size() > 4 && lower.compare(lower.size() - 4, 4, ".wav") == 0;
+            if (wav && std::filesystem::exists(path, ec))
+            {
+                const std::string why = radioxl::WavRefusal(path);
+                if (!why.empty())
+                {
+                    Log(station.source + ": '" + it->file + "' is a WAV AudioXL will not play (" + why +
+                        ") - dropped; export it as 16 or 24-bit PCM");
+                    it = station.tracks.erase(it);
+                    continue;
+                }
+            }
+            it->duration = cache.Length(station.source + "/" + radioxl::NormalisePath(it->file), path,
                                         [](const std::filesystem::path& aPath) { return radioxl::AudioDuration(aPath); });
             if (it->duration <= 0.0f)
             {

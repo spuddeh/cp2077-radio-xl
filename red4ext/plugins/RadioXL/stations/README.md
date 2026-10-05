@@ -172,7 +172,8 @@ any station with files: MP3, OGG, FLAC, or WAV as plain PCM at 16 or 24 bits. A 
 float, or any tag other than plain PCM, is refused. This framework does not decode, stream or mix
 anything.
 
-A track whose file AudioXL will not take is dropped, and the log names it. A station with no
+A WAV that is not 16 or 24-bit PCM is dropped at load, and RadioXL's log names it with the reason;
+re-export it as PCM. A station with no
 playable tracks is skipped rather than registered empty.
 
 ## Adding songs by dropping them in

@@ -6,6 +6,7 @@
 - New: a station can add the songs you drop into its folder by itself. With "addUnlistedFiles" in its station.json (or the station builder's "Add songs I drop into this folder later"), new audio files are added at the next launch and removed files are taken off.
 - New: song lengths are remembered between launches, so a song file that has not changed is not read again at each start.
 - Fix: removing, adding or reordering a station's songs no longer moves your per-song settings onto other songs. Settings you already have are carried over on the first launch.
+- Fix: a WAV that AudioXL cannot play (32-bit float, or anything but 16 or 24-bit PCM) is now left out of the station with a line in RadioXL's log naming it. It used to be listed and play as silence.
 - Mod authors: a custom song's event name now comes from its file name rather than its place in the list.
 
 ### v0.6.0
