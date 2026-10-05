@@ -13,6 +13,8 @@
 #include <Windows.h>
 #include <RED4ext/RED4ext.hpp>
 
+#include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -799,6 +801,7 @@ bool SafeWalk(std::string& aReport)
 
 void CheckLiveRadios();
 void SweepListeners();
+void WriteMeters();
 
 // Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
 void PollMarker()
@@ -827,6 +830,7 @@ bool OnUpdate(RED4ext::CGameApplication*)
         Schedule();
         CheckLiveRadios();
         SweepListeners();
+        WriteMeters();
     }
     if (now - g_lastTick < 1000)
     {
@@ -2148,6 +2152,131 @@ void SweepListeners()
         std::fclose(f);
         MoveFileExW(temp.c_str(), g_livePath.c_str(), MOVEFILE_REPLACE_EXISTING);
     }
+}
+
+// --- bus meters for the in-game overlay ---
+// AK::SoundEngine::RegisterBusMeteringCallback (0x1acb900). A bus with no effect never calls back for 3D
+// voices, so each meter sits on the nearest ancestor that has one:
+//   Music_Diagetic_RTPC  (1151059771): NPC car radios, world radios, shops, clubs, arcades - not the player's car
+//   Music_Systemic       (2321364702): combat and police music, the two buses that duck the NPC car radios
+// Wwise keeps one callback per bus. The engine's own MixBusMeters (0x93f03d) sit on Music_Systemic_Combat,
+// _Police, Music_Diagetic_Radios_Vehicle_NPC and VO_Important_Somi_Holo, so these two replace none of them.
+// Callback info: AkMetering at +0x10 (peak vector at +0, RMS at +0x10, linear per channel), channel count in
+// the low byte of +0x18.
+using RegisterMeterFn = int (*)(uint32_t aBus, void (*aCallback)(void*), uint32_t aFlags, void* aCookie);
+constexpr uint32_t kMeterPeakAndRms = 1 | 4;
+
+struct BusMeter
+{
+    const char* name;
+    uint32_t bus;
+    std::atomic<float> peak{0.0f};
+    std::atomic<float> rms{0.0f};
+    std::atomic<float> peakHold{0.0f};
+    std::atomic<uint32_t> calls{0};
+};
+BusMeter g_diegetic{"diegetic", 1151059771};
+BusMeter g_systemic{"systemic", 2321364702};
+
+void ReadBusMeter(void* aInfo, BusMeter& aOut)
+{
+    const auto info = reinterpret_cast<uintptr_t>(aInfo);
+    const auto metering = *reinterpret_cast<uintptr_t*>(info + 0x10);
+    const auto channels = *reinterpret_cast<uint8_t*>(info + 0x18);
+    aOut.calls.fetch_add(1);
+    if (!metering || !channels)
+    {
+        return;
+    }
+    const auto* peak = *reinterpret_cast<float**>(metering);
+    const auto* rms = *reinterpret_cast<float**>(metering + 0x10);
+    float p = 0.0f, r = 0.0f;
+    for (uint8_t i = 0; i < channels; ++i)
+    {
+        p = (std::max)(p, peak ? peak[i] : 0.0f);
+        r = (std::max)(r, rms ? rms[i] : 0.0f);
+    }
+    aOut.peak.store(p);
+    aOut.rms.store(r);
+    if (p > aOut.peakHold.load())
+    {
+        aOut.peakHold.store(p);
+    }
+}
+
+void DiegeticMeterCallback(void* aInfo)
+{
+    ReadBusMeter(aInfo, g_diegetic);
+}
+
+void SystemicMeterCallback(void* aInfo)
+{
+    ReadBusMeter(aInfo, g_systemic);
+}
+
+float ToDb(float aLinear)
+{
+    return aLinear <= 0.000001f ? -120.0f : 20.0f * std::log10(aLinear);
+}
+
+// Each 100 ms: meter_live.txt beside radio_live.txt, one line per bus: name rms_db peak_db peak_hold_db calls.
+// Once a second a `bus meter` log line, while either bus is calling back.
+void WriteMeters()
+{
+    static bool registered = false;
+    static bool failed = false;
+    static uint64_t lastLog = 0;
+    if (failed || g_livePath.empty())
+    {
+        return;
+    }
+    if (!registered)
+    {
+        registered = true;
+        const auto reg = ResolveRva<RegisterMeterFn>(0x1acb900, {0x48, 0x83, 0xEC, 0x38, 0x80, 0x3D, 0x49, 0x3E});
+        if (!reg)
+        {
+            failed = true;
+            Log("bus meter: RegisterBusMeteringCallback is not this build's - no meters");
+            return;
+        }
+        Log("bus meter: diegetic " + std::to_string(reg(g_diegetic.bus, &DiegeticMeterCallback, kMeterPeakAndRms,
+                                                         nullptr)) +
+            ", systemic " + std::to_string(reg(g_systemic.bus, &SystemicMeterCallback, kMeterPeakAndRms, nullptr)) +
+            " (1 = registered)");
+    }
+    std::string text;
+    char line[128];
+    for (BusMeter* m : {&g_diegetic, &g_systemic})
+    {
+        std::snprintf(line, sizeof(line), "%s %.1f %.1f %.1f %u\n", m->name, ToDb(m->rms.load()),
+                      ToDb(m->peak.load()), ToDb(m->peakHold.load()), m->calls.load());
+        text += line;
+    }
+    std::wstring path = g_livePath.substr(0, g_livePath.find_last_of(L"\\/")) + L"\\meter_live.txt";
+    const std::wstring temp = path + L".tmp";
+    if (FILE* f = _wfopen(temp.c_str(), L"wb"))
+    {
+        std::fwrite(text.data(), 1, text.size(), f);
+        std::fclose(f);
+        MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+    const uint64_t now = GetTickCount64();
+    if (now - lastLog < 1000)
+    {
+        return;
+    }
+    lastLog = now;
+    const uint32_t dc = g_diegetic.calls.exchange(0);
+    const uint32_t sc = g_systemic.calls.exchange(0);
+    if (!dc && !sc)
+    {
+        return;
+    }
+    std::snprintf(line, sizeof(line), "bus meter %s diegetic rms=%.1f max=%.1f calls=%u  systemic rms=%.1f max=%.1f calls=%u",
+                  Stamp().c_str(), ToDb(g_diegetic.rms.load()), ToDb(g_diegetic.peakHold.exchange(0.0f)), dc,
+                  ToDb(g_systemic.rms.load()), ToDb(g_systemic.peakHold.exchange(0.0f)), sc);
+    Log(line);
 }
 
 template <typename Fn>
