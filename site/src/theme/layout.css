@@ -821,3 +821,14 @@
   color: var(--red);
 }
 .copy-log:hover { --edge-opacity: 1; }
+
+/* --- import offers: unlisted audio to add, tracks with no file to remove ------------------------ */
+
+.import-offer { margin: 12px 0 0; padding: 10px 12px; border-left: 2px solid var(--neutral); }
+.import-offer-heading { font-size: var(--font-readable-small); }
+.import-offer-note { margin-top: 3px; font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.8; }
+.import-offer-list { margin: 8px 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
+.import-offer-list li + li { margin-top: 3px; }
+.import-offer-list label { display: flex; gap: 8px; align-items: center; font-size: var(--font-readable-xsmall); overflow-wrap: anywhere; cursor: pointer; }
+.import-offer-apply { padding: 4px 12px; }
+.import-offer-apply:disabled { opacity: 0.4; cursor: default; }

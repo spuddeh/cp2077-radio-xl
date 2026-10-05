@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { ImportedStation } from './importStation'
+import type { ImportedStation, UnlistedFile } from './importStation'
 import type { Measurement } from './loudness'
 
 export type Source = 'new' | 'radioext'
@@ -42,6 +42,7 @@ interface StationState {
   cname: string
   cnameEdited: boolean
   news: boolean
+  addUnlistedFiles: boolean
   gain: number
   description: string
   descriptionLanguages: Record<string, string>
@@ -77,6 +78,8 @@ interface StationState {
   folder: string | null
   /** Files from an opened station that go back into the zip unchanged. */
   extras: { path: string; source: Blob }[]
+  /** Audio among those extras that no track names, offered to the author as tracks. */
+  unlisted: UnlistedFile[]
   /** What the last open or conversion could not bring across, kept while the station is in the form. */
   notes: string[]
   set: (patch: Partial<StationState>) => void
@@ -87,6 +90,9 @@ interface StationState {
   /** The same patch on every track the predicate picks, in one update. */
   updateTracks: (pick: (t: Track) => boolean, patch: (t: Track) => Partial<Track>) => void
   removeTrack: (id: number) => void
+  removeTracks: (ids: number[]) => void
+  /** The unlisted files named, as tracks: out of the extras and the offer, into the track list. */
+  addUnlisted: (files: string[]) => void
   openStation: (station: ImportedStation) => void
 }
 
@@ -142,6 +148,7 @@ export const useStation = create<StationState>((set) => ({
   cname: '',
   cnameEdited: false,
   news: false,
+  addUnlistedFiles: false,
   gain: 1,
   description: '',
   descriptionLanguages: {},
@@ -162,6 +169,7 @@ export const useStation = create<StationState>((set) => ({
   autoLevel: false,
   folder: null,
   extras: [],
+  unlisted: [],
   notes: [],
   set: (patch) =>
     set((s) => {
@@ -191,6 +199,17 @@ export const useStation = create<StationState>((set) => ({
   updateTrack: (id, patch) => set((s) => ({ tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
   updateTracks: (pick, patch) => set((s) => ({ tracks: s.tracks.map((t) => (pick(t) ? { ...t, ...patch(t) } : t)) })),
   removeTrack: (id) => set((s) => ({ tracks: s.tracks.filter((t) => t.id !== id) })),
+  removeTracks: (ids) => set((s) => ({ tracks: s.tracks.filter((t) => !ids.includes(t.id)) })),
+  addUnlisted: (files) =>
+    set((s) => {
+      const picked = s.unlisted.filter((u) => files.includes(u.file))
+      const added = picked.map((u) => ({ id: nextId++, file: u.file, title: titleFromFile(u.file), ident: false, source: u.source, gain: 1 }))
+      return {
+        tracks: [...s.tracks, ...added],
+        extras: s.extras.filter((x) => !picked.some((u) => u.extraPath === x.path)),
+        unlisted: s.unlisted.filter((u) => !files.includes(u.file)),
+      }
+    }),
   openStation: (st) =>
     set({
       source: 'new',
@@ -200,6 +219,7 @@ export const useStation = create<StationState>((set) => ({
       cname: st.cname,
       cnameEdited: true,
       news: st.news,
+      addUnlistedFiles: st.addUnlistedFiles,
       gain: st.gain,
       description: st.description,
       descriptionLanguages: st.descriptionLanguages,
@@ -220,6 +240,7 @@ export const useStation = create<StationState>((set) => ({
       autoLevel: false,
       folder: st.folder || null,
       extras: st.extras,
+      unlisted: st.unlisted,
       notes: st.notes,
     }),
 }))

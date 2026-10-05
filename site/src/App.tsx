@@ -8,6 +8,7 @@ import { Tracks } from './components/Tracks'
 import { BuildFailure, BuildProgress, LevelQuestion, ToastView, type BuildPhase, type Failure, type Toast } from './components/Feedback'
 import { About } from './components/About'
 import { OpenStation } from './components/OpenStation'
+import { ImportOffers } from './components/ImportOffers'
 import { importRadioExt } from './importRadioExt'
 import { BuildError, buildZip, checkReadable, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
 import { archiveHasPath, iconFromArchive } from './readArchive'
@@ -409,6 +410,7 @@ export function App() {
                   ))}
                 </ul>
               )}
+              <ImportOffers />
               <h2 className="section">Station</h2>
               <Row label="Frequency" note="Decides the station's place on the dial. Required." fault={faultFor('frequency')}>
                 <TextInput value={s.frequency} onChange={(v) => s.set({ frequency: v })} placeholder="90.5" inputMode="decimal" />
@@ -428,6 +430,13 @@ export function App() {
               </Row>
               <Row label="News" bare note="Stanley's bulletins and greetings, and N54 News.">
                 <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
+              </Row>
+              <Row
+                label="Add songs I drop into this folder later"
+                bare
+                note="At each launch RadioXL adds audio files in the station's folder that the list does not name, and drops listed ones that are gone. Leave it off for a station you publish."
+              >
+                <Bool value={s.addUnlistedFiles} onChange={(v) => s.set({ addUnlistedFiles: v })} />
               </Row>
               <Row
                 label="Description"

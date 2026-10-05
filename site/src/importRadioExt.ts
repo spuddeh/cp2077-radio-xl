@@ -139,6 +139,8 @@ export async function importRadioExt(entries: Entry[]): Promise<ImportedStation>
     iconArchiveUnreadable: !!atlas && extras.length > 0 && !icon,
     tracks,
     extras,
+    addUnlistedFiles: false,
+    unlisted: [],
     notes,
   }
 }

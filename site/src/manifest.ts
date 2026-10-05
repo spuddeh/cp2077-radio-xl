@@ -6,6 +6,8 @@ export interface ManifestInput {
   stationName: string
   cname: string
   news: boolean
+  /** Written only when on: the plugin then adds songs dropped into the station's folder at each launch. */
+  addUnlistedFiles: boolean
   gain: number
   /** The description in every language, or the `en-us` one when others are carried. */
   description: string
@@ -83,6 +85,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   if (name) m.displayName = name
   if (!s.showFrequency) m.showFrequency = false
   if (s.news) m.news = true
+  if (s.addUnlistedFiles) m.addUnlistedFiles = true
   if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
   const description = s.description.trim()
   if (Object.keys(s.descriptionLanguages).length > 0) {

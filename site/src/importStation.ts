@@ -19,6 +19,15 @@ export interface ExtraFile {
   source: Blob
 }
 
+/** An audio file in the station's folder that `tracks` does not list: an extra the page offers to add. */
+export interface UnlistedFile {
+  /** Relative to the station's folder, as a track's `file` would name it. */
+  file: string
+  /** Where it sits among the extras, so adding it takes it out of them. */
+  extraPath: string
+  source: Blob
+}
+
 export interface ImportedStation {
   folder: string
   frequency: string
@@ -26,6 +35,7 @@ export interface ImportedStation {
   stationName: string
   cname: string
   news: boolean
+  addUnlistedFiles: boolean
   gain: number
   description: string
   descriptionLanguages: Record<string, string>
@@ -42,13 +52,15 @@ export interface ImportedStation {
   iconArchiveUnreadable: boolean
   tracks: ImportedTrack[]
   extras: ExtraFile[]
+  unlisted: UnlistedFile[]
   /** What the import could not bring across, for the page to say. */
   notes: string[]
 }
 
 export type Entry = Pick<ZipEntry, 'path' | 'size' | 'blob'>
 
-const KNOWN = new Set(['name', 'frequency', 'displayName', 'showFrequency', 'news', 'gain', 'icon', 'atlas', 'tracks', 'description', 'extensions'])
+const KNOWN = new Set(['name', 'frequency', 'displayName', 'showFrequency', 'news', 'addUnlistedFiles', 'gain', 'icon', 'atlas', 'tracks', 'description', 'extensions'])
+const AUDIO = /\.(wav|mp3|ogg|flac)$/i
 const TRACK_KEYS = new Set(['file', 'url', 'title', 'ident', 'gain'])
 /** Mod manager and OS files that are not part of a mod. */
 const JUNK = /(^|\/)(meta\.ini|desktop\.ini|thumbs\.db|\.ds_store)$/i
@@ -154,9 +166,6 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     if (entry) used.add(entry.path.toLowerCase())
     tracks.push({ file, title, ident, source: entry ? await entry.blob() : undefined, gain })
   }
-  const missing = tracks.filter((t) => !t.url && !t.source).length
-  if (missing) notes.push(`${missing} track${missing > 1 ? 's have' : ' has'} no audio file in what was dropped.`)
-
   // Other files keep their place in the mod: paths are taken from the mod's root (the folder that
   // holds red4ext/), and a station folder dropped on its own is put back under stations/.
   const underRed4ext = manifestEntry.path.toLowerCase().indexOf('red4ext/')
@@ -171,7 +180,14 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     else rel = e.path
     extras.push({ path: rel, source: await e.blob() })
   }
-  if (extras.length) notes.push(`Carried over unchanged: ${extras.map((x) => x.path).join(', ')}.`)
+  // Audio in the station's folder that no track names is offered to the author as a track; until
+  // then it is an extra like any other file.
+  const stationPrefix = modRoot !== null ? base.slice(modRoot.length) : `red4ext/plugins/RadioXL/stations/${folderName}/`
+  const unlisted: UnlistedFile[] = extras
+    .filter((x) => x.path.startsWith(stationPrefix) && AUDIO.test(x.path))
+    .map((x) => ({ file: x.path.slice(stationPrefix.length), extraPath: x.path, source: x.source }))
+  const carried = extras.filter((x) => !unlisted.some((u) => u.extraPath === x.path))
+  if (carried.length) notes.push(`Carried over unchanged: ${carried.map((x) => x.path).join(', ')}.`)
 
   // An archive this page wrote stores its icon uncompressed, so the preview can show it again.
   let iconPreview: { url: string; size: [number, number] } | null = null
@@ -210,6 +226,7 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     stationName,
     cname: typeof m.name === 'string' ? m.name : '',
     news: m.news === true,
+    addUnlistedFiles: m.addUnlistedFiles === true,
     description,
     descriptionLanguages,
     extensions,
@@ -224,6 +241,7 @@ export async function importStation(entries: Entry[]): Promise<ImportedStation> 
     iconArchiveUnreadable: !!archive && !iconPreview,
     tracks,
     extras,
+    unlisted,
     notes,
   }
 }
