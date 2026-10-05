@@ -65,6 +65,8 @@ public native func RadioXL_StationGain(index: Int32) -> Float;
 public native func RadioXL_StationTrackGain(index: Int32, track: Int32) -> Float;
 public native func RadioXL_StationTrackCount(index: Int32) -> Int32;
 public native func RadioXL_StationTrack(index: Int32, track: Int32) -> CName;
+// The name the track carried when names were positions (`<station>_NN`), for moving stored settings.
+public native func RadioXL_StationTrackLegacy(index: Int32, track: Int32) -> CName;
 public native func RadioXL_StationTrackKey(index: Int32, track: Int32) -> CName;
 public native func RadioXL_StationTrackFile(index: Int32, track: Int32) -> String;
 public native func RadioXL_StationTrackTitle(index: Int32, track: Int32) -> String;

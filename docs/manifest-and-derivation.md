@@ -67,11 +67,11 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | roster slot, `ERadioStationList` value | 14 + the order the manifest was found in | depends on which other station mods are installed |
 | dial position | every station sorted by frequency, the fourteen in the game's own order | the same reason, and it is what makes a car, a world device and the pocket radio agree |
 | internal station id | slot + 8 | an engine bias, see the [roster page](compiled-station-roster.md) |
-| track event name | `<name>_NN`, two digits from 01 | a filename with a space or an accent must never reach an event name |
+| track event name | `<name>_<id>`, where `<id>` is 8 hex digits of FNV-1a 32 over the track's `file` (forward slashes, ASCII lower case) or its `url` | a filename with a space or an accent must never reach an event name, and a player's per-song settings are stored under it, so adding, removing or reordering files must not rename the other tracks. Two tracks with one identity in a station: the second is dropped and logged |
 | Wwise id of the event | FNV-1 32-bit of the lowercased event name, from AudioXL | it is a function of the name |
 | track duration | read from the file's headers at plugin load | the file is the only thing that can be right; see [station set](station-set-and-load-order.md) |
 | station label key | `Gameplay-Devices-Radio-RadioXL-<name>` | the engine's name table holds a key, and a key resolves by string only under `Gameplay-`, `UI-` or `Common-`; see [localization](localization-keys.md) |
-| title key | `Gameplay-Devices-Radio_tracks-RadioXL-<name>-NN` | `audioRadioTrack` holds a key, in the same namespace as vanilla track keys |
+| title key | `Gameplay-Devices-Radio_tracks-RadioXL-<name>-<id>` | `audioRadioTrack` holds a key, in the same namespace as vanilla track keys |
 | both hashes of each key | FNV1a32 keeping the key text, FNV1a64 with it cleared | how `onscreens` rows are found; see [localization](localization-keys.md) |
 | `RadioStation` record | `RadioStation.RadioXL_<name>` with the composed label as `displayName`, `icon`, `index` = dial position | `index` is a UI index, not the enum: the popup hands `record.Index()` to `SendRadioEvent`, which converts it through `GetRadioStationByUIIndex`. Vanilla carries 0 for 88.9 to 13 for 107.5 as fixed numbers, so **the fourteen vanilla records are rewritten to their new positions** whenever a custom station is installed; otherwise two records share an index, both light up, and either plays the station now at that position |
 | `UIIcon` record | `UIIcon.RadioXL_<name>` with `atlasPartName`, `atlasResourcePath`, unless `icon` names a record | the selector and the device logo load atlas and part from it |

@@ -39,6 +39,9 @@ module RadioXL
 @if(ModuleExists("RedscriptConfigFramework"))
 import RedscriptConfigFramework.*
 
+@if(ModuleExists("RedFunctions.Json"))
+import RedFunctions.Json.*
+
 public class RadioXLConfig extends ScriptableSystem {
   public static func Get() -> ref<RadioXLConfig> {
     return GameInstance.GetScriptableSystemsContainer(GetGameInstance())
@@ -106,6 +109,7 @@ public class RadioXLConfig extends ScriptableSystem {
     let gi: GameInstance = this.GetGameInstance();
     this.m_provider = new RadioXLConfigProvider();
     this.m_provider.Init(this);
+    RadioXLConfig.MigrateSongKeys(gi);
     this.m_provider.BeginRestore();
     DVRCF_Store.RestoreInto(gi, "RadioXL", this.m_provider, this.m_provider.BuildSchema());
     this.m_provider.EndRestore();
@@ -116,6 +120,37 @@ public class RadioXLConfig extends ScriptableSystem {
 
   // Writes the current values into RCF's file. A value changed anywhere but the panel (a key, the
   // script API) is otherwise restored over at the next start.
+  // A song's setting is stored under its event name, and RCF restores only the keys the schema
+  // holds. A key under the position-based name is moved to the file-based one before the restore,
+  // and dropped; a key already under the new name wins.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private static func MigrateSongKeys(gi: GameInstance) -> Void {
+    let obj = DVRCF_Store.LoadModObject(gi, "RadioXL");
+    if !IsDefined(obj) { return; }
+    let moved: Int32 = 0;
+    let station: Int32 = 0;
+    while station < RadioXL_StationCount() {
+      let t: Int32 = 0;
+      while t < RadioXL_StationTrackCount(station) {
+        let legacy: String = RadioXL_SongPrefix() + NameToString(RadioXL_StationTrackLegacy(station, t));
+        let current: String = RadioXL_SongPrefix() + NameToString(RadioXL_StationTrack(station, t));
+        if obj.Contains(legacy) {
+          if !obj.Contains(current) {
+            obj.PutInt(current, obj.Int(legacy, RadioXL_SongOn()));
+          }
+          obj.Drop(legacy);
+          moved += 1;
+        }
+        t += 1;
+      }
+      station += 1;
+    }
+    if moved > 0 {
+      DVRCF_Store.WriteModObject(gi, "RadioXL", obj);
+      RadioXLLog(s"moved \(moved) song setting(s) from position-based names to file-based ones");
+    }
+  }
+
   @if(ModuleExists("RedscriptConfigFramework"))
   public static func Persist() -> Void {
     let self = RadioXLConfig.Get();

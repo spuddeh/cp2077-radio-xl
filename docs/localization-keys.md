@@ -19,7 +19,7 @@ vanish and the vehicle popup's selection match nothing.
 the same text.
 
 The framework mints one key per station (`Gameplay-Devices-Radio-RadioXL-<name>`) and one per title
-(`Gameplay-Devices-Radio_tracks-RadioXL-<name>-NN`), puts the station key in the name table and the
+(`Gameplay-Devices-Radio_tracks-RadioXL-<name>-<id>`, `<id>` being the track's identity from its file), puts the station key in the name table and the
 title key in the track row, and registers the text against them. A manifest never sees a key.
 
 ## A key resolves by string only inside the game's three namespaces

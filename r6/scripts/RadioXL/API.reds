@@ -9,7 +9,8 @@
 // because the module needs it, and changes between releases without notice.
 //
 // A station is named by its CName (`radio_station_01_att_rock`) and a song by its track event
-// (`radio_station_20_tool_03`); never by a dial position, which moves when a station mod is added.
+// (`radio_station_20_tool_3fa29c01`, named from its file); never by a dial position, which moves when a
+// station mod is added.
 //
 // From CET the class is the Lua global `RadioXL_RadioXLAPI`, and a Lua string is taken where a
 // CName is asked for: `RadioXL_RadioXLAPI.Tracks("radio_station_01_att_rock")`. A returned CName

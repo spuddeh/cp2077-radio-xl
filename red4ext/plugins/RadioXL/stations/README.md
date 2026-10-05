@@ -125,8 +125,10 @@ missing.
 schedules the next track against that. A hand-written duration is a second place for it to be wrong.
 A file whose length cannot be read is dropped, and the log names it.
 
-**No event names.** They are derived as `<name>_01`, `<name>_02` and so on, so a filename with a
-space or an accent in it never reaches an event name.
+**No event names.** Each is derived from the track's own file, as `<name>_` and 8 hex digits, so a
+filename with a space or an accent in it never reaches an event name. Adding, removing or reordering
+files leaves every other track's name, and the player's settings for it, alone; renaming a file makes
+it a new track. The same file listed twice is dropped the second time, and the log says so.
 
 **No Wwise ids, no `index`, no TweakDB records.** A station's record index is its position on the
 dial, which depends on which other station mods are installed and their frequencies - so no mod can

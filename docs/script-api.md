@@ -38,7 +38,7 @@ returned `CName` reads as text through `.value`.
 
 1. **Stations and songs are named, never numbered.** A station is its CName
    (`radio_station_12_growl_fm`), a song its track event (`mus_radio_12_killshot`, or
-   `radio_station_20_tool_03` for a custom one). A dial position moves when a station mod is added.
+   `radio_station_20_tool_3fa29c01` for a custom one, named from the track's file). A dial position moves when a station mod is added.
 2. **Put a returned array into a `let` before `ArraySize`, `ArrayContains` or an index.** Redscript
    otherwise reads it from uninitialised memory, which can crash the game.
 3. **Check `IsReady()`, or wait for `RadioXL/Ready`**, before reading. The station list is built

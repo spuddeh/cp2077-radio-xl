@@ -207,14 +207,23 @@ std::string TwoDigit(size_t aIndex)
 // A track's event name is DERIVED, never written in the manifest. The manifest names an audio file
 // and a title; the name AudioXL registers and the station posts is this, so the two cannot drift
 // and a filename with a space or an accent in it never reaches an event name.
+//
+// **The name comes from the track's own file, never its position.** A player's per-song settings
+// are stored under it, so adding, removing or reordering files must leave every other name alone.
 std::string TrackEvent(const Station& aStation, size_t aIndex)
 {
-    return aStation.name + "_" + TwoDigit(aIndex);
+    return aStation.name + "_" + aStation.tracks[aIndex].id;
 }
 
 std::string TrackKey(const Station& aStation, size_t aIndex)
 {
-    return "Gameplay-Devices-Radio_tracks-RadioXL-" + aStation.name + "-" + TwoDigit(aIndex);
+    return "Gameplay-Devices-Radio_tracks-RadioXL-" + aStation.name + "-" + aStation.tracks[aIndex].id;
+}
+
+// The name a track carried when names were positions, kept only so stored settings can be moved.
+std::string LegacyTrackEvent(const Station& aStation, size_t aIndex)
+{
+    return aStation.name + "_" + aStation.tracks[aIndex].legacy;
 }
 
 std::vector<Station> g_stations;
@@ -265,6 +274,27 @@ uint64_t Fnv1a64(const std::string& aText)
         hash *= 0x100000001b3ull;
     }
     return hash;
+}
+
+// FNV-1a 32 of the file's path relative to the manifest, with forward slashes and ASCII lower case,
+// so the same file named two ways is one track. A stream is identified by its URL.
+std::string TrackIdentity(const Track& aTrack)
+{
+    std::string source = aTrack.url.empty() ? aTrack.file : aTrack.url;
+    for (char& c : source)
+    {
+        if (c == '\\')
+        {
+            c = '/';
+        }
+        else if (c >= 'A' && c <= 'Z')
+        {
+            c = static_cast<char>(c - 'A' + 'a');
+        }
+    }
+    char hex[9];
+    std::snprintf(hex, sizeof(hex), "%08x", Fnv1a32(source));
+    return hex;
 }
 
 std::string Clock(double aSeconds)
@@ -377,6 +407,27 @@ void LoadManifests()
                 continue;
             }
             total += it->duration;
+            ++it;
+        }
+
+        // The legacy position counts the tracks that survived the length check, as older versions
+        // numbered them; a track refused for a colliding identity below still holds its number.
+        for (size_t i = 0; i < station.tracks.size(); ++i)
+        {
+            station.tracks[i].legacy = TwoDigit(i);
+            station.tracks[i].id = TrackIdentity(station.tracks[i]);
+        }
+        for (auto it = station.tracks.begin(); it != station.tracks.end();)
+        {
+            const bool taken = std::any_of(station.tracks.begin(), it,
+                                           [&](const Track& aEarlier) { return aEarlier.id == it->id; });
+            if (taken)
+            {
+                Log(station.source + ": '" + (it->url.empty() ? it->file : it->url) +
+                    "' names the same file as an earlier track, or one whose identity collides with it - dropped");
+                it = station.tracks.erase(it);
+                continue;
+            }
             ++it;
         }
 
@@ -1059,6 +1110,23 @@ void RadioXL_StationTrack(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, R
                 : RED4ext::CName();
 }
 
+void RadioXL_StationTrackLegacy(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CName* aOut, int64_t)
+{
+    int32_t index = -1;
+    int32_t track = -1;
+    RED4ext::GetParameter(aFrame, &index);
+    RED4ext::GetParameter(aFrame, &track);
+    ++aFrame->code;
+    if (!aOut)
+    {
+        return;
+    }
+    const Station* s = At(index);
+    *aOut = (s && track >= 0 && track < static_cast<int32_t>(s->tracks.size()))
+                ? RED4ext::CName(LegacyTrackEvent(*s, track).c_str())
+                : RED4ext::CName();
+}
+
 void RadioXL_StationTrackKey(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, RED4ext::CName* aOut, int64_t)
 {
     int32_t index = -1;
@@ -1291,6 +1359,7 @@ void PoolNames()
         {
             RED4ext::CNamePool::Add(TrackEvent(station, i).c_str());
             RED4ext::CNamePool::Add(TrackKey(station, i).c_str());
+            RED4ext::CNamePool::Add(LegacyTrackEvent(station, i).c_str());
         }
     }
 }
@@ -1334,6 +1403,7 @@ void RegisterNatives()
     reg("RadioXL_StationTrackCount", &RadioXL_StationTrackCount, "Int32", 1);
     reg("RadioXL_StationTrack", &RadioXL_StationTrack, "CName", 2);
     reg("RadioXL_StationTrackKey", &RadioXL_StationTrackKey, "CName", 2);
+    reg("RadioXL_StationTrackLegacy", &RadioXL_StationTrackLegacy, "CName", 2);
     reg("RadioXL_StationTrackFile", &RadioXL_StationTrackFile, "String", 2);
     reg("RadioXL_StationTrackTitle", &RadioXL_StationTrackTitle, "String", 2);
     reg("RadioXL_StationTrackIsIdent", &RadioXL_StationTrackIsIdent, "Bool", 2);

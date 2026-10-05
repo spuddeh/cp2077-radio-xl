@@ -56,6 +56,8 @@ struct Track
     float duration = 0.0f;     // seconds, from the file's headers - what the station schedules against
     bool ident = false;        // a station ident: written to the station's blips, not its tracks
     float gain = kDefaultGain; // this track's own level, 0..kMaxGain, multiplied with the station's
+    std::string id;            // 8 hex digits from the file or URL; the track's identity, set at load
+    std::string legacy;        // the two-digit position older versions named the track by, for migration
 };
 
 struct Station
