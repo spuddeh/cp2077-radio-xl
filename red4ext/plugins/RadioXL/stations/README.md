@@ -28,7 +28,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 
 | Field | What it is |
 | --- | --- |
-| `name` | The station's own CName: letters, digits and underscores only. It must be unique across every installed station mod. |
+| `name` | The station's own CName: letters, digits and underscores only. Required. It must be unique across every installed station mod. |
 | `frequency` | The station's place on the dial, as a number from 10 to 999: `104.9`. Required. See [The frequency and the name](#the-frequency-and-the-name). |
 | `displayName` | The station's name, without the frequency. Required. The game shows it after the frequency: `104.9 Your Station`. |
 | `showFrequency` | Optional. `false` shows the name alone as the label; the frequency still places the station on the dial. Defaults to `true`, as the game's own stations are shown. |
@@ -39,6 +39,7 @@ soundbank, no redscript. Everything else is built from the manifest at load.
 | `description` | Optional. A few sentences about the station, up to 1000 characters, for other mods to read. RadioXL itself shows it nowhere. Either one text for every language, or an object of language codes: `{ "en-us": "...", "de-de": "..." }`. A player whose language is missing gets the plain text, else the `en-us` one. |
 | `addUnlistedFiles` | Optional. `true` keeps `tracks` in step with the folder: at each launch an audio file in the folder that `tracks` does not list is added, and a listed file that is gone is removed, and `station.json` is rewritten. Defaults to `false`. See [Adding songs by dropping them in](#adding-songs-by-dropping-them-in). |
 | `extensions` | Optional. An object with one key per mod that reads extra data from stations: `{ "SomeMod": { ... } }`. RadioXL hands each value to the mod it names, as written, and reads none of it. What goes inside is that mod's own format. |
+| `tracks` | The station's songs, idents and stream, as an array of objects. Required, and not empty. |
 | `tracks[].file` | An audio file, relative to this manifest's folder. |
 | `tracks[].url` | In place of `file`: an `http://` or `https://` MP3 stream. A station with a `url` track has that one track only. See [A stream station](#a-stream-station). |
 | `tracks[].title` | Optional. The song title, shown as written in the Radioport's radio popup. An untitled song plays everywhere a titled one does, and its title reads blank. |
@@ -73,8 +74,8 @@ middle, and `0.8` brings it there. A world radio sums a track's two channels int
 mix plays a little quieter there than a narrow one.
 
 **The station builder measures each file and sets its track `gain`** to the value that puts the
-file on -11 LUFS, as far as its peak allows (auto level, on by default; off, the sliders are the
-author's). A stream cannot be measured ahead of time, so its level is set by hand.
+file on -11 LUFS, as far as its peak allows (auto level: off by default, and Build .zip offers to
+measure the songs first; off, the sliders are the author's). A stream cannot be measured ahead of time, so its level is set by hand.
 
 **A gain above `1` must leave the loudest sample under full scale.** The samples are scaled as
 16-bit integers and a value past the top wraps rather than clips, which is heard as crackle on the
@@ -190,7 +191,7 @@ Leave it off for a station you publish, so a stray file on a player's machine ne
 
 Every song's length, listed or added, is remembered in `red4ext/plugins/RadioXL/cache.json` and read
 again only when the file's size or modified time changes. If a song plays with the wrong length after
-its file was replaced, delete that file and launch again.
+its file was replaced, delete `cache.json` and launch again.
 
 ## The order songs play in
 
@@ -264,5 +265,5 @@ a custom station's name and titles resolve everywhere a vanilla one's do.
 **A station name that another installed mod already uses is skipped**, and the log says which mod
 won. Prefix yours.
 
-**A track whose file is missing plays nothing** and the station is shorter than the manifest says.
-The log names every file AudioXL refused.
+**A track whose file is missing is dropped at load**, so the station is shorter than the manifest
+says; RadioXL's log names each one.

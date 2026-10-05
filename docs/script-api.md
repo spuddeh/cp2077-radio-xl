@@ -60,6 +60,7 @@ returned `CName` reads as text through `.value`.
 | `StationDialPosition(station)` | `Int32`, from 0. Moves when a station mod is added |
 | `StationIcon(station)` | `TweakDBID` of the station's `UIIcon` record |
 | `IsCustomStation(station)` | `Bool` |
+| `RegisterStation(name)` | nothing. Kept so a RadioXL 0.1.0 station's script compiles; it logs the name and creates no station |
 | `StationMod(station)` | `String`, the folder the station's manifest is installed in; `""` for vanilla |
 | `StationHasNews(station)` | `Bool`, true for every vanilla station |
 | `StationDescription(station)` | `String` in the player's language; `""` when none, which every vanilla station is |
@@ -73,7 +74,7 @@ returned `CName` reads as text through `.value`.
 | --- | --- |
 | `Tracks(station)` | `array<CName>`, the station's songs, idents left out. Includes songs a quest adds during play |
 | `Idents(station)` | `array<CName>`, the station's idents, jingles and ads |
-| `TrackTitle(track)` | `String` in the player's language |
+| `TrackTitle(track)` | `String` in the player's language; an untitled song answers its event name |
 | `TrackLength(track)` | `Float` seconds. A vanilla song's is its schedule slot, a little under the recording |
 | `TrackFile(track)` | `String`, a custom song's audio file, full path; `""` for vanilla songs and streams |
 | `TrackGain(track)` | `Float`, the level RadioXL plays a custom song at; `1` for vanilla |
@@ -123,7 +124,7 @@ schedule, its idents and the history stay right.
 
 | Event name | Class | Fields |
 | --- | --- | --- |
-| `RadioXL/Ready` | `RadioXLReadyEvent` | `Version()`, `Stations()` |
+| `RadioXL/Ready` | `RadioXLReadyEvent` | `Version()`, `Stations()`: the number of stations (`Int32`) |
 | `RadioXL/SongChanged` | `RadioXLSongChangedEvent` | `Station()`, `Track()`, `Receiver()`, `Requested()`: true for a key press or `PlaySong`, false for the station's own pick |
 | `RadioXL/StationChanged` | `RadioXLStationChangedEvent` | `Station()`, `Previous()`, `Receiver()` |
 | `RadioXL/RadioPower` | `RadioXLRadioPowerEvent` | `Receiver()`, `On()` |

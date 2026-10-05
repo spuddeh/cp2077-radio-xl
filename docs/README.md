@@ -25,7 +25,7 @@ Every claim carries one of two marks:
 | --- | --- |
 | [The compiled station roster](compiled-station-roster.md) | the two 14-slot tables, their readers, the resolver, the bounds, the three divide-by-fourteen sites, and the patch |
 | [The station set and load order](station-set-and-load-order.md) | what a station needs, what kills every radio, the boot-time window, and where a duration has to come from |
-| [Labels are localization keys](localization-keys.md) | the name table holds keys, `onscreens` is sorted and binary-searched, and the lookup that still misses |
+| [Labels are localization keys](localization-keys.md) | the name table holds keys, a key resolves by string only in three namespaces, and the lookup that still misses |
 | [The audio path](audio-path.md) | `mod_sfx_radio`, what AudioXL's renderer does and does not do, and the symptoms that follow from it |
 | [The manifest and what is derived from it](manifest-and-derivation.md) | every value a station needs and where the framework gets it, so a manifest never has to carry one |
 

@@ -93,8 +93,8 @@ resources while they load: `cooked_metadata.audio_metadata`, `eventsmetadata.jso
 
 **Two invariants worth re-reading if a station goes quiet or nameless:**
 
-- The localization list is **sorted by `primaryKey` and searched with a binary search**, so a row
-  appended to the end is unreachable whatever its key.
+- A key resolves by string only under `Gameplay-`, `UI-` or `Common-`; a row outside those
+  namespaces is never matched by a string lookup (`docs/localization-keys.md`).
 - **The custom-sound TYPE needs its own event-table row**, not just the tracks. Without it the bank
   loads, every track registers, every station is built, every log line reads as success, and there is
   silence.
@@ -121,6 +121,16 @@ station's place can.
 The fourteen must read `4 0 11 10 1 9 8 6 13 2 3 7 5 12` with the custom stations (14 and up)
 between the right neighbours. If CDPR retunes a station, its number in `kVanillaFrequency` moves
 with it; the station names are `docs/compiled-station-roster.md`'s frequency table.
+
+## 8. The shared traffic station list
+
+`Traffic.reds` (`SharedStations`) names the nine vanilla stations most vehicles list in
+`matchingStartupRadioStations`, and "Most cars" touches a vehicle only when its list holds all nine.
+A patch that changes that shared list makes "Most cars" touch nothing, silently.
+
+**Check:** with the traffic setting on Most cars, the RadioXL log line `traffic: N custom station(s)
+on M of K vehicle list(s)` shows M above 0 (142 on 2.31). If it reads 0, compare the vehicle entries
+in `base\sound\metadata\cooked_metadata.audio_metadata` with the list.
 
 ## After any of the above
 

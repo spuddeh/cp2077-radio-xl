@@ -11,11 +11,12 @@ replaces: the name carries over to a new Nexus page, the audio side stays Digita
 and a station written for 0.1.0 is rewritten as the manifest below (its script still compiles and
 the log names it).
 
-**Status: beta.** Stations play on every receiver with their own names, icons and song titles;
-tuning back in lands mid-song on the station's own clock; a vehicle radio survives being switched
-off and on; the settings panel carries the keys, the per-song switches, My station and the mutes.
-What is still open is in the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), the
-working board, with what has been measured on each. Not on Nexus yet.
+On Nexus: [RadioXL - Native Radio Stations](https://www.nexusmods.com/cyberpunk2077/mods/33983).
+Stations play on every receiver with their own names, icons and song titles; tuning back in lands
+mid-song on the station's own clock; the settings panel carries the keys, the per-song switches, My
+station, the mutes and which random picks may land on a custom station. What is still open is in
+the [issues](https://github.com/spuddeh/cp2077-radio-xl/issues), the working board, with what has
+been measured on each.
 
 **Writing a mod that works with RadioXL?** The script API, for redscript and CET, is in
 [docs/script-api.md](docs/script-api.md).
@@ -57,6 +58,7 @@ framework so the `stations/` folder survives packaging.
 
 ## Requirements
 
+- Cyberpunk 2077 2.31
 - [RED4ext](https://www.nexusmods.com/cyberpunk2077/mods/2380)
 - [redscript](https://www.nexusmods.com/cyberpunk2077/mods/1511)
 - [Codeware](https://www.nexusmods.com/cyberpunk2077/mods/7780) - resource callbacks and localization
@@ -106,7 +108,8 @@ Three layers. The split matters, because each one extends a different engine sys
 ### The plugin - `plugin/src/`
 
 A RED4ext plugin. At load it reads every station manifest, reads each track's length from the audio
-file's headers (`Duration.hpp`: MP3, FLAC, Ogg Vorbis, WAV, nothing decoded), and **patches the
+file's headers (`Duration.hpp`: MP3, FLAC, Ogg Vorbis, WAV, nothing decoded; kept between launches in
+`red4ext/plugins/RadioXL/cache.json`, keyed by each file's size and modified time, `Cache.hpp`), and **patches the
 binary before any script runs**:
 
 | Table | Holds | Patched sites |
@@ -121,6 +124,9 @@ worse than an unpatched one. Both bounds are 8-bit immediates, so 127 stations i
 
 A station manifest is read by a strict JSON parser and checked field by field. Every fault is logged
 with the file and the line, and a manifest with one is skipped whole rather than half-loaded.
+
+A station with `addUnlistedFiles` has its `tracks` brought in step with its folder and its
+`station.json` rewritten in place (`Folder.hpp`).
 
 The plugin exposes the manifest to redscript through registered natives (`RadioXL_Station*`). It does
 not touch audio, TweakDB or UI.
@@ -151,8 +157,8 @@ loaded.
 Creates the `RadioStation` and `UIIcon` TweakDB records from the manifest at load, with the index the
 roster assigned, and wraps the game's redscript where the fourteen stations are written into switch
 bodies and a literal array push. Three cycling functions are replaced rather than wrapped because
-their bodies carry `% 14`. That makes this framework an alternative to RadioExt and RadioXL, not a
-companion.
+their bodies carry `% 14`. That makes this framework an alternative to RadioExt and RadioXL 0.1.0,
+not a companion.
 
 ## Building the plugin
 
@@ -197,7 +203,13 @@ from `probe/plugin`.
 
 - The DLL and the scripts ship together, always. A `.reds` that declares natives fails script
   validation without its plugin, and that stops every redscript mod on the machine.
-- Three `@replaceMethod` on the cycling functions, so RadioExt and RadioXL cannot coexist with it.
+- Three `@replaceMethod` on the cycling functions, so RadioExt and RadioXL 0.1.0 cannot coexist with it.
+- 127 stations, because both roster bounds are 8-bit immediates.
+- A world radio saves its station as an `ERadioStationList` value (`RadioControllerPS.activeStation`),
+  so adding or removing a station mod can move one that was on a custom station. Cars save the
+  station by name and are unaffected.
+- Traffic car radios are tuned to a station but not heard: the game keeps a station whose only
+  listeners are traffic cars silent. The traffic setting decides which stations they are on.
 
 ## Repository layout
 
@@ -208,6 +220,8 @@ plugin/src/Schedule.hpp      a station's remaining-tracks list, read and consume
 plugin/src/Manifest.hpp      the manifest checks, every fault by file and line
 plugin/src/Json.hpp          a strict JSON reader, every fault by line and column
 plugin/src/Duration.hpp      a track's length from its file headers
+plugin/src/Cache.hpp         those lengths kept between launches in cache.json
+plugin/src/Folder.hpp        a station's tracks kept in step with its folder (addUnlistedFiles)
 plugin/tests/                the manifest reader's tests, run by ctest
 probe/                       RadioStationProbe, a development tool, never shipped
 r6/scripts/RadioXL/
@@ -215,6 +229,8 @@ r6/scripts/RadioXL/
   Audio.reds                 the AudioXL bridge
   Dial.reds                  TweakDB records and the script-side dial
   Restrictions.reds          the "Mute the radio when..." switches
+  Traffic.reds               custom stations on traffic car radios and world radios' random pick
+  Warnings.reds              the on-screen warning for a stream station that cannot play
   Controls.reds, Input.reds, Deck.reds, Catalog.reds, MyStation.reds, Notifications.reds, State.reds
                              the keys, the song deck, the station list, My station, the popups
   Settings.reds              the settings panel, one provider, four tabs

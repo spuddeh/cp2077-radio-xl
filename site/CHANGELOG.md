@@ -3,7 +3,7 @@
 One entry per builder version. The version is in `package.json` and printed at the foot of the page.
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
-## 0.3.0
+## 0.4.0
 - The page's small text (row notes, hints, counts, the key labels) is drawn at its own small size;
   it was falling back to the size of the text around it.
 - An "Add songs I drop into this folder later" switch, off by default. On, RadioXL adds audio files
@@ -11,6 +11,8 @@ One entry per builder version. The version is in `package.json` and printed at t
 - Opening a station offers what its folder and its track list disagree on: audio files no track
   names, to add as tracks (measured like any song added), and tracks with no audio file, to remove.
   Each is a checklist, and a file left unticked stays as it was (#67).
+
+## 0.3.0
 - A level can be typed beside its slider, as a percentage (`133%`) or in dB (`+2.5 dB`), on the
   station Volume and on every track. The sliders step in 1 % instead of 5 % (#53).
 - A stream track has a play button, to hear that the address is the station meant. An `http://`

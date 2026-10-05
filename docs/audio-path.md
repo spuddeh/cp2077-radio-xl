@@ -241,7 +241,8 @@ of margin. A station that under-declares has its slot end first, and the engine 
 
 So subtracting the LAME gapless tag (delay 576, padding 717 to 1681 frames, which dr_mp3 trims and
 which leaves a raw frame count 27 to 47 ms long) is necessary but not sufficient: accuracy is the
-wrong target, and the row is written at `duration - 0.1 s` to stay clear of the float step.
+wrong target, and the row is written at `duration - 0.5 s` (`RadioXLScheduleMargin`) to stay clear
+of the float step and of the free-running clock passing a slot over.
 
 ## Events, and why the row alone is not enough
 

@@ -34,7 +34,8 @@ exists so that followers are told when the builder changes and can read the note
    hand, so the pipeline publishes an artifact's updates, never its first file. Get the id from
    the mod page's Files tab > API Info, where Nexus labels it "Group ID". Not from the public v1
    API: that is a different id space and the wrong value looks entirely plausible. Until the
-   variable is set the workflow hard-fails rather than uploading into the void.
+   variable is set the workflow builds the zip, attaches it to the GitHub release and skips Nexus;
+   that zip is the file to upload by hand.
 
 ## Cutting a release
 

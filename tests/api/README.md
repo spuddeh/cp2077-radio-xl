@@ -11,6 +11,9 @@ pwsh -File .\.claude\scripts\deploy-mod.ps1 -Mod 'RadioXL\tests\api' -Instance T
 
 Enable `RadioXL API Test [DEV]` in MO2, below RadioXL.
 
+`r6/scripts/RadioXLApiTest/DocExamples.reds` holds the redscript examples from `docs/script-api.md`
+word for word, so this mod's compile checks them. Change one there when it changes in the doc.
+
 ## Running it
 
 With a save loaded. Seated in a vehicle it uses the car radio, and also checks that the Radioport

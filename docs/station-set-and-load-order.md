@@ -122,12 +122,16 @@ seconds later still plays; a station that appears seconds later never exists.
   the game's own audio layer, and one handler at `0x9d9c6c` (`audio::RadioEmitter::HandleSwitchLogic`)
   serves both, calling the roster resolver
   and parking the requested station at `+0x110` of a state object with a dirty flag.
-- **A random station can be a custom one** (read from the binary, not yet seen in game).
-  `audio::RadioSystem::GetRandomStation` has two forms: `0x219fc68`, called by `HandleSwitchLogic`
-  for a world device asking for a random station, and `0x9d8240`, called by
-  `audio::TrafficVehicleEmitter::PlayRadio` for a traffic car. Both build their candidates by walking
-  the radio system's own list of constructed stations (`+0x0`, count `+0xc`), skipping police, and
-  carry no bound of fourteen. Every station the engine built, custom ones included, is a candidate.
+- **A traffic car picks its station from its own vehicle metadata's
+  `matchingStartupRadioStations`** (`audio::TrafficVehicleEmitter::PlayRadio` through the span form of
+  `audio::RadioSystem::GetRandomStation`, `0x9d8240`), and a station missing from that list is never
+  picked. No vanilla list names a custom station; `Traffic.reds` adds them by setting. The game keeps
+  a station whose only listeners are traffic cars silent (the radio mode 1 gate), so a traffic radio
+  is tuned but not heard. Measured.
+- **A world radio or jukebox set to randomise picks in script**,
+  `RadioStationDataProvider.GetRandomStation` (the fourteen less Samizdat), which `Traffic.reds`
+  wraps. The native world-device form (`0x219fc68`) is reached only on the value `station_random`,
+  which no vanilla radio sends. Measured for jukeboxes.
 - **`RequestSongOnRadioStation(CName station, CName song)`** on the audio system works from script:
   it forces a registered song onto a named station on demand.
 - `audioPlaylistEmitterMetadata` / `audioPlaylistMetadata` (157 and 53 entries) are a second audio

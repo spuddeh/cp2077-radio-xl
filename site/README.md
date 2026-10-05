@@ -13,7 +13,8 @@ builds here is one RadioXL accepts. The manifest format itself is in the
 
 ## Track levels
 
-Auto level is on by default: each file is measured as it is added (integrated loudness and true
+Auto level is off by default, and Build .zip and Copy station.json offer to measure the songs first.
+With it on, each file is measured as it is added (integrated loudness and true
 peak, EBU R128) and its level set so it plays at the level of the game's own stations. A raise is
 bounded by the file's own peak, because RadioXL scales the samples and a sample past full scale
 wraps. Turn auto level off to set the sliders yourself, from where they are; the suggestion stays

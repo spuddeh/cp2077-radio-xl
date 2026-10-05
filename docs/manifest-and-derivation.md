@@ -27,10 +27,15 @@ computes a value the game already knows, and nothing in a manifest can disagree 
 | `displayName` | plain text, required: the station's name alone. The label the game shows is composed as `<frequency> <name>` (`Label` in `Manifest.hpp`, one decimal, two when written), so every station reads the same way. A name that starts or ends with a number reading as a frequency, contains the frequency, is empty or is untidy (a space at an end, two in a row, a control character) refuses the manifest; a band's own number (`30H!3 Radio`) passes |
 | `news` | optional, default `false`. `true` writes the station's `speaker` as `Stanley`, so Stanley's news and greetings can reach it under the engine's own rules; `false` writes `None`, which receives no announcement. No other speaker is offered: Mike's lines name Morro Rock and Ash is bound to Growl FM by name. A `speaker` key is an unknown key, logged and ignored |
 | `gain` | optional level trim on the samples, 0 to 4 (`kMaxGain`), clamped. Above 1 it is safe only while the file's peak times the gain stays under full scale, because AudioXL scales 16-bit samples without clamping and a value past the top wraps; the builder checks that against the file, the plugin cannot. Default 1: the framework's `radioxl_radio` type cites a vanilla station's Broadcast Sends, so the level stages are vanilla's. Only when the routing bank fails to load and a station falls back to `mod_sfx_radio` is it multiplied by 0.56 (-5 dB), which keeps that type's hotter sends inside the vanilla range; see `audio-path.md`. Applied through AudioXL's `SetGain` once the row exists, because `RegisterSoundEx`'s gain never reaches the samples |
+| `showFrequency` | optional, default `true`. `false` makes the label the name alone; the frequency still places the station on the dial |
+| `description` | optional: one text for every language, or an object of language codes (`en-us`, `de-de`), each up to 1000 characters. For other mods to read; RadioXL shows it nowhere |
+| `extensions` | optional object, one key per consuming mod; each value is handed to that mod as JSON text and never read here |
+| `addUnlistedFiles` | optional, default `false`. `true` keeps `tracks` in step with the folder at each load: every WAV/MP3/OGG/FLAC under the folder that no track names is added (titled from its file name, gain 1), every listed `file` that is gone is removed, and `station.json` is rewritten in place, only on a change and only when the new text reads back as a valid manifest (`Folder.hpp`, `SyncStationFolder` in `Main.cpp`). A stream station is left alone; `ident` is never guessed |
 | `icon` / `atlas` | optional inkatlas part and the atlas holding it, or `icon` alone naming an existing `UIIcon.` record (no atlas, no record of the station's own; a record that does not exist falls back to the glyph). Default: the RadioXL glyph, part `radioxl` in `radioxl\gui\radioxl_icons.inkatlas`, shipped in the framework's own `archive/pc/mod/RadioXL.archive` |
 | `tracks[].file` | an audio file relative to the manifest's folder: WAV, MP3, OGG, FLAC |
 | `tracks[].url` | in place of `file`, an `http://` or `https://` MP3 stream. Its schedule length is a fixed 3600 s (`kStreamDuration`), because a live stream has none to read; when AudioXL ends the voice the engine posts the same slot again, which reconnects. A station with a `url` track has that track only, so it has no schedule to resume |
 | `tracks[].title` | optional plain text, shown as written in the Radioport's radio popup. An untitled song plays everywhere a titled one does and its title reads blank; world radios and the car dashboard show no song title for any station. The order of `tracks` does not decide play order: the engine draws each pick at random from the tracks not yet played (`audio::RadioStation::SelectCurrentSong`, `0x6bcdfc` on 2.31, confirmed in game on Body Heat and PHONKWAVE with no reordering) |
+| `tracks[].gain` | optional, 0 to 4, clamped, default 1: this track's own level, multiplied with the station's `gain` |
 | `tracks[].ident` | optional `true`: the track's event goes into the station entry's `blips` instead of `tracks`, with no `audioRadioTrack` row. It still gets an event row with its duration and an AudioXL row. The engine plays one blip after every third song pick (a byte counter at station `+0x170`, `cmp 3` at `0x248308` in `audio::RadioStation::Update` on 2.31), cycling the blips in an order drawn at station start; it adds its event-table duration to the gap and takes no song slot. A blip with no event-table row never times out and holds the station in state 5, so the row is required. Neither a custom nor a vanilla blip shows a title |
 
 Manifests live at `red4ext/plugins/RadioXL/stations/<Mod>/station.json`, one folder
@@ -55,7 +60,9 @@ bug somewhere else, and the log line is the whole of what the author needs.
 | `tracks` missing, not an array, or empty; a track that is not an object or has no `file` | `gain` outside 0 to 4, clamped |
 | a track with both `file` and `url`; a `url` not starting `http://` or `https://`; a `url` track beside any other track | |
 | `ident` not a boolean; an `ident` on a `url` track; every track an ident | |
-| `news` not a boolean | `atlas` with no `icon`; a `speaker` key |
+| `news`, `showFrequency` or `addUnlistedFiles` not a boolean | `atlas` with no `icon`; a `speaker` key |
+| `description` not a string or an object, or a language's text not a string; `extensions` not an object | a `description` past 1000 characters; a `description` key that is not a language code |
+| a track `gain` not a number; a `file` that is empty | a track `gain` outside 0 to 4, clamped |
 | `gain` not a number; `icon` part name with no `atlas` | `atlas` beside an `icon` that is a record |
 
 `plugin/tests/ManifestTests.cpp` holds one case per row and runs under `ctest`.
@@ -105,8 +112,8 @@ stations sit after the vanilla fourteen so enum value and UI index are the same 
 The three cycling functions (`GetNextStationTo`, `GetPreviousStationTo`,
 `GetNextStationPocketRadio`) carry `% 14` in their bodies, so they are `@replaceMethod`. Vanilla is
 asymmetric there and the replacements keep it: going forward, UI index 4 is mapped to 5; going back,
-6 is mapped to 5. This is also why the framework cannot coexist with RadioExt or RadioXL, which
-replace the same functions.
+6 is mapped to 5. This is also why the framework cannot coexist with RadioExt or RadioXL 0.1.0,
+which replace the same functions.
 
 `[M]` The vehicle radio list is frequency-ordered. Vanilla pushes No Station and then its fourteen
 in dial order (88.9, 89.3, 89.7 …), so the list is the dial with one row in front, and a custom
