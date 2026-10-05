@@ -93,12 +93,12 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.noteStreamerOn", "Streamer Mode is ON. Songs set to Off while streaming are marked and are being skipped.");
     this.Text("RadioXL.noteStreamerOff", "Streamer Mode is off. Songs set to Off while streaming are playing normally.");
     this.Text("RadioXL.noteNoCatalog", "The station list is read when a game is loaded. Load a save and open this panel again.");
-    this.Text("RadioXL.secRandom", "Random stations");
     this.Text("RadioXL.optTrafficStations", "Custom stations on traffic cars");
-    this.Text("RadioXL.tipTrafficStations", "Which passing cars can tune to a custom station. Most cars play the same nine of the game's stations; a few are set to a genre of their own, and Every car adds custom stations to those as well. Police cars keep the scanner.");
-    this.Text("RadioXL.trafficOff", "Off");
-    this.Text("RadioXL.trafficShared", "Cars with the usual nine");
+    this.Text("RadioXL.tipTrafficStations", "Which passing cars can tune to a custom station. Police cars keep the scanner either way.");
+    this.Text("RadioXL.labTrafficMost", "Most cars: the cars that play the same nine of the game's stations. A few cars are set to a genre of their own and keep it; Every car adds custom stations to those too.");
+    this.Text("RadioXL.trafficMost", "Most cars");
     this.Text("RadioXL.trafficAll", "Every car");
+    this.Text("RadioXL.trafficOff", "Off");
     this.Text("RadioXL.optRandomWorldRadios", "World radios can start on a custom station");
     this.Text("RadioXL.tipRandomWorldRadios", "Radios and jukeboxes around the city that start on a random station can land on a custom one. A radio picks once, the first time it is set up, and keeps that station in your save, so one already set up keeps the station it has. A jukebox picks again each time it loads.");
     this.Text("RadioXL.optRandomStreams", "Include stations that stream");

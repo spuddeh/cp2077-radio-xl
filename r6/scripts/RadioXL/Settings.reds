@@ -59,15 +59,21 @@ public class RadioXLConfig extends ScriptableSystem {
   public let muteFastForward: Bool = true;
   public let muteFastForwardHintActive: Bool = true;
 
-  // Dropdown index of `RadioXLTrafficMode`: 0 off, 1 the shared list, 2 every car.
-  public let trafficStations: Int32 = 1;
+  // The dropdown's option index: 0 most cars, 1 every car, 2 off.
+  public let trafficStations: Int32 = 0;
   public let randomWorldRadios: Bool = true;
   public let randomStreams: Bool = false;
+
+  private func TrafficMode() -> RadioXLTrafficMode {
+    if this.trafficStations == 1 { return RadioXLTrafficMode.All; }
+    if this.trafficStations == 2 { return RadioXLTrafficMode.Off; }
+    return RadioXLTrafficMode.Shared;
+  }
 
   public func ApplyTraffic() -> Void {
     let traffic = RadioXLTraffic.Get();
     if IsDefined(traffic) {
-      traffic.Set(IntEnum<RadioXLTrafficMode>(this.trafficStations), this.randomWorldRadios, this.randomStreams);
+      traffic.Set(this.TrafficMode(), this.randomWorldRadios, this.randomStreams);
     }
   }
 
@@ -228,13 +234,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
 
     // --- Stations ---
     b.Tab("RadioXL.tabStations");
-    b.Section("RadioXL.secRandom");
-    b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
-    b.Tip("RadioXL.tipTrafficStations");
-    b.Toggle(RadioXL_KeyRandomWorldRadios(), "RadioXL.optRandomWorldRadios");
-    b.Tip("RadioXL.tipRandomWorldRadios");
-    b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
-    b.Tip("RadioXL.tipRandomStreams");
     this.AddStations(b, controls);
 
     // --- Mute ---
@@ -356,11 +355,23 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     return options;
   }
 
+  // The random picks open the Stations section; a divider separates them from the rows per station.
+  private func AddRandom(b: ref<DVRCF_SchemaBuilder>) -> Void {
+    b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
+    b.Tip("RadioXL.tipTrafficStations");
+    b.Label("RadioXL.labTrafficMost");
+    b.Toggle(RadioXL_KeyRandomWorldRadios(), "RadioXL.optRandomWorldRadios");
+    b.Tip("RadioXL.tipRandomWorldRadios");
+    b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
+    b.Tip("RadioXL.tipRandomStreams");
+    b.Divider();
+  }
+
   private func TrafficOptions() -> array<String> {
     let options: array<String>;
-    ArrayPush(options, RadioXLText("RadioXL.trafficOff"));
-    ArrayPush(options, RadioXLText("RadioXL.trafficShared"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficMost"));
     ArrayPush(options, RadioXLText("RadioXL.trafficAll"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficOff"));
     return options;
   }
 
@@ -390,13 +401,16 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   private func AddStations(b: ref<DVRCF_SchemaBuilder>, controls: ref<RadioXLControls>) -> Void {
     let catalog = RadioXLCatalog.Get();
     if !IsDefined(catalog) || !catalog.IsBuilt() || !IsDefined(controls) {
-      b.Section("RadioXL.tabStations").Label("RadioXL.noteNoCatalog");
+      b.Section("RadioXL.tabStations");
+      this.AddRandom(b);
+      b.Label("RadioXL.noteNoCatalog");
       return;
     }
     // The schema is rebuilt on every panel open, so this is where a track a quest added since
     // the catalog was built gets its row.
     catalog.RefreshAll();
     b.Section("RadioXL.tabStations");
+    this.AddRandom(b);
     b.Label("RadioXL.labStations1");
     b.Label("RadioXL.labStations2");
     b.Label("RadioXL.labStations3");
