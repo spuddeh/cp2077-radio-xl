@@ -12,6 +12,11 @@
 // vanilla copy here and is rebuilt from it whenever a setting changes, so switching off returns it
 // to vanilla exactly.
 //
+// The same list feeds the player's car when its radio switches on with no station set: that pick
+// copies only the list's FIRST 14 entries (a 14-slot stack buffer in the receiver's turn-on block),
+// so a custom station appended past position 14 is never that car's first station. A traffic car's
+// own pick (`RadioSystem::GetRandomStation`) reads the whole list.
+//
 // A world radio set to randomise picks once, in script, the first time its device initialises,
 // and saves the station's enum value with the device. A jukebox picks again on every attach.
 
