@@ -25,6 +25,15 @@ namespace
 // The global holding the engine root pointer (0x342ac00 on 2.31), by RED4ext hash.
 constexpr uint32_t kHashEngineRoot = 2549221846;
 
+// The radio mode's inputs (0xbd054c): GSoundSystem, its +0x90 flag, and the mix metrics at [+0x140] +0x90.
+constexpr uint32_t kHashIsBusSilent = 3822666350;
+constexpr uintptr_t kRvaGSoundSystem = 0x3429620;
+constexpr size_t kSoundSystemFlag90 = 0x90;
+constexpr size_t kSoundSystemMixOwner = 0x140;
+constexpr size_t kMixOwnerMetrics = 0x90;
+constexpr uint32_t kMixConfigSystemicMusic = 5;     // Music_Systemic_Combat (+ police)
+constexpr uint32_t kMixConfigNpcVehicleRadios = 6;  // Music_Diagetic_Radios_Vehicle_NPC
+
 // Engine root -> audio system -> radio manager, as GetRadioStationCurrentTrackName walks them.
 constexpr size_t kRootAudioSystem = 0xa8;
 constexpr size_t kAudioRadioManager = 0xe0;
@@ -138,6 +147,24 @@ template <typename T>
 T Read(uintptr_t aAddress)
 {
     return *reinterpret_cast<T*>(aAddress);
+}
+
+// audio::MixMetrics::IsBusSilent (0xbd0600), a pure read of the meter's level against -200 dB. Refused unless
+// its prologue is 2.31's.
+using IsBusSilentFn = bool (*)(void* aMetrics, uint32_t aConfig);
+IsBusSilentFn ResolveIsBusSilent()
+{
+    static const IsBusSilentFn fn = []() -> IsBusSilentFn
+    {
+        static const uint8_t kPrologue[] = {0x48, 0x83, 0xEC, 0x28, 0x4C, 0x8D, 0x44, 0x24};
+        const auto address = ResolveByHash(kHashIsBusSilent);
+        if (!address || std::memcmp(reinterpret_cast<void*>(address), kPrologue, sizeof(kPrologue)) != 0)
+        {
+            return nullptr;
+        }
+        return reinterpret_cast<IsBusSilentFn>(address);
+    }();
+    return fn;
 }
 
 std::string NameOf(void* aObject)
@@ -296,10 +323,31 @@ void Walk(std::string& aReport)
     }
     // The radio system's mode (+0x27b), recomputed every sound update by 0xbd054c from +0x27c, +0x27d and two
     // mix buses: in mode 1 a station whose every listener is a traffic emitter (kind 2) is held inactive.
+    // With +0x27d clear, mode 1 is GSoundSystem +0x90 set, or meter 5 (systemic combat/police music) heard
+    // while meter 6 (NPC vehicle radios) is silent. `snd90`, `combat` and `npc` are those three inputs.
     {
-        char mode[96];
-        std::snprintf(mode, sizeof(mode), "radio mode=%u 27c=%u 27d=%u", Read<uint8_t>(manager + 0x27b),
-                      Read<uint8_t>(manager + 0x27c), Read<uint8_t>(manager + 0x27d));
+        const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+        const auto sound = Read<uintptr_t>(base + kRvaGSoundSystem);
+        int flag90 = -1;
+        int combatSilent = -1;
+        int npcSilent = -1;
+        if (sound)
+        {
+            flag90 = Read<uint8_t>(sound + kSoundSystemFlag90);
+            const auto sub = Read<uintptr_t>(sound + kSoundSystemMixOwner);
+            const auto metrics = sub ? Read<uintptr_t>(sub + kMixOwnerMetrics) : 0;
+            const auto isBusSilent = ResolveIsBusSilent();
+            if (metrics && isBusSilent)
+            {
+                combatSilent = isBusSilent(reinterpret_cast<void*>(metrics), kMixConfigSystemicMusic) ? 1 : 0;
+                npcSilent = isBusSilent(reinterpret_cast<void*>(metrics), kMixConfigNpcVehicleRadios) ? 1 : 0;
+            }
+        }
+        char mode[160];
+        std::snprintf(mode, sizeof(mode), "radio mode=%u 27c=%u 27d=%u snd90=%d combat=%s npc=%s",
+                      Read<uint8_t>(manager + 0x27b), Read<uint8_t>(manager + 0x27c), Read<uint8_t>(manager + 0x27d),
+                      flag90, combatSilent < 0 ? "?" : (combatSilent ? "silent" : "heard"),
+                      npcSilent < 0 ? "?" : (npcSilent ? "silent" : "heard"));
         static std::string lastMode;
         if (lastMode != mode)
         {
