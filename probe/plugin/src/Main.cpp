@@ -1410,6 +1410,63 @@ bool ReadStoredReceiver(uintptr_t aEmitter, ReceiverState* aOut)
     return read;
 }
 
+// Each active station's own voices: a station is an AudioEmitter (RadioStation::PlaySong posts through its
+// vtable +8), so its sounds list reads like a receiver's. Stations live for the session, so no lifetime guard.
+struct StationVoice
+{
+    uint64_t name;
+    uint64_t sound;
+    uint32_t pid;
+    uint8_t state;
+};
+
+bool SafeStationVoices(StationVoice* aOut, uint32_t aMax, uint32_t* aCount)
+{
+    *aCount = 0;
+    __try
+    {
+        const auto rootSlot = ResolveByHash(kHashEngineRoot);
+        const auto root = rootSlot ? Read<uintptr_t>(rootSlot) : 0;
+        const auto audio = root ? Read<uintptr_t>(root + kRootAudioSystem) : 0;
+        const auto manager = audio ? Read<uintptr_t>(audio + kAudioRadioManager) : 0;
+        if (!manager)
+        {
+            return true;
+        }
+        const auto stations = Read<uintptr_t>(manager + kManagerStations);
+        const auto count = Read<uint32_t>(manager + kManagerCount);
+        for (uint32_t i = 0; stations && i < count && i < kMaxStations; ++i)
+        {
+            const auto station = Read<uintptr_t>(stations + i * 8);
+            if (!station || !Read<uint8_t>(station + kStationActive))
+            {
+                continue;
+            }
+            uint64_t name = 0;
+            Read<GetNameFn>(Read<uintptr_t>(station) + kVtblGetName)(reinterpret_cast<void*>(station), &name);
+            const auto sounds = Read<uintptr_t>(station + kEmitterSounds);
+            const auto soundCount = Read<uint32_t>(station + kEmitterSoundCount);
+            for (uint32_t k = 0; sounds && k < soundCount && k < 8 && *aCount < aMax; ++k)
+            {
+                const auto element = Read<uintptr_t>(sounds + k * 8);
+                const auto entry = element ? Read<uintptr_t>(element) : 0;
+                if (!entry)
+                {
+                    continue;
+                }
+                aOut[*aCount] = StationVoice{name, Read<uint64_t>(entry + kSoundName),
+                                             Read<uint32_t>(entry + kSoundPlayingId), Read<uint8_t>(entry + kSoundState)};
+                ++*aCount;
+            }
+        }
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
 void CheckLiveRadios()
 {
     AcquireSRWLockShared(&g_liveLock);
@@ -1442,6 +1499,18 @@ void CheckLiveRadios()
                           static_cast<unsigned long long>(entity), known ? DistanceTo(&car) : -1.0f,
                           Text(radio.station).c_str(), Text(receiver.receiverEvent).c_str());
             Log(head + AkVoiceText(pid));
+        }
+        StationVoice voices[64];
+        uint32_t voiceCount = 0;
+        if (SafeStationVoices(voices, 64, &voiceCount))
+        {
+            for (uint32_t i = 0; i < voiceCount; ++i)
+            {
+                char head[192];
+                std::snprintf(head, sizeof(head), "wwise station %s %s sound=%s state=%u ", Stamp().c_str(),
+                              Text(voices[i].name).c_str(), Text(voices[i].sound).c_str(), voices[i].state);
+                Log(head + (voices[i].pid ? AkVoiceText(voices[i].pid) : std::string("pid=0")));
+            }
         }
         for (const auto& [emitter, station] : others)
         {
