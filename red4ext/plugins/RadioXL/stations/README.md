@@ -188,6 +188,10 @@ A station that streams is left alone.
 
 Leave it off for a station you publish, so a stray file on a player's machine never becomes a song.
 
+Every song's length, listed or added, is remembered in `red4ext/plugins/RadioXL/cache.json` and read
+again only when the file's size or modified time changes. If a song plays with the wrong length after
+its file was replaced, delete that file and launch again.
+
 ## The order songs play in
 
 The game picks a station's next song at random from the songs it has not played yet, and starts

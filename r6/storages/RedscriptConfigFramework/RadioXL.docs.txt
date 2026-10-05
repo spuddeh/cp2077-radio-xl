@@ -126,6 +126,11 @@ Both are off by default, both take effect straight away, and switching either ba
 More is planned here.
 
 
+[color=#e06666][size=6][b]- A song cuts off early or is followed by silence -[/b][/size][/color]
+
+RadioXL reads each song's length once and remembers it in [i]red4ext\plugins\RadioXL\cache.json[/i] (under MO2, in Overwrite), reading a song again only when its file's size or date changes. A file swapped for another with the same size and date keeps the old length. Delete cache.json and launch again: every song is read afresh. Deleting it is always safe; it only makes the next launch read every file.
+
+
 [color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
 
 Keys are ignored in menus and in photo mode, and the song and station keys only work with a radio on. Check the key is bound on the Controls tab and not only in the game's own settings, and that its modifier, if you use them, is held down. A station key does nothing while the radio plays through another mod's own player rather than the game's, which is how RadioExt stations work: pick a station from the radio itself and the keys work again. If the Stations tab says the station list has not been read, load a save and open the panel again; the list is read when a game loads, not at the main menu.
