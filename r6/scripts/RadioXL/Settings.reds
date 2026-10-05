@@ -59,6 +59,17 @@ public class RadioXLConfig extends ScriptableSystem {
   public let muteFastForward: Bool = true;
   public let muteFastForwardHintActive: Bool = true;
 
+  // Dropdown index of `RadioXLTrafficMode`: 0 off, 1 the shared list, 2 every car.
+  public let trafficStations: Int32 = 1;
+  public let trafficStreams: Bool = false;
+
+  public func ApplyTraffic() -> Void {
+    let traffic = RadioXLTraffic.Get();
+    if IsDefined(traffic) {
+      traffic.Set(IntEnum<RadioXLTrafficMode>(this.trafficStations), this.trafficStreams);
+    }
+  }
+
   // Whether the game's own silence for this restriction is kept.
   public func MutesOn(restriction: Int32) -> Bool {
     if restriction == EnumInt(PocketRadioRestrictions.SceneTier) { return this.muteSceneTier; }
@@ -137,6 +148,8 @@ public func RadioXL_KeyPlayOnPocketPowerOn() -> String { return "playOnPocketPow
 public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio"; }
 public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
+public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
+public func RadioXL_KeyTrafficStreams() -> String { return "trafficStreams"; }
 // A song row's key is the event name behind a fixed prefix; a station's step-over row is its
 // event name behind another. The name comes back out of each unchanged.
 public func RadioXL_SongPrefix() -> String { return "song:"; }
@@ -213,6 +226,11 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
 
     // --- Stations ---
     b.Tab("RadioXL.tabStations");
+    b.Section("RadioXL.secTraffic");
+    b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
+    b.Tip("RadioXL.tipTrafficStations");
+    b.Toggle(RadioXL_KeyTrafficStreams(), "RadioXL.optTrafficStreams");
+    b.Tip("RadioXL.tipTrafficStreams");
     this.AddStations(b, controls);
 
     // --- Mute ---
@@ -331,6 +349,14 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       ArrayPush(options, this.StationLabel(RadioStationDataProvider.GetRadioStationByUIIndex(position)));
       position += 1;
     }
+    return options;
+  }
+
+  private func TrafficOptions() -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.trafficOff"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficShared"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficAll"));
     return options;
   }
 
@@ -456,6 +482,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "mutePhoneNoCalling") { return c.mutePhoneNoCalling; }
       if Equals(key, "muteFastForward") { return c.muteFastForward; }
       if Equals(key, "muteFastForwardHintActive") { return c.muteFastForwardHintActive; }
+      if Equals(key, RadioXL_KeyTrafficStreams()) { return c.trafficStreams; }
     }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return false; }
@@ -480,6 +507,11 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   // run; it only touches the settings services.
   public func SetBool(key: String, value: Bool) -> Void {
     let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStreams()) {
+      c.trafficStreams = value;
+      c.ApplyTraffic();
+      return;
+    }
     if IsDefined(c) && StrBeginsWith(key, "mute") && !Equals(key, RadioXL_KeyMuteIdents()) && !Equals(key, RadioXL_KeyMuteNews()) {
       if Equals(key, "muteSceneTier") { c.muteSceneTier = value; }
       if Equals(key, "muteUpperBodyState") { c.muteUpperBodyState = value; }
@@ -524,6 +556,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   // Key rows travel on the Int channel as an EInputKey cast to Int32. 0 is IK_None: a key not
   // bound, which is a valid state for most of them.
   public func GetInt(key: String) -> Int32 {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStations()) { return c.trafficStations; }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return 0; }
     if StrBeginsWith(key, RadioXL_SongPrefix()) {
@@ -541,6 +575,12 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   }
 
   public func SetInt(key: String, value: Int32) -> Void {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStations()) {
+      c.trafficStations = Clamp(value, 0, 2);
+      c.ApplyTraffic();
+      return;
+    }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return; }
     if StrBeginsWith(key, RadioXL_SongPrefix()) {

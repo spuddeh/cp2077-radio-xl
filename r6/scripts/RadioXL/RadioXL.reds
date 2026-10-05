@@ -497,6 +497,30 @@ public class RadioXLService extends ScriptableService {
       this.RegisterStation(cooked, map, titles, i);
       i += 1;
     }
+
+    let stations: array<CName>;
+    let streams: array<CName>;
+    i = 0;
+    while i < count {
+      let name: CName = RadioXL_StationName(i);
+      if IsNameValid(name) && IsDefined(this.Find(cooked, name)) {
+        ArrayPush(stations, name);
+        if this.Streams(i) { ArrayPush(streams, name); }
+      }
+      i += 1;
+    }
+    let traffic = RadioXLTraffic.Get();
+    if IsDefined(traffic) { traffic.Capture(cooked, stations, streams); }
+  }
+
+  private func Streams(station: Int32) -> Bool {
+    let tracks: Int32 = RadioXL_StationTrackCount(station);
+    let t: Int32 = 0;
+    while t < tracks {
+      if RadioXLAudio.IsStream(RadioXL_StationTrackFile(station, t)) { return true; }
+      t += 1;
+    }
+    return false;
   }
 
   private func RegisterStation(cooked: ref<audioCookedMetadataResource>,
