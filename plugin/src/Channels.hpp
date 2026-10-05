@@ -138,6 +138,12 @@ inline void Init(int aCustomCount, std::function<void(const std::string&)> aLog)
     g_customCount = aCustomCount;
     g_taken.reset();
     g_taken.set(kOff);
+    // Below the first station id: no station, playlist or reflection the game ships uses 1 to 5,
+    // but nothing says the range is free, so no custom station is put there.
+    for (int c = 0; c < 8; ++c)
+    {
+        g_taken.set(c);
+    }
     for (int id = 8; id < kFirstCustomId; ++id)
     {
         for (int k = 0; k < 3; ++k)
