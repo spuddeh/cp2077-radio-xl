@@ -71,7 +71,8 @@
   a world device and the pocket radio.
 - Custom stations on traffic car radios, by setting: Most cars (the shared nine-station lists),
   Every car, Off; and world radios and jukeboxes that start at random can land on one. Stream
-  stations join both only with their own switch (#63).
+  stations join both only with their own switch (#63). Traffic radios stay as quiet as the game
+  keeps them; this is groundwork for making them heard.
 - A station with `addUnlistedFiles` keeps its track list in step with its folder, rewriting
   `station.json` in place (#66); track lengths are cached between launches.
 - A custom track's name and the player's settings for it follow its file, not its position (#65).

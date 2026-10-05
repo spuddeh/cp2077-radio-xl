@@ -9,7 +9,9 @@
   list's vanilla copy at metadata load (`Capture`, from `RadioXLService.Register`) and rebuilds the
   lists from the setting: Most cars (lists holding all nine shared stations, 142 receivers), Every
   car (every non-police, non-empty list), Off. Applied at load, on RCF restore and on every change;
-  a mid-session change reaches the next car (measured: 0 custom in 36 picks after Off).
+  a mid-session change reaches the next car (measured: 0 custom in 36 picks after Off). The game
+  keeps a traffic-only station silent (the radio mode 1 gate), so this is not audible yet: it is
+  groundwork for making traffic radios heard (`entities/audible-traffic-radios` in the vault).
 - World radios and jukeboxes that start on a random station can land on a custom one (#63): a wrap
   of `RadioStationDataProvider.GetRandomStation` adds each custom station as one more equal share
   beside the thirteen vanilla picks (Samizdat excluded). Logged as `world radio: random start on`.
