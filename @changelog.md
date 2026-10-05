@@ -29,7 +29,17 @@
   pruned, written only on a change, gitignored. Measured: 131 lengths from the cache on a relaunch.
 - `RadioXL_StationTrackLegacy` native: a track's old position-based event name, for migration only.
 
+- Station builder 0.4.0 (#67): an "Add songs I drop into this folder later" switch writing
+  `addUnlistedFiles: true` only when on (`manifest.ts`, `store.ts`, `App.tsx`); on opening a station,
+  `importStation.ts` collects the audio extras under the station folder that no track names
+  (`UnlistedFile`) and `components/ImportOffers.tsx` offers two checklists: add them as tracks
+  (`addUnlisted`, out of the extras, measured like any added song) and remove tracks with no audio
+  file (`removeTracks`). Checked in the page with a test zip.
+
 ### Fixed
+- Station builder 0.4.0: `layout.css` (29 rules) and `ink.css` (7) named `--font-readable-x-small`,
+  which no token defines, so small text took its parent's size; in the `font` shorthand of the key
+  hint it voided the whole declaration. Renamed to `--font-readable-xsmall`.
 - A WAV AudioXL refuses was listed and scheduled, and played nothing: AudioXL accepts the
   registration and rejects the file only when it loads it, after the station is built, and logs it
   in its own log. `Duration.hpp` `WavRefusal` mirrors AudioXL's `ValidateWav` (fmt chunk first,
