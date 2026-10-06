@@ -45,7 +45,9 @@ enum Kind : int
 };
 
 constexpr int kOffset[3] = {0, 0x32, 0xdc};
-constexpr int kFirstCustomId = 22;  // ERadioStationList 14 + 8
+// Vanilla internal ids: the fourteen (8 to 21), the police scanner (23) and Kurtz (33). Their channels
+// stay the formula's and no custom station is given one of them.
+constexpr int kVanillaIds[] = {8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 33};
 constexpr int kOff = 255;           // the channel the game writes to switch one off
 
 // The channels the game's own audio metadata takes, from base and ep1 cooked_metadata on 2.31:
@@ -60,7 +62,7 @@ constexpr uint8_t kGameChannels[] = {
 alignas(64) inline int32_t g_table[3][256];
 
 inline std::bitset<256> g_taken;   // the game's channels, the fourteen's and the off channel
-inline int g_customCount = 0;
+inline std::vector<int> g_ids;       // each custom station's internal id, in roster order
 inline bool g_wide = false;           // the broadcaster takes channels past 255 (Broadcast.hpp)
 inline int g_wideChannels = 0;
 inline int g_assigned = 0;          // custom stations with channels of their own
@@ -108,9 +110,8 @@ inline void Assign()
     };
 
     g_assigned = 0;
-    for (int i = 0; i < g_customCount; ++i)
+    for (const int id : g_ids)
     {
-        const int id = kFirstCustomId + i;
         if (id > 255)
         {
             break;
@@ -132,17 +133,17 @@ inline std::string Describe()
     std::string line;
     for (int i = 0; i < g_assigned; ++i)
     {
-        const int id = kFirstCustomId + i;
+        const int id = g_ids[i];
         line += (line.empty() ? "" : ", ") + std::to_string(id) + "=" + std::to_string(g_table[kMono][id]) + "/" +
                 std::to_string(g_table[kRight][id]) + "/" + std::to_string(g_table[kLeft][id]);
     }
     return line;
 }
 
-inline void Init(int aCustomCount, std::function<void(const std::string&)> aLog)
+inline void Init(const std::vector<int>& aIds, std::function<void(const std::string&)> aLog)
 {
     g_log = std::move(aLog);
-    g_customCount = aCustomCount;
+    g_ids = aIds;
     g_taken.reset();
     g_taken.set(kOff);
     // Below the first station id: no station, playlist or reflection the game ships uses 1 to 5,
@@ -151,7 +152,7 @@ inline void Init(int aCustomCount, std::function<void(const std::string&)> aLog)
     {
         g_taken.set(c);
     }
-    for (int id = 8; id < kFirstCustomId; ++id)
+    for (const int id : kVanillaIds)
     {
         for (int k = 0; k < 3; ++k)
         {
@@ -163,9 +164,9 @@ inline void Init(int aCustomCount, std::function<void(const std::string&)> aLog)
         g_taken.set(c);
     }
     Assign();
-    if (g_assigned < g_customCount)
+    if (g_assigned < static_cast<int>(g_ids.size()))
     {
-        Log(std::to_string(g_customCount - g_assigned) + " custom station(s) found no free channels and keep the formula's, "
+        Log(std::to_string(static_cast<int>(g_ids.size()) - g_assigned) + " custom station(s) found no free channels and keep the formula's, "
             "which another source may share");
     }
 }
@@ -181,7 +182,7 @@ inline bool Reserve(int aChannel)
     bool clash = false;
     for (int i = 0; i < g_assigned && !clash; ++i)
     {
-        const int id = kFirstCustomId + i;
+        const int id = g_ids[i];
         for (int k = 0; k < 3; ++k)
         {
             clash = clash || g_table[k][id] == aChannel;

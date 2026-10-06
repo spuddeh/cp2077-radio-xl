@@ -143,7 +143,7 @@ public final static func GetRandomStation() -> ERadioStationList {
   let slots: array<Int32> = random.Candidates();
   let pick: Int32 = RandRange(0, 13 + ArraySize(slots));
   if pick < 13 { return wrappedMethod(); }
-  let station: ERadioStationList = IntEnum<ERadioStationList>(14 + slots[pick - 13]);
+  let station: ERadioStationList = IntEnum<ERadioStationList>(RadioXL_SlotEnum(slots[pick - 13]));
   RadioXLLog(s"world radio: random start on \(RadioXL_StationName(slots[pick - 13]))");
   return station;
 }

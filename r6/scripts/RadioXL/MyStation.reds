@@ -90,7 +90,7 @@ public class RadioXLMyStation extends ScriptableService {
   public func StationIndex() -> Int32 {
     let state = RadioXLState.Get();
     if !IsDefined(state) || !IsNameValid(state.rememberStation) { return -1; }
-    let count: Int32 = RadioStationDataProvider.GetStationsCount();
+    let count: Int32 = RadioXLDial.EnumEnd();
     let i: Int32 = 0;
     while i < count {
       if Equals(RadioStationDataProvider.GetStationName(IntEnum<ERadioStationList>(i)), state.rememberStation) {
@@ -222,7 +222,7 @@ public class RadioXLMyStation extends ScriptableService {
     }
     // An index past the provider's count is a station the game cannot name: a RadioExt station,
     // which plays through its own player and re-asserts itself if the receiver is moved. Left alone.
-    if current >= RadioStationDataProvider.GetStationsCount() {
+    if current >= RadioXLDial.EnumEnd() {
       RadioXLLog(s"vehicle radio is on station \(current), outside the dial - not tuned");
       return;
     }

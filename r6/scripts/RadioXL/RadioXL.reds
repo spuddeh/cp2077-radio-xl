@@ -54,6 +54,9 @@ public func RadioXLFallbackTrim() -> Float {
 // manifest, and read from here - never restated in script.
 public native func RadioXL_StationCount() -> Int32;
 public native func RadioXL_ReserveChannel(channel: Int32) -> Bool;
+public native func RadioXL_SlotEnum(slot: Int32) -> Int32;
+public native func RadioXL_EnumSlot(station: Int32) -> Int32;
+public native func RadioXL_EnumEnd() -> Int32;
 public native func RadioXL_DialPosition(index: Int32) -> Int32;
 public native func RadioXL_DialStation(index: Int32) -> Int32;
 public native func RadioXL_StationName(index: Int32) -> CName;

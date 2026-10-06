@@ -195,6 +195,58 @@ constexpr uint8_t kCmpEdi[] = {0x83, 0xFF};
 constexpr int kVanillaCount = 14;
 constexpr int kMaxStations = 127;  // both bounds are 8-bit immediates
 
+// **Two enum values past the fourteen belong to vanilla stations outside the roster.**
+// `TryGetRadioStationChannel` gives `radio_station_police` internal id 23 and `radio_station_kurtz`
+// 33 (enum 15 and 25, internal id = enum + 8). A custom station never takes either: those slots carry
+// the vanilla names, so name -> id and id -> name agree with the game, and custom stations number
+// around them. They are on no dial.
+struct ReservedSlot
+{
+    int32_t enumValue;
+    const char* name;
+    const char* labelKey;
+};
+constexpr ReservedSlot kReserved[] = {
+    {15, "radio_station_police", "Gameplay-Devices-Radio-PoliceStation"},
+    {25, "radio_station_kurtz", "Gameplay-Devices-Radio-NoneStation"},  // the game has no Kurtz label key
+};
+
+std::vector<int32_t> g_enumOf;  // custom station -> ERadioStationList value
+std::vector<int32_t> g_slotOf;  // ERadioStationList value -> custom station, -1 for vanilla or reserved
+int32_t g_enumEnd = kVanillaCount;  // one past the last custom station's enum value
+
+const ReservedSlot* ReservedAt(int32_t aEnum)
+{
+    for (const ReservedSlot& r : kReserved)
+    {
+        if (r.enumValue == aEnum)
+        {
+            return &r;
+        }
+    }
+    return nullptr;
+}
+
+void AssignEnums(size_t aCount)
+{
+    g_enumOf.clear();
+    int32_t e = kVanillaCount;
+    for (size_t i = 0; i < aCount; ++i)
+    {
+        while (ReservedAt(e))
+        {
+            ++e;
+        }
+        g_enumOf.push_back(e++);
+    }
+    g_enumEnd = aCount ? g_enumOf.back() + 1 : kVanillaCount;
+    g_slotOf.assign(static_cast<size_t>(g_enumEnd), -1);
+    for (size_t i = 0; i < aCount; ++i)
+    {
+        g_slotOf[static_cast<size_t>(g_enumOf[i])] = static_cast<int32_t>(i);
+    }
+}
+
 using radioxl::kDefaultGain;
 using radioxl::Station;
 using radioxl::Track;
@@ -618,19 +670,15 @@ void BuildDial(DialSwitch aIndexToDial)
     auto frequencyOf = [](int32_t aStation)
     {
         return aStation < kVanillaCount ? kVanillaFrequency[aStation]
-                                        : g_stations[aStation - kVanillaCount].frequency;
+                                        : g_stations[g_slotOf[aStation]].frequency;
     };
     auto nameOf = [](int32_t aStation) -> std::string
     {
         return aStation < kVanillaCount ? "vanilla station " + std::to_string(aStation)
-                                        : g_stations[aStation - kVanillaCount].name;
+                                        : g_stations[g_slotOf[aStation]].name;
     };
 
-    std::vector<int32_t> customs;
-    for (size_t i = 0; i < g_stations.size(); ++i)
-    {
-        customs.push_back(kVanillaCount + static_cast<int32_t>(i));
-    }
+    std::vector<int32_t> customs(g_enumOf.begin(), g_enumOf.end());
     std::stable_sort(customs.begin(), customs.end(),
                      [&](int32_t a, int32_t b) { return frequencyOf(a) < frequencyOf(b); });
 
@@ -652,7 +700,7 @@ void BuildDial(DialSwitch aIndexToDial)
     }
 
     g_dial = order;
-    g_position.assign(order.size(), -1);
+    g_position.assign(static_cast<size_t>(g_enumEnd), -1);  // indexed by enum, so the reserved slots are -1
     for (size_t p = 0; p < order.size(); ++p)
     {
         g_position[order[p]] = static_cast<int32_t>(p);
@@ -728,16 +776,18 @@ bool Rel32(uintptr_t aFrom, uintptr_t aTo, int32_t& aOut)
     return true;
 }
 
-size_t StepStubSize(size_t aTotal)
+// The enum range and the dial differ by the reserved slots inside the range: the bound and the
+// position table run over enum values, the modulo and the dial table over dial positions.
+size_t StepStubSize(size_t aEnums, size_t aDial)
 {
-    return kStepStubTables + 2 * aTotal * sizeof(int32_t);
+    return kStepStubTables + (aEnums + aDial) * sizeof(int32_t);
 }
 
-bool BuildStepStub(uint8_t* aStub, uintptr_t aResume, uint32_t aTotal)
+bool BuildStepStub(uint8_t* aStub, uintptr_t aResume, uint32_t aEnums, uint32_t aDial)
 {
     const auto base = reinterpret_cast<uintptr_t>(aStub);
     const uintptr_t position = base + kStepStubTables;
-    const uintptr_t dial = position + aTotal * sizeof(int32_t);
+    const uintptr_t dial = position + aEnums * sizeof(int32_t);
     int32_t toPosition = 0, toDial = 0, resume = 0;
     if (!Rel32(base + 0x14, position, toPosition) || !Rel32(base + 0x29, dial, toDial) ||
         !Rel32(base + 0x31, aResume, resume))
@@ -760,15 +810,15 @@ bool BuildStepStub(uint8_t* aStub, uintptr_t aResume, uint32_t aTotal)
         0x8B, 0x3C, 0x90,              // 29  mov edi, [rax+rdx*4]
         0xE9, 0, 0, 0, 0,              // 2C  jmp resume
     };
-    std::memcpy(code + 0x07, &aTotal, sizeof(aTotal));
+    std::memcpy(code + 0x07, &aEnums, sizeof(aEnums));
     std::memcpy(code + 0x10, &toPosition, sizeof(toPosition));
-    std::memcpy(code + 0x1C, &aTotal, sizeof(aTotal));
+    std::memcpy(code + 0x1C, &aDial, sizeof(aDial));
     std::memcpy(code + 0x25, &toDial, sizeof(toDial));
     std::memcpy(code + 0x2D, &resume, sizeof(resume));
     std::memcpy(aStub, code, sizeof(code));
     std::memset(aStub + kStepStubCode, 0xCC, kStepStubTables - kStepStubCode);
-    std::memcpy(reinterpret_cast<void*>(position), g_position.data(), aTotal * sizeof(int32_t));
-    std::memcpy(reinterpret_cast<void*>(dial), g_dial.data(), aTotal * sizeof(int32_t));
+    std::memcpy(reinterpret_cast<void*>(position), g_position.data(), aEnums * sizeof(int32_t));
+    std::memcpy(reinterpret_cast<void*>(dial), g_dial.data(), aDial * sizeof(int32_t));
     return true;
 }
 
@@ -918,13 +968,17 @@ void PatchRoster()
         return;
     }
 
-    if (static_cast<int>(g_stations.size()) > kMaxStations - kVanillaCount)
+    // The roster runs to the last custom station's enum value, reserved slots included; the dial
+    // holds the fourteen and the custom stations only.
+    AssignEnums(g_stations.size());
+    const int total = g_enumEnd;
+    const int dialCount = kVanillaCount + static_cast<int>(g_stations.size());
+    if (total > kMaxStations)
     {
-        Log("too many stations - the engine's bounds are 8-bit, so 127 is the ceiling");
+        Log("too many stations - the engine's bounds are 8-bit, so 127 is the ceiling (the police and Kurtz "
+            "slots count towards it)");
         return;
     }
-
-    const int total = kVanillaCount + static_cast<int>(g_stations.size());
     void* fresh = AllocateNear(reinterpret_cast<uintptr_t>(resolve), total * sizeof(uint64_t));
     if (!fresh)
     {
@@ -945,7 +999,7 @@ void PatchRoster()
 
     // The next-station stub, built and made executable before any game byte is touched, so a
     // failure here still leaves the game unpatched.
-    const size_t stubSize = StepStubSize(static_cast<size_t>(total));
+    const size_t stubSize = StepStubSize(static_cast<size_t>(total), static_cast<size_t>(dialCount));
     void* freshStub = AllocateNear(reinterpret_cast<uintptr_t>(vehicleSet), stubSize);
     if (!freshStub)
     {
@@ -953,7 +1007,8 @@ void PatchRoster()
         return;
     }
     auto* stub = static_cast<uint8_t*>(freshStub);
-    if (!BuildStepStub(stub, reinterpret_cast<uintptr_t>(vehicleSet + kVehicleStepTo), static_cast<uint32_t>(total)))
+    if (!BuildStepStub(stub, reinterpret_cast<uintptr_t>(vehicleSet + kVehicleStepTo), static_cast<uint32_t>(total),
+                       static_cast<uint32_t>(dialCount)))
     {
         Log("the next-station stub cannot reach its site - nothing patched");
         return;
@@ -989,8 +1044,16 @@ void PatchRoster()
 
     for (size_t i = 0; i < g_stations.size(); ++i)
     {
-        table[kVanillaCount + i] = Fnv1a64(g_stations[i].name);
-        names[kVanillaCount + i] = Fnv1a64(StationKey(g_stations[i].name));
+        table[g_enumOf[i]] = Fnv1a64(g_stations[i].name);
+        names[g_enumOf[i]] = Fnv1a64(StationKey(g_stations[i].name));
+    }
+    for (const ReservedSlot& r : kReserved)
+    {
+        if (r.enumValue < total)
+        {
+            table[r.enumValue] = Fnv1a64(r.name);
+            names[r.enumValue] = Fnv1a64(r.labelKey);
+        }
     }
 
     // Each table is allocated within reach of ONE reader, and the other reader of the same table
@@ -1057,9 +1120,16 @@ void PatchRoster()
     g_patched = true;
     for (size_t i = 0; i < g_stations.size(); ++i)
     {
-        Log("slot " + std::to_string(kVanillaCount + i) + " (enum " +
-            std::to_string(kVanillaCount + i) + ", internal id " +
-            std::to_string(kVanillaCount + i + 8) + "): " + g_stations[i].name);
+        Log("slot " + std::to_string(g_enumOf[i]) + " (enum " + std::to_string(g_enumOf[i]) + ", internal id " +
+            std::to_string(g_enumOf[i] + 8) + "): " + g_stations[i].name);
+    }
+    for (const ReservedSlot& r : kReserved)
+    {
+        if (r.enumValue < total)
+        {
+            Log("slot " + std::to_string(r.enumValue) + " (internal id " + std::to_string(r.enumValue + 8) +
+                ") reserved for " + r.name);
+        }
     }
     std::string dial;
     for (const int32_t station : g_dial)
@@ -1456,8 +1526,47 @@ void RadioXL_Frequency(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, floa
         *aOut = kVanillaFrequency[station];
         return;
     }
-    const Station* s = At(station - kVanillaCount);
+    const bool custom = station >= 0 && static_cast<size_t>(station) < g_slotOf.size();
+    const Station* s = custom ? At(g_slotOf[station]) : nullptr;
     *aOut = s ? s->frequency : -1.0f;
+}
+
+// A custom station's ERadioStationList value, -1 past the last. Custom stations skip the enum
+// values the game keeps for the police scanner and Kurtz, so this is the only way to the value.
+void RadioXL_SlotEnum(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    int32_t slot = -1;
+    RED4ext::GetParameter(aFrame, &slot);
+    ++aFrame->code;
+    if (aOut)
+    {
+        const bool known = g_patched && slot >= 0 && static_cast<size_t>(slot) < g_enumOf.size();
+        *aOut = known ? g_enumOf[slot] : -1;
+    }
+}
+
+// The custom station an ERadioStationList value belongs to, -1 for a vanilla or reserved one.
+void RadioXL_EnumSlot(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    int32_t station = -1;
+    RED4ext::GetParameter(aFrame, &station);
+    ++aFrame->code;
+    if (aOut)
+    {
+        const bool known = g_patched && station >= 0 && static_cast<size_t>(station) < g_slotOf.size();
+        *aOut = known ? g_slotOf[station] : -1;
+    }
+}
+
+// One past the highest ERadioStationList value a station has: the bound of a loop over enum values,
+// which is larger than the dial when a reserved slot sits inside it.
+void RadioXL_EnumEnd(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    ++aFrame->code;
+    if (aOut)
+    {
+        *aOut = g_patched ? g_enumEnd : kVanillaCount;
+    }
 }
 
 // The folder the station's manifest sits in, which is the station mod's own name for it.
@@ -1554,6 +1663,9 @@ void RegisterNatives()
 
     reg("RadioXL_StationCount", &RadioXL_StationCount, "Int32", 0);
     reg("RadioXL_ReserveChannel", &RadioXL_ReserveChannel, "Bool", 1);
+    reg("RadioXL_SlotEnum", &RadioXL_SlotEnum, "Int32", 1);
+    reg("RadioXL_EnumSlot", &RadioXL_EnumSlot, "Int32", 1);
+    reg("RadioXL_EnumEnd", &RadioXL_EnumEnd, "Int32", 0);
     reg("RadioXL_DialPosition", &RadioXL_DialPosition, "Int32", 1);
     reg("RadioXL_DialStation", &RadioXL_DialStation, "Int32", 1);
     reg("RadioXL_StationName", &RadioXL_StationName, "CName", 1);
@@ -1673,7 +1785,12 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
             radioxl::broadcast::Widen(&ResolveByHash, &WriteBytes, aSdk, aHandle);
             radioxl::channels::g_wide = radioxl::broadcast::g_widened;
             radioxl::channels::g_wideChannels = static_cast<int>(radioxl::broadcast::kChannels);
-            radioxl::channels::Init(static_cast<int>(g_stations.size()), &Log);
+            std::vector<int> ids;
+            for (const int32_t e : g_enumOf)
+            {
+                ids.push_back(e + 8);
+            }
+            radioxl::channels::Init(ids, &Log);
             radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
         }
         // The engine names a station's current track by the 32-bit hash its localization row is

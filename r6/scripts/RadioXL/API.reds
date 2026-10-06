@@ -460,7 +460,7 @@ public abstract class RadioXLAPI {
   // The station's ERadioStationList value, vanilla or custom; -1 when it is not installed.
   private final static func EnumOf(station: CName) -> Int32 {
     if !IsNameValid(station) { return -1; }
-    let count: Int32 = RadioStationDataProvider.GetStationsCount();
+    let count: Int32 = RadioXLDial.EnumEnd();
     let i: Int32 = 0;
     while i < count {
       if Equals(RadioStationDataProvider.GetStationName(IntEnum<ERadioStationList>(i)), station) { return i; }

@@ -206,7 +206,7 @@ public class RadioXLDeck extends ScriptableService {
     // A station past the provider's count is one the game cannot name: a RadioExt station, which
     // plays through its own player. Its receiver is switched off by then, so this guard is rarely
     // reached; it stands for a station that is named but off the dial.
-    if r.stationIndex >= RadioStationDataProvider.GetStationsCount() {
+    if r.stationIndex >= RadioXLDial.EnumEnd() {
       RadioXLLog(s"radio is on station \(r.stationIndex), outside the dial - not stepped");
       return;
     }

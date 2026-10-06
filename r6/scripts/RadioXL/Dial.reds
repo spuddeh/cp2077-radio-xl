@@ -50,14 +50,21 @@ public class RadioXLIcons {
 }
 
 public class RadioXLDial {
-  // The station's own enum value, or -1 for a vanilla one.
+  // The custom station an enum value belongs to, or -1 for a vanilla one. Custom stations skip the
+  // enum values the game keeps for the police scanner and Kurtz, so the plugin holds the mapping.
   public final static func Slot(station: Int32) -> Int32 {
-    let custom: Int32 = station - 14;
-    return custom >= 0 && custom < RadioXL_StationCount() ? custom : -1;
+    return RadioXL_EnumSlot(station);
   }
 
+  // How many stations are on the dial.
   public final static func Total() -> Int32 {
     return 14 + RadioXL_StationCount();
+  }
+
+  // One past the highest enum value a station has: the bound for a loop over enum values, larger
+  // than the dial when the police or Kurtz slot sits inside it.
+  public final static func EnumEnd() -> Int32 {
+    return RadioXL_EnumEnd();
   }
 
   // Every record the framework creates is named after the station, so nothing has to be declared in
@@ -178,7 +185,7 @@ public class RadioXLRecords extends ScriptableTweak {
     TweakDBManager.SetFlat(TDBID.Create(recordName + ".displayName"),
                            ToVariant(RadioXL_StationDisplayName(slot)));
     TweakDBManager.SetFlat(TDBID.Create(recordName + ".icon"), ToVariant(TDBID.Create(iconName)));
-    let position: Int32 = RadioXL_DialPosition(14 + slot);
+    let position: Int32 = RadioXL_DialPosition(RadioXL_SlotEnum(slot));
     TweakDBManager.SetFlat(TDBID.Create(recordName + ".index"), ToVariant(position));
     TweakDBManager.UpdateRecord(recordId);
 
