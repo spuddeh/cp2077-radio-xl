@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Builds each declared station out of the engine's own radio systems.
-// File Version: 0.7.0
+// File Version: 0.8.0
 // Credits: RED4ext by WopsS. AudioXL by DigitalVixen.
 // ======================================================================================
 

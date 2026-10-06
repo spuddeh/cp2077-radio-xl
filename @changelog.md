@@ -12,7 +12,7 @@
   byte-checked; on a mismatch the 14-entry pick stays. Measured: lists of 15 offered all 15, and
   the filter cut one to the 2 stations already playing.
 - Traffic station lists: RadioXL only adds and removes its own stations (#73). `Traffic.reds`
-  `Apply` takes each list as it is now, drops every custom station (`Ours`, all slots), and appends
+  `Apply` takes each list as it is now, drops every custom station (every roster slot), and appends
   the wanted ones; whether a list is shared is re-read from it each time. The saved vanilla copy is
   gone, so Audible Traffic Radios' in-place additions and its Morro Rock spelling fix survive any
   traffic setting change, in either load order.

@@ -1,4 +1,4 @@
-### [Unreleased]
+### [Unreleased - v0.8.0]
 
 - Fix: a car whose radio comes on with no station chosen can now start on any station on its list. Only the first 14 were ever picked, so with many stations some custom ones never came up.
 - Fix: changing the traffic setting no longer undoes another mod's changes to which stations traffic cars play.
