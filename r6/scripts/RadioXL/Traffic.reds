@@ -3,14 +3,15 @@
 // Author: Spuddeh
 // Description: Puts custom stations among the random picks: traffic car radios and world radios
 //              set to start on a random station.
-// File Version: 0.7.0
+// File Version: 0.8.0
 // ======================================================================================
 //
 // A traffic car picks its station from its own vehicle metadata's `matchingStartupRadioStations`
 // (`TrafficVehicleEmitter::PlayRadio`); a station missing from that list is never picked. Most cars
-// share one list of nine vanilla stations, and a few carry a themed one. Every list keeps its
-// vanilla copy here and is rebuilt from it whenever a setting changes, so switching off returns it
-// to vanilla exactly.
+// share one list of nine vanilla stations, and a few carry a themed one. RadioXL only adds and
+// removes its own stations: each change takes the list as it is now, drops every custom station
+// from it and appends the ones the setting wants, so another mod's edits to a list stay in place
+// whichever loads first, and Off leaves the list without RadioXL's stations.
 //
 // The same list feeds the player's car when its radio switches on with no station set: that pick
 // copies only the list's FIRST 14 entries (a 14-slot stack buffer in the receiver's turn-on block),
@@ -30,8 +31,6 @@ public enum RadioXLTrafficMode {
 
 public class RadioXLTrafficList {
   public let vehicle: ref<audioVehicleMetadata>;
-  public let vanilla: array<CName>;
-  public let shared: Bool;
 }
 
 public class RadioXLTraffic extends ScriptableService {
@@ -66,14 +65,11 @@ public class RadioXLTraffic extends ScriptableService {
     for slot in slots {
       if !ArrayContains(streams, slot) { ArrayPush(this.m_files, slot); }
     }
-    let shared: array<CName> = RadioXLTraffic.SharedStations();
     for entry in cooked.entries {
       let vehicle = entry as audioVehicleMetadata;
       if IsDefined(vehicle) && vehicle.hasRadioReceiver && this.Takes(vehicle.matchingStartupRadioStations) {
         let list = new RadioXLTrafficList();
         list.vehicle = vehicle;
-        list.vanilla = vehicle.matchingStartupRadioStations;
-        list.shared = RadioXLTraffic.HoldsAll(list.vanilla, shared);
         ArrayPush(this.m_lists, list);
       }
     }
@@ -114,15 +110,32 @@ public class RadioXLTraffic extends ScriptableService {
     return true;
   }
 
+  // Every custom station's name, whether or not the setting wants it on a list.
+  private final static func Ours() -> array<CName> {
+    let names: array<CName>;
+    let slot: Int32 = 0;
+    while slot < RadioXL_StationCount() {
+      ArrayPush(names, RadioXL_StationName(slot));
+      slot += 1;
+    }
+    return names;
+  }
+
   private func Apply() -> Void {
     let added: array<CName>;
     if !Equals(this.m_mode, RadioXLTrafficMode.Off) {
       for slot in this.Candidates() { ArrayPush(added, RadioXL_StationName(slot)); }
     }
+    let ours: array<CName> = RadioXLTraffic.Ours();
+    let shared: array<CName> = RadioXLTraffic.SharedStations();
     let changed: Int32 = 0;
     for list in this.m_lists {
-      let stations: array<CName> = list.vanilla;
-      if ArraySize(added) > 0 && (list.shared || Equals(this.m_mode, RadioXLTrafficMode.All)) {
+      let stations: array<CName>;
+      for name in list.vehicle.matchingStartupRadioStations {
+        if !ArrayContains(ours, name) { ArrayPush(stations, name); }
+      }
+      let isShared: Bool = RadioXLTraffic.HoldsAll(stations, shared);
+      if ArraySize(added) > 0 && (isShared || Equals(this.m_mode, RadioXLTrafficMode.All)) {
         for name in added {
           if !ArrayContains(stations, name) { ArrayPush(stations, name); }
         }

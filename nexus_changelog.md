@@ -1,5 +1,6 @@
 ### [Unreleased]
 
+- Fix: changing the traffic setting no longer undoes another mod's changes to which stations traffic cars play.
 - New: the "Mute the radio when..." switches are now situations: a call, a scene, a driving scene, a club, a weapons-free area such as your apartment, and a quest blocking the radio. Turning one off keeps the Radioport playing through that situation. Your previous switch settings are carried over to the matching situation.
 - New: switches for combat music, police chase music, someone speaking (the radio is turned down under conversations, calls and the police scanner), Megabuilding H10's music, and an open menu (the inventory, map and hub; the Escape menu still pauses the radio). They act on the car radio and the Radioport.
 - All of these are on by default, which is the game's own behaviour.

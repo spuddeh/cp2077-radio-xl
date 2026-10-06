@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Changed
+- Traffic station lists: RadioXL only adds and removes its own stations (#73). `Traffic.reds`
+  `Apply` takes each list as it is now, drops every custom station (`Ours`, all slots), and appends
+  the wanted ones; whether a list is shared is re-read from it each time. The saved vanilla copy is
+  gone, so Audible Traffic Radios' in-place additions and its Morro Rock spelling fix survive any
+  traffic setting change, in either load order.
 - The "Mute the radio when..." switches are situations (#72). `Restrictions.reds`: each of the 12
   `PocketRadioRestrictions` is held by the situations its live causes belong to (`Holders`, re-read
   from the game state on every `HandleRestriction`, through `RadioXLReapply` on `PocketRadio`), and
