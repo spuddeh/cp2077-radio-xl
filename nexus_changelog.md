@@ -1,5 +1,10 @@
 ### [Unreleased]
 
+- Fix: a custom station no longer picks up other sounds. Custom stations used channels the game also uses for world music, TVs and ambience, so near those you could hear them mixed in, often in one ear. Custom stations now have channels nothing else in the game uses.
+- Fix: the second and twelfth custom stations no longer share the police scanner's and Kurtz's place in the game, where the scanner could be heard in the second one.
+- Up to 101 custom stations.
+- After updating, a radio in the world that was on a custom station can come back on a different one, once: tune it again.
+
 - Fix: a car you take from traffic while it plays a custom station keeps that station. It came up on a random station of the game's, or with the radio off.
 - Fix: a car saved while on a custom station is still on it when the save loads.
 

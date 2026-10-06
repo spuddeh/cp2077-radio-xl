@@ -2,6 +2,46 @@
 
 ## [Unreleased]
 
+### Changed
+- Custom stations broadcast on channels 256 and up (#69). Every broadcast source shares 256
+  channels and the game fills 222 of them: stations (8 to 21, 58 to 71, 228 to 241), TVs (40 to 50,
+  by the TV channel curve), playlists, reflections, and 113 sends whose channel is fixed in
+  `sfx_container`, `vo`, `radio` and `cp_music`; a station's left on 78 carried an ambience send into
+  the Radioport's left ear. `Broadcast.hpp`: `CDPVoiceBroadcaster` (u16 counts at `+4`, buffer
+  pointers at `+0x208`) is replaced by a copy with 1024 of each; `GetInstance` returns it, fourteen
+  `+0x208` displacements become `+0x808`, eight channel bounds become 1024 (`Unregister`'s
+  `(channel - 1) <= 0xfe` included), and `CDPVoiceBroadcastSwapBuffers` jumps to `Swap`. The bank
+  curve loader (`0x1b08bf0`, hash 3699780356) is hooked: a radio channel curve that is exactly
+  (0,0)-(255,255) loads as (0,0)-(1023,1023). `Channels.hpp`: a 3 x 256 table of each internal id's
+  channels (the formula, and three from 256 per custom station), read by stubs that replace the
+  `cvtsi2ss` at fifteen sites in `RadioStation::PlaySong`, `HandleAnnouncementVO`, `Init`,
+  `RadioEmitter::SetBroadcastChannelParam` and the emitter post at `0x219a45c`. When the
+  broadcaster cannot be widened, custom stations keep the formula and the log says so. Measured:
+  Radioport and world radio on 256 to 303, no bleed.
+- Custom stations start at enum 26 (internal id 34), one past Kurtz (#71). `TryGetRadioStationChannel`
+  special-cases `radio_station_police` (23) and `radio_station_kurtz` (33), which custom stations #2
+  and #12 took. Roster slots 14 to 25 hold no station but those two names at 15 and 25 (label keys
+  `Gameplay-Devices-Radio-PoliceStation`, and `NoneStation` for Kurtz, which has none). New natives
+  `RadioXL_SlotEnum`, `RadioXL_EnumSlot`, `RadioXL_EnumEnd`; `Dial.reds`, `API.reds`,
+  `MyStation.reds`, `Deck.reds` and `Traffic.reds` take a custom station's enum from them, and a
+  loop over enum values ends at `RadioXLDial.EnumEnd()`. The vehicle step stub takes separate enum
+  and dial counts. Ceiling: 101 custom stations. Measured: police and Kurtz on their vanilla
+  channels, five custom stations play on slots 26 to 30.
+- Docs: Known Limits says 101 custom stations; the traffic setting no longer says traffic radios are
+  never heard; a new troubleshooting entry says world radios follow the sound effects volume.
+
+### Removed
+- `Channels.reds` and `RadioXL_ReserveChannel`, which reported playlist and reflection channels so a
+  station under 256 avoided them; custom stations no longer broadcast under 256.
+
+### Tools
+- `probe/`: per-channel (left and right) bus meters in `meter_live.txt`, the `bus meter` line and the
+  overlay; `channel set` log lines and `channels_live.txt` from a hook on `audio::SetSoundParameter`
+  for the five broadcast channel parameters.
+- `tools/channel-test.py`: tone stations (a different sine on each side of each) and a recording
+  analyser. `tools/broadcast-sends.py`: every broadcast send in a bank with its fixed channel or the
+  parameter that drives it (Wwise object types 16 and 17).
+
 ### Fixed
 - A car taken from traffic on a custom station came up on a random vanilla station from its own
   list, or with the radio off (#68). `Main.cpp` `PatchRoster` raises three more 14 bounds with the

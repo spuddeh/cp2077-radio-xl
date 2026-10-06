@@ -75,6 +75,10 @@
   the game; this is groundwork for making traffic radios heard.
 - A car taken from traffic keeps the custom station it was playing, and a car saved on a custom
   station loads on it (#68).
+- Custom stations broadcast on channels 256 and up, on a broadcaster widened to 1024 channels, so
+  none shares a channel with the game's stations, TVs, world music or ambience (#69).
+- Custom stations start at enum 26, past the police scanner (23) and Kurtz (33), which keep their
+  own slots; up to 101 custom stations (#71).
 - A station with `addUnlistedFiles` keeps its track list in step with its folder, rewriting
   `station.json` in place (#66); track lengths are cached between launches.
 - A custom track's name and the player's settings for it follow its file, not its position (#65).
@@ -159,8 +163,10 @@
 - Mute news only, leaving the rest of the DJ talk: the announcement graph names its scenes, so a
   filter on `radio_00_news.scene` is possible.
 - Panel translations beyond English (`translations/`).
-- Replace the two roster readers rather than patching their bounds, which lifts the 127-station
-  ceiling. The vehicle step already carries a 32-bit total.
+- Replace the two roster readers rather than patching their bounds, which lifts the 101-custom-station
+  ceiling (127 roster slots, custom stations from 26). The vehicle step already carries a 32-bit total.
+- Settings for combat, wanted level and menus muting the radio (#24, #30), now reachable by editing
+  the loaded Wwise mix in memory; measure first.
 - Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
 - Open enhancement issues: stream song titles (#51), radio processing presets (#52), a shared ident
   pool (#56), an all-news station (#57), a rotating song subset (#58), a segment-started event (#61).

@@ -121,7 +121,7 @@ One section per station, in dial order.
 [*][b]Its songs.[/b] One row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one. A setting follows the song's file: adding, removing or reordering a station's songs leaves it in place, and a song whose file is renamed starts On again.[/*]
 The top of the tab says whether Streamer Mode is on right now, and while it is, every song being skipped for it is marked in its own row. If every song on a station is set to Off, the station plays as normal, and the next and previous keys step through them.
 Above the stations, three settings decide where a station picked at random can come from:
-[*][b]Custom stations on traffic cars.[/b] Which passing cars can be tuned to a custom station: [b]Most cars[/b] (the default), [b]Every car[/b] or [b]Off[/b]. Most cars are the ones that play the same nine of the game's stations. A few cars are set to a genre of their own and keep it; Every car adds custom stations to those too. Police cars keep the scanner either way. A passing car's radio is tuned but not heard in the game, and this setting does not change that: it decides which stations those radios are on.[/*]
+[*][b]Custom stations on traffic cars.[/b] Which passing cars can be tuned to a custom station: [b]Most cars[/b] (the default), [b]Every car[/b] or [b]Off[/b]. Most cars are the ones that play the same nine of the game's stations. A few cars are set to a genre of their own and keep it; Every car adds custom stations to those too. Police cars keep the scanner either way. The game keeps a passing car's radio quiet; this setting decides which stations those radios are on, so with a mod that makes traffic radios heard, you hear custom stations from passing cars.[/*]
 [*][b]World radios can start on a custom station.[/b] On by default. Radios and jukeboxes around the city that start on a random station can land on a custom one. A radio picks once, the first time it is set up, and keeps that station in your save, so one already set up keeps the station it has. A jukebox picks again each time it loads.[/*]
 [*][b]Include stations that stream.[/b] Off by default. On, traffic cars and world radios can pick a station that streams, and while one plays it, that station's connection stays open.[/*]
 
@@ -136,6 +136,11 @@ More is planned here.
 [color=#e06666][size=6][b]- A song cuts off early or is followed by silence -[/b][/size][/color]
 
 RadioXL reads each song's length once and remembers it in [i]red4ext\plugins\RadioXL\cache.json[/i] (under MO2, in Overwrite), reading a song again only when its file's size or date changes. A file swapped for another with the same size and date keeps the old length. Delete cache.json and launch again: every song is read afresh. Deleting it is always safe; it only makes the next launch read every file.
+
+
+[color=#e06666][size=6][b]- A radio in the world is silent -[/b][/size][/color]
+
+A radio placed in the world follows the game's sound effects volume, not the music volume. With sound effects turned down they go quiet while the Radioport still plays. This is the game's own mix and the same for its stations.
 
 
 [color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
@@ -154,8 +159,8 @@ If a station appears but sorts oddly against another one, check its frequency: t
 
 [list]
 [*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
-[*]Up to 127 stations.[/*]
-[*]A radio placed in the world, your apartment's included, saves the station it is on by its place in the station list. Add or remove a station mod and a radio that was on a custom station can come back on a different one: tune it again. Car radios and the Radioport remember a station by name and are not affected.[/*]
+[*]Up to 101 custom stations.[/*]
+[*]A radio placed in the world, your apartment's included, saves the station it is on by its place in the station list. Add or remove a station mod, or update RadioXL, and a radio that was on a custom station can come back on a different one: tune it again. Car radios and the Radioport remember a station by name and are not affected.[/*]
 [*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
 [/list]
 
