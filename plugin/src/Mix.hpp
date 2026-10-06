@@ -10,7 +10,7 @@
 //   police music  - Music_Systemic_Police, the same duck
 //   voices        - five side-chain curves lower the player radio while anyone speaks
 //   megabuilding  - H10's building music turns the Radioport down through rms_loudness_pocket_radio_mb
-//   menus         - a menu state lowers and muffles the player radio, and a pause muffles it
+//   menus         - a menu or the pause screen pauses the player radio, and its states lower and muffle it
 // A duck is switched by writing its entry's volume on the ducking bus; a curve by loading it again
 // through the bank's own curve loader, flat or as shipped. Every Wwise address is reached from a
 // RED4ext hash and its bytes are checked; a write happens only under Wwise's global lock, tried, never
@@ -58,6 +58,13 @@ constexpr uint8_t kCritPrologue[] = {0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0
 constexpr size_t kTableStride = 0x58;
 constexpr int kNodes = 0;
 constexpr int kBuses = 1;
+constexpr int kActions = 3;  // the indexed pointer is the action itself
+
+// sys_sfx_and_vo_pause holds one pause per bus; this one pauses the player radio's top bus while a
+// menu or the pause screen is up. An action keeps its target at +0x30, its type at +0x34 (0x0202,
+// pause one object) and the target-is-a-bus flag in bit 0x40 of +0x36, and looks the target up each
+// time it runs: aimed at id 0 it finds nothing and pauses nothing. The matching resume is left alone.
+constexpr uint32_t kRadioPause = 592197528;
 
 constexpr uint32_t kPlayerRadioBus = 3776664628;  // Music_Diagetic_Radios_Vehicle_Player_DVR
 
@@ -175,7 +182,7 @@ inline T Read(uintptr_t aAt)
 }
 
 // The object with this id in one of g_pIndex's tables, or 0.
-inline uintptr_t Find(int aTable, uint32_t aId)
+inline uintptr_t Find(int aTable, uint32_t aId, uintptr_t aOffset = 0x10)
 {
     const uintptr_t index = g_indexVar ? *g_indexVar : 0;
     if (!index)
@@ -193,7 +200,7 @@ inline uintptr_t Find(int aTable, uint32_t aId)
     {
         if (Read<uint32_t>(node + 0x10) == aId)
         {
-            return node - 0x10;
+            return node - aOffset;
         }
     }
     return 0;
@@ -292,6 +299,28 @@ inline bool ApplyDuck(const Duck& aDuck, bool aMute)
         return true;
     }
     Log("no duck on the player radio from " + std::to_string(aDuck.bus) + " - left alone");
+    return true;
+}
+
+inline bool ApplyPause(bool aMute)
+{
+    const uintptr_t action = Find(kActions, kRadioPause, 0);
+    if (!action)
+    {
+        return false;
+    }
+    const auto target = Read<uint32_t>(action + 0x30);
+    if (Read<uint16_t>(action + 0x34) != 0x0202 || !(Read<uint8_t>(action + 0x36) & 0x40) ||
+        (target != kPlayerRadioTop && target != 0))
+    {
+        Log("the menu pause is not the game's - left alone");
+        return true;
+    }
+    const uint32_t want = aMute ? kPlayerRadioTop : 0;
+    if (target != want)
+    {
+        *reinterpret_cast<uint32_t*>(action + 0x30) = want;
+    }
     return true;
 }
 
@@ -421,6 +450,7 @@ inline void Tick()
     {
         done = ApplyState(st, g_mutes[kMenus].load()) && done;
     }
+    done = ApplyPause(g_mutes[kMenus].load()) && done;
     LeaveCriticalSection(g_lock);
     if (!done)
     {
