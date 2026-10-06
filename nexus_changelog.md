@@ -1,5 +1,9 @@
 ### [Unreleased]
 
+- New: the "Mute the radio when..." switches are now situations: a call, a scene, a driving scene, a club, a weapons-free area such as your apartment, and a quest blocking the radio. Turning one off keeps the Radioport playing through that situation. Your previous switch settings are carried over to the matching situation.
+- New: switches for combat music, police chase music, someone speaking (the radio is turned down under conversations, calls and the police scanner), Megabuilding H10's music, and an open menu (the inventory, map and hub; the Escape menu still pauses the radio). They act on the car radio and the Radioport.
+- All of these are on by default, which is the game's own behaviour.
+
 - Fix: a custom station no longer picks up other sounds. Custom stations used channels the game also uses for world music, TVs and ambience, so near those you could hear them mixed in, often in one ear. Custom stations now have channels nothing else in the game uses.
 - Fix: the second and twelfth custom stations no longer share the police scanner's and Kurtz's place in the game, where the scanner could be heard in the second one.
 - Up to 101 custom stations.

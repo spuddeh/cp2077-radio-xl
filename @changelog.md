@@ -3,6 +3,40 @@
 ## [Unreleased]
 
 ### Changed
+- The "Mute the radio when..." switches are situations (#72). `Restrictions.reds`: each of the 12
+  `PocketRadioRestrictions` is held by the situations its live causes belong to (`Holders`, re-read
+  from the game state on every `HandleRestriction`, through `RadioXLReapply` on `PocketRadio`), and
+  lifts only when every holder is switched off. Six situations: calls (`PhoneCall`, its fast-travel
+  block, `PhoneNoCalling`/`Texting`), scenes (scene tier 2+, scene-forced empty hands, the skip
+  prompt), driving scenes (`VehicleScene*`, `VehicleBlockPocketRadio`, and the tier, hands and skip
+  prompt while one holds), clubs (`InDaClub`, the `impulse` lock, and the same while `InDaClub`
+  holds), weapons-free areas (empty hands from a safe zone or `NoCombat`), quests (other quest locks,
+  a quest's fast-travel block, the `ForceEmptyHands` fact). Quest locks are tracked by source;
+  `ALL_SOURCES` clears them. `Settings.reds` `MigrateMuteKeys` moves the twelve old keys to the
+  situation each was named for and drops the rest. Removed the `Companions` table and the two
+  duplicate wraps of `OnStatusEffectApplied` / `HandleRestriction` (the inner one recorded the
+  switched value as the game's). `RadioXLAPI.SilencedBy` and `RadioXL/Silenced` report what the
+  Radioport is told. Measured: apartment, club and scene switches each lift and restore in game.
+- Five mix switches in the plugin (`Mix.hpp`, `RadioXL_SetMixSwitch`), all on by default (#72, #24,
+  #30). Every Wwise address is reached from a RED4ext hash (the curve loader, 653209842 for `g_pIndex`
+  and the `g_csMain` lock, 3455127956 for `RadioSystem::Update`) with its bytes checked; writes run
+  under a tried `g_csMain` and only over the expected value.
+  - Combat and police music: the duck entry on `Music_Systemic_Combat` / `_Police` for the player
+    radio bus is written 0 dB / -96 dB (a data write; `AddDuck` has no hashed caller). Applies from
+    the next duck.
+  - Someone is speaking: `vo_dialog_active` (volume, LPF, HPF) on 3776664628 and
+    `rms_loudness_VO_Gameplay` / `_VO_Dialog_Important` on 4067771226, matched by curve id as the
+    hooked loader stores them and rewritten through `CAkConversionTable::Set` (reached through the
+    loader's own call at +0x126), flat or as shipped.
+  - Megabuilding H10's music: `radio_pocket`'s curve on `rms_loudness_pocket_radio_mb` the same way.
+  - A menu is open: `st_pause`'s -108 dB on the radio actor mixer 924789914 (the cause of the menu
+    silence), the bus low-pass and `st_menu_on` written to 0; pause actions 592197528 and 890107075
+    (`sys_sfx_and_vo_pause` on the player radio bus and `Music_Diagetic`) aimed at id 0;
+    `RadioSystem::Update` hooked to run with `GSoundSystem+0x1e0` cleared. Measured: the radio
+    plays in the inventory, map and hub while other world sound pauses; the Escape menu still
+    silences it.
+- `Causes.reds` (development logging): `cause +/-` lines per restriction cause, and the source
+  holding `ForceEmptyHands`.
 - Custom stations broadcast on channels 256 and up (#69). Every broadcast source shares 256
   channels and the game fills 222 of them: stations (8 to 21, 58 to 71, 228 to 241), TVs (40 to 50,
   by the TV channel curve), playlists, reflections, and 113 sends whose channel is fixed in

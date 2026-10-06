@@ -129,8 +129,11 @@ Above the stations, three settings decide where a station picked at random can c
 [*][b]Mute station idents.[/b] The station's own spot between songs: its name, its frequency and whatever its host says over them. Each station keeps its own, so this is what silences Pacific Dreams' host. Applies from the next song.[/*]
 [*][b]Mute DJ announcements.[/b] Everything that takes a slot between your songs: Stanley's news bulletins, Maximum Mike's song intros and Growl FM's Ash. Kurt Hansen is left alone: he broadcasts over Dogtown rather than through your radio. A station's own spot is the setting above, not this one, and songs are never affected.[/*]
 Both are off by default. Announcements stop straight away and idents from the next song, and switching either back puts the sound in place exactly as it was.
-[*][b]Mute the radio when...[/b] Twelve switches, all on by default, and they apply to every station on the Radioport, the game's own included. Each is a situation in which the game silences the radio: a scene, a phone call, a club, fast travel and so on. On, the Radioport goes quiet there exactly as the game does. Off, it keeps playing through it. A switch stands for a situation: turning off the holo call switch also lifts the locks a call brings with it, and the same for a scene and a vehicle scene.[/*]
-More is planned here.
+[*][b]Mute the radio when...[/b] Eleven switches, all on by default, which is exactly what the game does. Turn one off and the radio keeps playing through that situation, on every station, the game's own included.[/*]
+[*]On the Radioport: [b]a call[/b], [b]a scene[/b] (conversations, cutscenes, sleeping), [b]a driving scene[/b], [b]a club[/b], [b]a weapons-free area[/b] such as your apartments, and [b]a quest blocking the radio[/b]. When two situations happen at once, the radio plays only when both are off. V's apartment in Megabuilding H10 is staged as a scene, so A scene is playing covers it.[/*]
+[*]In the car and on the Radioport: [b]combat music[/b], [b]police chase music[/b], [b]someone speaking[/b] (conversations, calls and the police scanner turn the radio down), and [b]an open menu[/b] (the inventory, map and hub). Combat and police changed during a fight or chase apply from the next one.[/*]
+[*]On the Radioport only: [b]Megabuilding H10's music[/b], which turns the Radioport down in H10's halls and lifts.[/*]
+[*]The Escape menu still pauses the radio.[/*]
 
 
 [color=#e06666][size=6][b]- A song cuts off early or is followed by silence -[/b][/size][/color]

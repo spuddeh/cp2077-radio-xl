@@ -20,11 +20,12 @@
   Nothing runs on a script timer, so a station picked from an open selector resumes too. Verified
   in game: a tune-back after a minute away landed on the next song as the schedule said, and swaps
   from an open selector resumed every time.
-- "Mute radio when..." - twelve switches in the Redscript Configuration Framework panel, one per
-  `PocketRadioRestrictions` member, all on by default, applying to every station on the Radioport.
-  A switch is a situation: off also lifts the companions its situation raises (a call, a vehicle
-  scene and a scene are measured). Verified in game: a call and a Delamain ride play through with
-  their switch off. RCF is optional.
+- "Mute the radio when..." - eleven switches in the Redscript Configuration Framework panel, all on
+  by default (= the game), acting on every station. Six situations decide the Radioport's
+  restrictions by cause (calls, scenes, driving scenes, clubs, weapons-free areas, quests); five
+  mix switches in the plugin lift Wwise rules (combat music, police music, voices, H10's building
+  music, menus). Verified in game: apartment, club, scene, combat, wanted star, voices, H10 and the
+  inventory, map and hub. RCF is optional.
 - `RadioXLAPI.RegisterStation(name)`: a RadioXL 0.1.0 station's script compiles and is logged; the
   station is not created (#10).
 - The script API (#39): `RadioXLAPI` reads, deck-backed acts and ten events, reachable from CET as
@@ -165,8 +166,7 @@
 - Panel translations beyond English (`translations/`).
 - Replace the two roster readers rather than patching their bounds, which lifts the 101-custom-station
   ceiling (127 roster slots, custom stations from 26). The vehicle step already carries a 32-bit total.
-- Settings for combat, wanted level and menus muting the radio (#24, #30), now reachable by editing
-  the loaded Wwise mix in memory; measure first.
+- The Escape menu still silences the radio: it adds a pause-all action and direct voice pauses.
 - Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
 - Open enhancement issues: stream song titles (#51), radio processing presets (#52), a shared ident
   pool (#56), an all-news station (#57), a rotating song subset (#58), a segment-started event (#61).
