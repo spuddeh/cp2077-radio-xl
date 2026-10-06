@@ -48,19 +48,13 @@ public class RadioXLConfig extends ScriptableSystem {
       .Get(n"RadioXL.RadioXLConfig") as RadioXLConfig;
   }
 
-  // One per PocketRadioRestrictions member, in enum order.
-  public let muteSceneTier: Bool = true;
-  public let muteUpperBodyState: Bool = true;
-  public let muteQuestContentLock: Bool = true;
-  public let muteInDaClub: Bool = true;
-  public let muteBlockFastTravel: Bool = true;
-  public let muteVehicleScene: Bool = true;
-  public let muteVehicleBlockPocketRadio: Bool = true;
-  public let mutePhoneCall: Bool = true;
-  public let mutePhoneNoTexting: Bool = true;
-  public let mutePhoneNoCalling: Bool = true;
-  public let muteFastForward: Bool = true;
-  public let muteFastForwardHintActive: Bool = true;
+  // One per RadioXLSituation member, in enum order.
+  public let muteCalls: Bool = true;
+  public let muteScenes: Bool = true;
+  public let muteDrivingScenes: Bool = true;
+  public let muteClubs: Bool = true;
+  public let muteSafeAreas: Bool = true;
+  public let muteQuests: Bool = true;
 
   // The dropdown's option index: 0 most cars, 1 every car, 2 off.
   public let trafficStations: Int32 = 0;
@@ -80,20 +74,16 @@ public class RadioXLConfig extends ScriptableSystem {
     }
   }
 
-  // Whether the game's own silence for this restriction is kept.
-  public func MutesOn(restriction: Int32) -> Bool {
-    if restriction == EnumInt(PocketRadioRestrictions.SceneTier) { return this.muteSceneTier; }
-    if restriction == EnumInt(PocketRadioRestrictions.UpperBodyState) { return this.muteUpperBodyState; }
-    if restriction == EnumInt(PocketRadioRestrictions.QuestContentLock) { return this.muteQuestContentLock; }
-    if restriction == EnumInt(PocketRadioRestrictions.InDaClub) { return this.muteInDaClub; }
-    if restriction == EnumInt(PocketRadioRestrictions.BlockFastTravel) { return this.muteBlockFastTravel; }
-    if restriction == EnumInt(PocketRadioRestrictions.VehicleScene) { return this.muteVehicleScene; }
-    if restriction == EnumInt(PocketRadioRestrictions.VehicleBlockPocketRadio) { return this.muteVehicleBlockPocketRadio; }
-    if restriction == EnumInt(PocketRadioRestrictions.PhoneCall) { return this.mutePhoneCall; }
-    if restriction == EnumInt(PocketRadioRestrictions.PhoneNoTexting) { return this.mutePhoneNoTexting; }
-    if restriction == EnumInt(PocketRadioRestrictions.PhoneNoCalling) { return this.mutePhoneNoCalling; }
-    if restriction == EnumInt(PocketRadioRestrictions.FastForward) { return this.muteFastForward; }
-    if restriction == EnumInt(PocketRadioRestrictions.FastForwardHintActive) { return this.muteFastForwardHintActive; }
+  // Whether the game's own silence in this situation is kept.
+  public func Mutes(situation: RadioXLSituation) -> Bool {
+    switch situation {
+      case RadioXLSituation.Calls: return this.muteCalls;
+      case RadioXLSituation.Scenes: return this.muteScenes;
+      case RadioXLSituation.DrivingScenes: return this.muteDrivingScenes;
+      case RadioXLSituation.Clubs: return this.muteClubs;
+      case RadioXLSituation.SafeAreas: return this.muteSafeAreas;
+      case RadioXLSituation.Quests: return this.muteQuests;
+    }
     return true;
   }
 
@@ -110,6 +100,7 @@ public class RadioXLConfig extends ScriptableSystem {
     this.m_provider = new RadioXLConfigProvider();
     this.m_provider.Init(this);
     RadioXLConfig.MigrateSongKeys(gi);
+    RadioXLConfig.MigrateMuteKeys(gi);
     this.m_provider.BeginRestore();
     DVRCF_Store.RestoreInto(gi, "RadioXL", this.m_provider, this.m_provider.BuildSchema());
     this.m_provider.EndRestore();
@@ -148,6 +139,44 @@ public class RadioXLConfig extends ScriptableSystem {
     if moved > 0 {
       DVRCF_Store.WriteModObject(gi, "RadioXL", obj);
       RadioXLLog(s"moved \(moved) song setting(s) from position-based names to file-based ones");
+    }
+  }
+
+  // The situation switches replace one switch per restriction. Each situation takes the value of
+  // the restriction it is named for, and the twelve old keys are dropped; a key already under the
+  // new name wins.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private static func MigrateMuteKeys(gi: GameInstance) -> Void {
+    let obj = DVRCF_Store.LoadModObject(gi, "RadioXL");
+    if !IsDefined(obj) { return; }
+    let moves: array<String> = ["mutePhoneCall", "muteCalls", "muteSceneTier", "muteScenes",
+                                "muteVehicleScene", "muteDrivingScenes", "muteInDaClub", "muteClubs",
+                                "muteUpperBodyState", "muteSafeAreas", "muteQuestContentLock", "muteQuests"];
+    let dropped: array<String> = ["muteBlockFastTravel", "muteVehicleBlockPocketRadio", "mutePhoneNoTexting",
+                                  "mutePhoneNoCalling", "muteFastForward", "muteFastForwardHintActive"];
+    let moved: Int32 = 0;
+    let i: Int32 = 0;
+    while i < ArraySize(moves) {
+      let legacy: String = moves[i];
+      let current: String = moves[i + 1];
+      if obj.Contains(legacy) {
+        if !obj.Contains(current) {
+          obj.PutBool(current, obj.Bool(legacy, true));
+        }
+        obj.Drop(legacy);
+        moved += 1;
+      }
+      i += 2;
+    }
+    for key in dropped {
+      if obj.Contains(key) {
+        obj.Drop(key);
+        moved += 1;
+      }
+    }
+    if moved > 0 {
+      DVRCF_Store.WriteModObject(gi, "RadioXL", obj);
+      RadioXLLog(s"moved \(moved) mute setting(s) to the situation switches");
     }
   }
 
@@ -284,30 +313,18 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Label("RadioXL.labMuteWhen1");
     b.Label("RadioXL.labMuteWhen2");
     b.Label("RadioXL.labMuteWhen3");
-    b.Toggle("muteSceneTier", "RadioXL.muteSceneTier");
-    b.Tip("RadioXL.tipMuteSceneTier");
-    b.Toggle("mutePhoneCall", "RadioXL.mutePhoneCall");
-    b.Tip("RadioXL.tipMutePhoneCall");
-    b.Toggle("muteQuestContentLock", "RadioXL.muteQuestContentLock");
-    b.Tip("RadioXL.tipMuteQuestContentLock");
-    b.Toggle("muteInDaClub", "RadioXL.muteInDaClub");
-    b.Tip("RadioXL.tipMuteInDaClub");
-    b.Toggle("muteVehicleScene", "RadioXL.muteVehicleScene");
-    b.Tip("RadioXL.tipMuteVehicleScene");
-    b.Toggle("muteVehicleBlockPocketRadio", "RadioXL.muteVehicleBlockPocketRadio");
-    b.Tip("RadioXL.tipMuteVehicleBlockPocketRadio");
-    b.Toggle("muteUpperBodyState", "RadioXL.muteUpperBodyState");
-    b.Tip("RadioXL.tipMuteUpperBodyState");
-    b.Toggle("muteBlockFastTravel", "RadioXL.muteBlockFastTravel");
-    b.Tip("RadioXL.tipMuteBlockFastTravel");
-    b.Toggle("mutePhoneNoTexting", "RadioXL.mutePhoneNoTexting");
-    b.Tip("RadioXL.tipMutePhoneNoTexting");
-    b.Toggle("mutePhoneNoCalling", "RadioXL.mutePhoneNoCalling");
-    b.Tip("RadioXL.tipMutePhoneNoCalling");
-    b.Toggle("muteFastForward", "RadioXL.muteFastForward");
-    b.Tip("RadioXL.tipMuteFastForward");
-    b.Toggle("muteFastForwardHintActive", "RadioXL.muteFastForwardHintActive");
-    b.Tip("RadioXL.tipMuteFastForwardHintActive");
+    b.Toggle("muteCalls", "RadioXL.muteCalls");
+    b.Tip("RadioXL.tipMuteCalls");
+    b.Toggle("muteScenes", "RadioXL.muteScenes");
+    b.Tip("RadioXL.tipMuteScenes");
+    b.Toggle("muteDrivingScenes", "RadioXL.muteDrivingScenes");
+    b.Tip("RadioXL.tipMuteDrivingScenes");
+    b.Toggle("muteClubs", "RadioXL.muteClubs");
+    b.Tip("RadioXL.tipMuteClubs");
+    b.Toggle("muteSafeAreas", "RadioXL.muteSafeAreas");
+    b.Tip("RadioXL.tipMuteSafeAreas");
+    b.Toggle("muteQuests", "RadioXL.muteQuests");
+    b.Tip("RadioXL.tipMuteQuests");
     b.Label("RadioXL.labMuteCombat");
 
     return b.Build();
@@ -524,18 +541,12 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
   public func GetBool(key: String) -> Bool {
     let c: wref<RadioXLConfig> = this.m_cfg;
     if IsDefined(c) {
-      if Equals(key, "muteSceneTier") { return c.muteSceneTier; }
-      if Equals(key, "muteUpperBodyState") { return c.muteUpperBodyState; }
-      if Equals(key, "muteQuestContentLock") { return c.muteQuestContentLock; }
-      if Equals(key, "muteInDaClub") { return c.muteInDaClub; }
-      if Equals(key, "muteBlockFastTravel") { return c.muteBlockFastTravel; }
-      if Equals(key, "muteVehicleScene") { return c.muteVehicleScene; }
-      if Equals(key, "muteVehicleBlockPocketRadio") { return c.muteVehicleBlockPocketRadio; }
-      if Equals(key, "mutePhoneCall") { return c.mutePhoneCall; }
-      if Equals(key, "mutePhoneNoTexting") { return c.mutePhoneNoTexting; }
-      if Equals(key, "mutePhoneNoCalling") { return c.mutePhoneNoCalling; }
-      if Equals(key, "muteFastForward") { return c.muteFastForward; }
-      if Equals(key, "muteFastForwardHintActive") { return c.muteFastForwardHintActive; }
+      if Equals(key, "muteCalls") { return c.muteCalls; }
+      if Equals(key, "muteScenes") { return c.muteScenes; }
+      if Equals(key, "muteDrivingScenes") { return c.muteDrivingScenes; }
+      if Equals(key, "muteClubs") { return c.muteClubs; }
+      if Equals(key, "muteSafeAreas") { return c.muteSafeAreas; }
+      if Equals(key, "muteQuests") { return c.muteQuests; }
       if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
       if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
     }
@@ -573,18 +584,12 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       return;
     }
     if IsDefined(c) && StrBeginsWith(key, "mute") && !Equals(key, RadioXL_KeyMuteIdents()) && !Equals(key, RadioXL_KeyMuteNews()) {
-      if Equals(key, "muteSceneTier") { c.muteSceneTier = value; }
-      if Equals(key, "muteUpperBodyState") { c.muteUpperBodyState = value; }
-      if Equals(key, "muteQuestContentLock") { c.muteQuestContentLock = value; }
-      if Equals(key, "muteInDaClub") { c.muteInDaClub = value; }
-      if Equals(key, "muteBlockFastTravel") { c.muteBlockFastTravel = value; }
-      if Equals(key, "muteVehicleScene") { c.muteVehicleScene = value; }
-      if Equals(key, "muteVehicleBlockPocketRadio") { c.muteVehicleBlockPocketRadio = value; }
-      if Equals(key, "mutePhoneCall") { c.mutePhoneCall = value; }
-      if Equals(key, "mutePhoneNoTexting") { c.mutePhoneNoTexting = value; }
-      if Equals(key, "mutePhoneNoCalling") { c.mutePhoneNoCalling = value; }
-      if Equals(key, "muteFastForward") { c.muteFastForward = value; }
-      if Equals(key, "muteFastForwardHintActive") { c.muteFastForwardHintActive = value; }
+      if Equals(key, "muteCalls") { c.muteCalls = value; }
+      if Equals(key, "muteScenes") { c.muteScenes = value; }
+      if Equals(key, "muteDrivingScenes") { c.muteDrivingScenes = value; }
+      if Equals(key, "muteClubs") { c.muteClubs = value; }
+      if Equals(key, "muteSafeAreas") { c.muteSafeAreas = value; }
+      if Equals(key, "muteQuests") { c.muteQuests = value; }
       // A switch changed while a restriction is in force takes effect now, not at the next scene.
       RadioXLRestrictions.Refresh();
       return;

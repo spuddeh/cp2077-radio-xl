@@ -89,7 +89,7 @@ returned `CName` reads as text through `.value`.
 | `MyStation()` | `CName`, `n"None"` when unset |
 | `IsStationSkipped(station)` | `Bool`, whether the station keys step over it |
 | `IdentsMuted()`, `NewsMuted()` | `Bool` |
-| `SilencedBy()` | `array<CName>`, the "Mute the radio when..." situations silencing the Radioport now, such as `PhoneCall` |
+| `SilencedBy()` | `array<CName>`, the restrictions silencing the Radioport now, by `PocketRadioRestrictions` member name such as `PhoneCall`. A restriction held only by situations the player switched off is not listed |
 
 ### What is playing
 

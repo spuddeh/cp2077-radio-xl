@@ -2,21 +2,42 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Keeps the Radioport playing through a situation the player chose not to mute in.
-// File Version: 0.7.0
+// File Version: 0.8.0
 // ======================================================================================
 //
-// The game silences the pocket radio through `PocketRadio.HandleRestriction`: each restriction is
-// recorded, and while any is set the radio is turned off and every tune request is ignored. A
-// custom station is a real station, so it is silenced the same way. **A switch that is off lifts
-// that one restriction for every station on the Radioport**, the game's own included: the world's
-// own value is recorded, and the pocket radio is handed the switched one.
+// The game silences the pocket radio through `PocketRadio.HandleRestriction`: twelve restrictions,
+// and while any is set the radio is off and every tune request is ignored. A situation raises
+// several restrictions at once, and one restriction is raised by several situations, so a switch
+// is a SITUATION: phone calls, scenes, driving scenes, clubs, safe areas and quests.
+//
+// Each restriction the game reports is held by one or more situations, read from the live game
+// state each time anything changes (`Holders`). **A restriction is lifted only when every
+// situation holding it is switched off**, so a scene inside a club stays silent until both
+// switches are off. A restriction no situation accounts for stays as the game set it.
+//
+// A scene tier, the forced empty hands of a scene and the skip prompt belong to whatever they
+// happen inside: a club while `InDaClub` holds, a driving scene while a `VehicleScene` effect
+// holds, otherwise a scene.
 
 module RadioXL
+
+public enum RadioXLSituation {
+  Calls = 0,
+  Scenes = 1,
+  DrivingScenes = 2,
+  Clubs = 3,
+  SafeAreas = 4,
+  Quests = 5
+}
 
 public class RadioXLRestrictions extends ScriptableSystem {
 
   // The value the game last reported for each restriction, before any switch was applied.
   private let m_actual: array<Bool>;
+  // What the Silenced event last reported for each restriction.
+  private let m_reported: array<Bool>;
+  // The quest content locks in force, by source. The game keeps one flag for all of them.
+  private let m_locks: array<CName>;
 
   public static func Get() -> ref<RadioXLRestrictions> {
     return GameInstance.GetScriptableSystemsContainer(GetGameInstance())
@@ -27,18 +48,14 @@ public class RadioXLRestrictions extends ScriptableSystem {
     let i: Int32 = 0;
     while i < EnumInt(PocketRadioRestrictions.PocketRadioRestrictionCount) {
       ArrayPush(this.m_actual, false);
+      ArrayPush(this.m_reported, false);
       i += 1;
     }
   }
 
   public func Record(restriction: Int32, restricted: Bool) -> Void {
     if restriction >= 0 && restriction < ArraySize(this.m_actual) {
-      let changed: Bool = NotEquals(restricted, this.m_actual[restriction]);
       this.m_actual[restriction] = restricted;
-      let cfg = RadioXLConfig.Get();
-      if changed && IsDefined(cfg) && cfg.MutesOn(restriction) {
-        RadioXLEvents.Silenced(restriction, restricted);
-      }
     }
   }
 
@@ -46,160 +63,202 @@ public class RadioXLRestrictions extends ScriptableSystem {
     return restriction >= 0 && restriction < ArraySize(this.m_actual) && this.m_actual[restriction];
   }
 
-  // The value the pocket radio is told, for the station it has selected.
-  // **A switch is a situation, and a situation raises more than one restriction.** Measured:
-  //   a holo call     raises BlockFastTravel and QuestContentLock beside PhoneCall
-  //   a vehicle scene raises PhoneNoCalling and UpperBodyState beside VehicleScene, and the skip
-  //                   prompt flickers through the ride
-  //   a scene         raises UpperBodyState beside SceneTier, and the skip prompt flickers through
-  //                   every line; entering a club is a scene at the door and nothing more
-  // Lifting the situation's own restriction alone leaves the radio silenced by its companions, so
-  // while a situation is up and its switch is off, its companions are lifted with it. A companion
-  // raised on its own, by a quest, still mutes as its own switch says. Situations not yet measured
-  // have no companions here and their switch lifts only the restriction it names.
-  public static func Companions(situation: Int32) -> array<Int32> {
-    if situation == EnumInt(PocketRadioRestrictions.PhoneCall) {
-      return [EnumInt(PocketRadioRestrictions.BlockFastTravel), EnumInt(PocketRadioRestrictions.QuestContentLock)];
-    }
-    if situation == EnumInt(PocketRadioRestrictions.VehicleScene) {
-      return [EnumInt(PocketRadioRestrictions.PhoneNoCalling), EnumInt(PocketRadioRestrictions.UpperBodyState),
-              EnumInt(PocketRadioRestrictions.FastForwardHintActive), EnumInt(PocketRadioRestrictions.FastForward)];
-    }
-    if situation == EnumInt(PocketRadioRestrictions.SceneTier) {
-      return [EnumInt(PocketRadioRestrictions.UpperBodyState),
-              EnumInt(PocketRadioRestrictions.FastForwardHintActive), EnumInt(PocketRadioRestrictions.FastForward)];
-    }
-    let none: array<Int32>;
-    return none;
+  // `holo_interrupt` and `__phonecall__` never reach the restriction (the game's listener drops
+  // them), and `ALL_SOURCES` lifts every lock at once.
+  public func LockOn(source: CName) -> Void {
+    if Equals(source, n"holo_interrupt") || Equals(source, n"__phonecall__") { return; }
+    if !ArrayContains(this.m_locks, source) { ArrayPush(this.m_locks, source); }
   }
 
-  public static func IsCompanionOfLifted(restriction: Int32) -> Bool {
-    let cfg = RadioXLConfig.Get();
-    let state = RadioXLRestrictions.Get();
-    if !IsDefined(cfg) || !IsDefined(state) { return false; }
-    let situations: array<Int32> = [EnumInt(PocketRadioRestrictions.PhoneCall), EnumInt(PocketRadioRestrictions.VehicleScene),
-                                    EnumInt(PocketRadioRestrictions.SceneTier)];
-    let i: Int32 = 0;
-    while i < ArraySize(situations) {
-      let s: Int32 = situations[i];
-      let companions: array<Int32> = RadioXLRestrictions.Companions(s);
-      if state.Actual(s) && !cfg.MutesOn(s) && ArrayContains(companions, restriction) {
-        return true;
+  public func LockOff(source: CName) -> Void {
+    if Equals(source, n"ALL_SOURCES") {
+      ArrayClear(this.m_locks);
+      return;
+    }
+    ArrayRemove(this.m_locks, source);
+  }
+
+  // Emits RadioXL/Silenced when what the Radioport is told for a restriction changes.
+  public func Report(restriction: Int32, silenced: Bool) -> Void {
+    if restriction < 0 || restriction >= ArraySize(this.m_reported) { return; }
+    if NotEquals(this.m_reported[restriction], silenced) {
+      this.m_reported[restriction] = silenced;
+      RadioXLEvents.Silenced(restriction, silenced);
+    }
+  }
+
+  // --- which situations hold a restriction --------------------------------------------------------
+
+  private static func HasTag(player: ref<PlayerPuppet>, tag: CName) -> Bool {
+    return StatusEffectSystem.ObjectHasStatusEffectWithTag(player, tag);
+  }
+
+  private static func SceneTier(player: ref<PlayerPuppet>) -> Int32 {
+    return player.GetPlayerStateMachineBlackboard().GetInt(GetAllBlackboardDefs().PlayerStateMachine.SceneTier);
+  }
+
+  // A scene tier, empty hands from a scene and the skip prompt belong to the situation around them.
+  private static func Context(player: ref<PlayerPuppet>) -> RadioXLSituation {
+    if RadioXLRestrictions.HasTag(player, n"InDaClub") { return RadioXLSituation.Clubs; }
+    if RadioXLRestrictions.HasTag(player, n"VehicleScene") { return RadioXLSituation.DrivingScenes; }
+    return RadioXLSituation.Scenes;
+  }
+
+  private static func Add(out list: array<RadioXLSituation>, s: RadioXLSituation) -> Void {
+    if !ArrayContains(list, s) { ArrayPush(list, s); }
+  }
+
+  // Empty hands are forced by a safe zone, a NoCombat effect (not while fast-forwarding), a
+  // VehicleScene effect, the quest fact ForceEmptyHands, or the state machine's own parameter
+  // (scene tier, inspection, minigame), which script cannot read: that one is assumed whenever
+  // a scene tier of 2 or more is up, or nothing else accounts for the hands.
+  private static func EmptyHandsHolders(player: ref<PlayerPuppet>, out list: array<RadioXLSituation>) -> Void {
+    if player.GetPlayerStateMachineBlackboard().GetInt(GetAllBlackboardDefs().PlayerStateMachine.Zones) == 2 {
+      RadioXLRestrictions.Add(list, RadioXLSituation.SafeAreas);
+    }
+    if RadioXLRestrictions.HasTag(player, n"NoCombat") && !RadioXLRestrictions.HasTag(player, n"FastForward") {
+      RadioXLRestrictions.Add(list, RadioXLSituation.SafeAreas);
+    }
+    if RadioXLRestrictions.HasTag(player, n"VehicleScene") {
+      RadioXLRestrictions.Add(list, RadioXLSituation.DrivingScenes);
+    }
+    if GameInstance.GetQuestsSystem(player.GetGame()).GetFact(n"ForceEmptyHands") > 0 {
+      RadioXLRestrictions.Add(list, RadioXLSituation.Quests);
+    }
+    if RadioXLRestrictions.SceneTier(player) >= 2 || ArraySize(list) == 0 {
+      RadioXLRestrictions.Add(list, RadioXLRestrictions.Context(player));
+    }
+  }
+
+  // A call's own effect carries the fast-travel block; any other effect that carries it is a quest's.
+  private static func FastTravelHolders(player: ref<PlayerPuppet>, out list: array<RadioXLSituation>) -> Void {
+    let effects: array<ref<StatusEffect>>;
+    GameInstance.GetStatusEffectSystem(player.GetGame()).GetAppliedEffectsWithTag(player.GetEntityID(), n"BlockFastTravel", effects);
+    for effect in effects {
+      let record = effect.GetRecord();
+      if IsDefined(record) && ArrayContains(record.GameplayTags(), n"PhoneCall") {
+        RadioXLRestrictions.Add(list, RadioXLSituation.Calls);
+      } else {
+        RadioXLRestrictions.Add(list, RadioXLSituation.Quests);
       }
-      i += 1;
+    }
+    if ArraySize(list) == 0 { RadioXLRestrictions.Add(list, RadioXLSituation.Quests); }
+  }
+
+  // The `impulse` lock is the club's; every other source is a quest's.
+  private func LockHolders(out list: array<RadioXLSituation>) -> Void {
+    for source in this.m_locks {
+      RadioXLRestrictions.Add(list, Equals(source, n"impulse") ? RadioXLSituation.Clubs : RadioXLSituation.Quests);
+    }
+    if ArraySize(list) == 0 { RadioXLRestrictions.Add(list, RadioXLSituation.Quests); }
+  }
+
+  public func Holders(restriction: PocketRadioRestrictions, player: ref<PlayerPuppet>) -> array<RadioXLSituation> {
+    let list: array<RadioXLSituation>;
+    switch restriction {
+      case PocketRadioRestrictions.SceneTier:
+      case PocketRadioRestrictions.FastForward:
+      case PocketRadioRestrictions.FastForwardHintActive:
+        RadioXLRestrictions.Add(list, RadioXLRestrictions.Context(player));
+        break;
+      case PocketRadioRestrictions.UpperBodyState:
+        RadioXLRestrictions.EmptyHandsHolders(player, list);
+        break;
+      case PocketRadioRestrictions.QuestContentLock:
+        this.LockHolders(list);
+        break;
+      case PocketRadioRestrictions.InDaClub:
+        RadioXLRestrictions.Add(list, RadioXLSituation.Clubs);
+        break;
+      case PocketRadioRestrictions.BlockFastTravel:
+        RadioXLRestrictions.FastTravelHolders(player, list);
+        break;
+      case PocketRadioRestrictions.VehicleScene:
+      case PocketRadioRestrictions.VehicleBlockPocketRadio:
+        RadioXLRestrictions.Add(list, RadioXLSituation.DrivingScenes);
+        break;
+      case PocketRadioRestrictions.PhoneCall:
+      case PocketRadioRestrictions.PhoneNoTexting:
+      case PocketRadioRestrictions.PhoneNoCalling:
+        RadioXLRestrictions.Add(list, RadioXLSituation.Calls);
+        break;
+      default:
+        break;
+    }
+    return list;
+  }
+
+  // The value the pocket radio is told: restricted while any situation holding it keeps its mute.
+  public func Applied(restriction: Int32, player: ref<PlayerPuppet>) -> Bool {
+    if !this.Actual(restriction) { return false; }
+    let cfg = RadioXLConfig.Get();
+    if !IsDefined(cfg) || !IsDefined(player) { return true; }
+    let holders: array<RadioXLSituation> = this.Holders(IntEnum<PocketRadioRestrictions>(restriction), player);
+    if ArraySize(holders) == 0 { return true; }
+    for s in holders {
+      if cfg.Mutes(s) { return true; }
     }
     return false;
   }
 
-  public static func Applied(restriction: Int32, restricted: Bool, station: Int32) -> Bool {
-    if !restricted { return restricted; }
-    let cfg = RadioXLConfig.Get();
-    if !IsDefined(cfg) { return true; }
-    if !cfg.MutesOn(restriction) { return false; }
-    return !RadioXLRestrictions.IsCompanionOfLifted(restriction);
-  }
-
-  // Feed every restriction back through the pocket radio with its real value, so the wrap below
-  // applies the switches as they stand now. Called when a switch changes.
+  // Re-applies every restriction with the switches as they stand. Called when a switch changes.
   public static func Refresh() -> Void {
     let gi: GameInstance = GetGameInstance();
     if !GameInstance.IsValid(gi) { return; }
     let player = GetPlayer(gi);
     if !IsDefined(player) { return; }
     let radio = player.GetPocketRadio();
-    let state = RadioXLRestrictions.Get();
-    if !IsDefined(radio) || !IsDefined(state) { return; }
-    let i: Int32 = 0;
-    while i < EnumInt(PocketRadioRestrictions.PocketRadioRestrictionCount) {
-      radio.HandleRestriction(IntEnum<PocketRadioRestrictions>(i), state.Actual(i));
-      i += 1;
-    }
+    if IsDefined(radio) { radio.RadioXLReapply(); }
   }
 }
 
-// **One status effect carries every restriction a situation raises, and the game applies them one
-// tag at a time in a fixed order.** A holo call's effect carries the quest lock, the fast-travel
-// block and the call, and the call is walked last, so on its own each companion would be applied
-// before the call is known and the radio would drop out for the unlock delay. Recording every tag
-// the effect carries BEFORE the game walks them lets the first companion see the call already.
-@wrapMethod(PocketRadio)
-public final func OnStatusEffectApplied(evt: ref<ApplyStatusEffectEvent>, gameplayTags: script_ref<[CName]>) -> Void {
+// Every restriction is re-evaluated whenever one changes, because one cause changes which
+// situation holds another: a vehicle scene's tier arrives before its VehicleScene effect.
+@addMethod(PocketRadio)
+public final func RadioXLReapply() -> Void {
   let state = RadioXLRestrictions.Get();
-  if IsDefined(state) {
-    if ArrayContains(Deref(gameplayTags), n"InDaClub") { state.Record(EnumInt(PocketRadioRestrictions.InDaClub), true); }
-    if ArrayContains(Deref(gameplayTags), n"BlockFastTravel") { state.Record(EnumInt(PocketRadioRestrictions.BlockFastTravel), true); }
-    if ArrayContains(Deref(gameplayTags), n"VehicleScene") { state.Record(EnumInt(PocketRadioRestrictions.VehicleScene), true); }
-    if ArrayContains(Deref(gameplayTags), n"VehicleBlockPocketRadio") { state.Record(EnumInt(PocketRadioRestrictions.VehicleBlockPocketRadio), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneCall") { state.Record(EnumInt(PocketRadioRestrictions.PhoneCall), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneNoTexting") { state.Record(EnumInt(PocketRadioRestrictions.PhoneNoTexting), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneNoCalling") { state.Record(EnumInt(PocketRadioRestrictions.PhoneNoCalling), true); }
-    if ArrayContains(Deref(gameplayTags), n"FastForward") { state.Record(EnumInt(PocketRadioRestrictions.FastForward), true); }
-    if ArrayContains(Deref(gameplayTags), n"FastForwardHintActive") { state.Record(EnumInt(PocketRadioRestrictions.FastForwardHintActive), true); }
+  if !IsDefined(state) || !IsDefined(this.m_player) { return; }
+  let changed: Bool = false;
+  let i: Int32 = 0;
+  while i < ArraySize(this.m_restrictions) {
+    let applied: Bool = state.Applied(i, this.m_player);
+    if NotEquals(this.m_restrictions[i], applied) {
+      this.m_restrictions[i] = applied;
+      changed = true;
+    }
+    state.Report(i, applied);
+    i += 1;
   }
-  wrappedMethod(evt, gameplayTags);
+  if changed && !this.m_isRestrictionOverwritten {
+    this.UpdateConditionRestricted();
+    this.HandleRestrictionStateChanged();
+  }
 }
 
 @wrapMethod(PocketRadio)
 public final func HandleRestriction(restriction: PocketRadioRestrictions, restricted: Bool) -> Void {
   let state = RadioXLRestrictions.Get();
-  if IsDefined(state) {
-    state.Record(EnumInt(restriction), restricted);
+  if !IsDefined(state) || !IsDefined(this.m_player) {
+    wrappedMethod(restriction, restricted);
+    return;
   }
-  let applied: Bool = RadioXLRestrictions.Applied(EnumInt(restriction), restricted, this.m_selectedStation);
+  state.Record(EnumInt(restriction), restricted);
+  let applied: Bool = state.Applied(EnumInt(restriction), this.m_player);
+  state.Report(EnumInt(restriction), applied);
   wrappedMethod(restriction, applied);
-  // A companion that arrived before its situation was applied on its own switch. Now that the
-  // situation is known, hand each its situation-aware value. The re-entry records the same actual
-  // and cannot loop, because a companion is never a situation.
-  if IsDefined(state) {
-    let companions: array<Int32> = RadioXLRestrictions.Companions(EnumInt(restriction));
-    let i: Int32 = 0;
-    while i < ArraySize(companions) {
-      let c: Int32 = companions[i];
-      if state.Actual(c) && !Equals(this.m_restrictions[c], RadioXLRestrictions.Applied(c, true, this.m_selectedStation)) {
-        this.HandleRestriction(IntEnum<PocketRadioRestrictions>(c), true);
-      }
-      i += 1;
-    }
-  }
+  this.RadioXLReapply();
 }
 
-@wrapMethod(PocketRadio)
-public final func OnStatusEffectApplied(evt: ref<ApplyStatusEffectEvent>, gameplayTags: script_ref<[CName]>) -> Void {
+@wrapMethod(PocketRadioQuestContentLockListener)
+protected cb func OnBlocked(source: CName) -> Bool {
   let state = RadioXLRestrictions.Get();
-  if IsDefined(state) {
-    if ArrayContains(Deref(gameplayTags), n"InDaClub") { state.Record(EnumInt(PocketRadioRestrictions.InDaClub), true); }
-    if ArrayContains(Deref(gameplayTags), n"BlockFastTravel") { state.Record(EnumInt(PocketRadioRestrictions.BlockFastTravel), true); }
-    if ArrayContains(Deref(gameplayTags), n"VehicleScene") { state.Record(EnumInt(PocketRadioRestrictions.VehicleScene), true); }
-    if ArrayContains(Deref(gameplayTags), n"VehicleBlockPocketRadio") { state.Record(EnumInt(PocketRadioRestrictions.VehicleBlockPocketRadio), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneCall") { state.Record(EnumInt(PocketRadioRestrictions.PhoneCall), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneNoTexting") { state.Record(EnumInt(PocketRadioRestrictions.PhoneNoTexting), true); }
-    if ArrayContains(Deref(gameplayTags), n"PhoneNoCalling") { state.Record(EnumInt(PocketRadioRestrictions.PhoneNoCalling), true); }
-    if ArrayContains(Deref(gameplayTags), n"FastForward") { state.Record(EnumInt(PocketRadioRestrictions.FastForward), true); }
-    if ArrayContains(Deref(gameplayTags), n"FastForwardHintActive") { state.Record(EnumInt(PocketRadioRestrictions.FastForwardHintActive), true); }
-  }
-  wrappedMethod(evt, gameplayTags);
+  if IsDefined(state) { state.LockOn(source); }
+  return wrappedMethod(source);
 }
 
-@wrapMethod(PocketRadio)
-public final func HandleRestriction(restriction: PocketRadioRestrictions, restricted: Bool) -> Void {
+@wrapMethod(PocketRadioQuestContentLockListener)
+protected cb func OnUnblocked(source: CName) -> Bool {
   let state = RadioXLRestrictions.Get();
-  if IsDefined(state) {
-    state.Record(EnumInt(restriction), restricted);
-  }
-  let applied: Bool = RadioXLRestrictions.Applied(EnumInt(restriction), restricted, this.m_selectedStation);
-  wrappedMethod(restriction, applied);
-  // A companion that arrived before its situation was applied on its own switch. Now that the
-  // situation is known, hand each its situation-aware value. The re-entry records the same actual
-  // and cannot loop, because a companion is never a situation.
-  if IsDefined(state) {
-    let companions: array<Int32> = RadioXLRestrictions.Companions(EnumInt(restriction));
-    let i: Int32 = 0;
-    while i < ArraySize(companions) {
-      let c: Int32 = companions[i];
-      if state.Actual(c) && !Equals(this.m_restrictions[c], RadioXLRestrictions.Applied(c, true, this.m_selectedStation)) {
-        this.HandleRestriction(IntEnum<PocketRadioRestrictions>(c), true);
-      }
-      i += 1;
-    }
-  }
+  if IsDefined(state) { state.LockOff(source); }
+  return wrappedMethod(source);
 }

@@ -134,7 +134,8 @@ public class RadioXLMutesChangedEvent extends CallbackSystemEvent {
 }
 
 // `restriction` is the PocketRadioRestrictions member's name, `PhoneCall`. Only the Radioport has
-// these, and the event fires only for a situation whose "Mute the radio when..." switch is on.
+// these. The event fires when what the Radioport is told changes: a restriction held only by
+// situations the player switched off never reports silenced.
 public class RadioXLSilencedEvent extends CallbackSystemEvent {
   private let restriction: CName;
   private let silenced: Bool;

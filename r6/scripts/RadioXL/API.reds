@@ -325,16 +325,16 @@ public abstract class RadioXLAPI {
     return deck.HistoryCursor();
   }
 
-  // The "Mute the radio when..." situations silencing the Radioport now, by PocketRadioRestrictions
-  // member name. Only those whose switch is on are listed: the others are let through.
+  // The restrictions silencing the Radioport now, by PocketRadioRestrictions member name. Only those
+  // a switched-on situation still holds are listed: the others are let through.
   public final static func SilencedBy() -> array<CName> {
     let out: array<CName>;
     let state = RadioXLRestrictions.Get();
-    let cfg = RadioXLConfig.Get();
-    if !IsDefined(state) || !IsDefined(cfg) { return out; }
+    let player = GetPlayer(GetGameInstance());
+    if !IsDefined(state) || !IsDefined(player) { return out; }
     let i: Int32 = 0;
     while i < EnumInt(PocketRadioRestrictions.PocketRadioRestrictionCount) {
-      if state.Actual(i) && cfg.MutesOn(i) {
+      if state.Applied(i, player) {
         ArrayPush(out, EnumValueToName(n"PocketRadioRestrictions", Cast<Int64>(i)));
       }
       i += 1;
