@@ -195,11 +195,11 @@ constexpr uint8_t kCmpEdi[] = {0x83, 0xFF};
 constexpr int kVanillaCount = 14;
 constexpr int kMaxStations = 127;  // both bounds are 8-bit immediates
 
-// **Two enum values past the fourteen belong to vanilla stations outside the roster.**
+// **Two internal ids past the fourteen belong to vanilla stations outside the roster.**
 // `TryGetRadioStationChannel` gives `radio_station_police` internal id 23 and `radio_station_kurtz`
-// 33 (enum 15 and 25, internal id = enum + 8). A custom station never takes either: those slots carry
-// the vanilla names, so name -> id and id -> name agree with the game, and custom stations number
-// around them. They are on no dial.
+// 33 (enum 15 and 25, internal id = enum + 8). Custom stations start past the highest of them, at
+// enum 26, so none sits among the game's own; slots 14 to 25 are empty but for those two, which carry
+// the vanilla names so name -> id and id -> name agree with the game. None of them is on a dial.
 struct ReservedSlot
 {
     int32_t enumValue;
@@ -215,29 +215,14 @@ std::vector<int32_t> g_enumOf;  // custom station -> ERadioStationList value
 std::vector<int32_t> g_slotOf;  // ERadioStationList value -> custom station, -1 for vanilla or reserved
 int32_t g_enumEnd = kVanillaCount;  // one past the last custom station's enum value
 
-const ReservedSlot* ReservedAt(int32_t aEnum)
-{
-    for (const ReservedSlot& r : kReserved)
-    {
-        if (r.enumValue == aEnum)
-        {
-            return &r;
-        }
-    }
-    return nullptr;
-}
+constexpr int32_t kFirstCustomEnum = 26;  // one past Kurtz
 
 void AssignEnums(size_t aCount)
 {
     g_enumOf.clear();
-    int32_t e = kVanillaCount;
     for (size_t i = 0; i < aCount; ++i)
     {
-        while (ReservedAt(e))
-        {
-            ++e;
-        }
-        g_enumOf.push_back(e++);
+        g_enumOf.push_back(kFirstCustomEnum + static_cast<int32_t>(i));
     }
     g_enumEnd = aCount ? g_enumOf.back() + 1 : kVanillaCount;
     g_slotOf.assign(static_cast<size_t>(g_enumEnd), -1);
@@ -975,8 +960,8 @@ void PatchRoster()
     const int dialCount = kVanillaCount + static_cast<int>(g_stations.size());
     if (total > kMaxStations)
     {
-        Log("too many stations - the engine's bounds are 8-bit, so 127 is the ceiling (the police and Kurtz "
-            "slots count towards it)");
+        Log("too many stations - the engine's bounds are 8-bit and custom stations start at enum 26, so " +
+            std::to_string(kMaxStations - kFirstCustomEnum) + " is the ceiling");
         return;
     }
     void* fresh = AllocateNear(reinterpret_cast<uintptr_t>(resolve), total * sizeof(uint64_t));
@@ -1042,6 +1027,13 @@ void PatchRoster()
     auto* names = static_cast<uint64_t*>(freshNames);
     std::memcpy(names, nameTable, kVanillaCount * sizeof(uint64_t));
 
+    // Slots 14 to 25 hold no station: an empty name never matches one, and the label is the game's own
+    // "no station" key.
+    for (int32_t e = kVanillaCount; e < kFirstCustomEnum && e < total; ++e)
+    {
+        table[e] = 0;
+        names[e] = Fnv1a64("Gameplay-Devices-Radio-NoneStation");
+    }
     for (size_t i = 0; i < g_stations.size(); ++i)
     {
         table[g_enumOf[i]] = Fnv1a64(g_stations[i].name);
@@ -1193,20 +1185,6 @@ void RadioXL_DialPosition(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, i
     {
         const bool known = g_patched && station >= 0 && static_cast<size_t>(station) < g_position.size();
         *aOut = known ? g_position[station] : -1;
-    }
-}
-
-// A broadcast channel the loaded audio metadata uses (a playlist's or a reflection's), so no custom
-// station is given it. True when it was not already known.
-void RadioXL_ReserveChannel(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
-{
-    int32_t channel = -1;
-    RED4ext::GetParameter(aFrame, &channel);
-    ++aFrame->code;
-    const bool added = radioxl::channels::Reserve(channel);
-    if (aOut)
-    {
-        *aOut = added;
     }
 }
 
@@ -1662,7 +1640,6 @@ void RegisterNatives()
     };
 
     reg("RadioXL_StationCount", &RadioXL_StationCount, "Int32", 0);
-    reg("RadioXL_ReserveChannel", &RadioXL_ReserveChannel, "Bool", 1);
     reg("RadioXL_SlotEnum", &RadioXL_SlotEnum, "Int32", 1);
     reg("RadioXL_EnumSlot", &RadioXL_EnumSlot, "Int32", 1);
     reg("RadioXL_EnumEnd", &RadioXL_EnumEnd, "Int32", 0);
@@ -1781,17 +1758,23 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         PatchRoster();
         if (g_patched)
         {
+            // Custom stations broadcast past 255, where nothing else does. If the broadcaster cannot
+            // be widened they keep the game's own formula for their channels.
             radioxl::broadcast::g_log = &Log;
-            radioxl::broadcast::Widen(&ResolveByHash, &WriteBytes, aSdk, aHandle);
-            radioxl::channels::g_wide = radioxl::broadcast::g_widened;
-            radioxl::channels::g_wideChannels = static_cast<int>(radioxl::broadcast::kChannels);
-            std::vector<int> ids;
-            for (const int32_t e : g_enumOf)
+            if (radioxl::broadcast::Widen(&ResolveByHash, &WriteBytes, aSdk, aHandle))
             {
-                ids.push_back(e + 8);
+                std::vector<int> ids;
+                for (const int32_t e : g_enumOf)
+                {
+                    ids.push_back(e + 8);
+                }
+                radioxl::channels::Init(ids, static_cast<int>(radioxl::broadcast::kChannels), &Log);
+                radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
             }
-            radioxl::channels::Init(ids, &Log);
-            radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
+            else
+            {
+                Log("channels: custom stations keep the game's formula channels, which other sounds may share");
+            }
         }
         // The engine names a station's current track by the 32-bit hash its localization row is
         // indexed by, so that is the key the clock matches on.

@@ -1,22 +1,18 @@
 // ======================================================================================
 // Mod Name: RadioXL
 // Author: Spuddeh
-// Description: A broadcast channel of its own for each custom station.
+// Description: Broadcast channels of their own for each custom station, past 255.
 // File Version: 0.8.0
 // ======================================================================================
 //
 // **Every receiver hears a station through three broadcast channels**, set as RTPCs on the
 // station's emitter and on each receiver's: `radio_broadcast_channel` (the mono send, world
 // devices), `_right` and `_left` (the stereo send, the Radioport and cars). The engine derives them
-// from the station's internal id as id, id + 50 and id + 220. **All three share ONE space of 256
-// channels with the world playlists and the gunshot reflections**, every send maps its channel on a
-// curve ending at 255, and 255 is the channel `MuteRadio` and the playlists write to switch a
-// channel off. Past a few custom stations the formula lands on a playlist's channel, on another
-// station's, or on 255, and the two sources bleed into each other while both play.
-//
-// So each custom station is given three channels nothing else uses, and the five places that set
-// a station's channels read them from `g_table` instead of the formula. A vanilla id keeps the
-// formula's values in the table, so nothing changes for the fourteen.
+// from the station's internal id as id, id + 50 and id + 220, and the game's own sources fill 222 of
+// the first 256 channels. Broadcast.hpp widens the broadcaster to 1024 channels; this gives each
+// custom station three channels from 256 up, where nothing else broadcasts, and the five places that
+// set a station's channels read them from `g_table` instead of the formula. Every other id keeps the
+// formula's values in the table, so nothing changes for the game's own stations.
 //
 // Each site is the 5-byte `cvtsi2ss xmmN, reg` that turns the channel into the RTPC's float. It
 // is replaced by a call to a stub that reads the station id from the register the function keeps
@@ -27,7 +23,6 @@
 
 #include <Windows.h>
 
-#include <bitset>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -45,27 +40,13 @@ enum Kind : int
 };
 
 constexpr int kOffset[3] = {0, 0x32, 0xdc};
-// Vanilla internal ids: the fourteen (8 to 21), the police scanner (23) and Kurtz (33). Their channels
-// stay the formula's and no custom station is given one of them.
-constexpr int kVanillaIds[] = {8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 33};
-constexpr int kOff = 255;           // the channel the game writes to switch one off
-
-// The channels the game's own audio metadata takes, from base and ep1 cooked_metadata on 2.31:
-// three reflection settings and every playlist. A playlist or reflection that loads with any other
-// channel is reported at load (`Reserve`), so this is the floor, not the whole list.
-constexpr uint8_t kGameChannels[] = {
-    0,   6,   7,   29,  100, 102, 103, 104, 105, 106, 107, 113, 114, 115, 116, 117, 118, 123, 124,
-    125, 126, 127, 129, 148, 154, 156, 184, 187, 190, 192, 193, 194, 195, 196, 197, 198, 199, 202,
-    203, 204, 205, 206, 207, 208, 209, 210, 212, 213, 214, 215, 217, 218, 219, 220, 248, 254};
+constexpr int kFirstWide = 256;  // the first channel past the game's own
 
 // The channel each internal id plays on, per kind. Read by the stubs, written only here.
 alignas(64) inline int32_t g_table[3][256];
 
-inline std::bitset<256> g_taken;   // the game's channels, the fourteen's and the off channel
-inline std::vector<int> g_ids;       // each custom station's internal id, in roster order
-inline bool g_wide = false;           // the broadcaster takes channels past 255 (Broadcast.hpp)
-inline int g_wideChannels = 0;
-inline int g_assigned = 0;          // custom stations with channels of their own
+inline std::vector<int> g_ids;  // each custom station's internal id, in roster order
+inline int g_assigned = 0;      // custom stations with channels of their own
 inline std::function<void(const std::string&)> g_log;
 
 inline void Log(const std::string& aText)
@@ -73,58 +54,6 @@ inline void Log(const std::string& aText)
     if (g_log)
     {
         g_log("channels: " + aText);
-    }
-}
-
-// Rebuilds every custom station's three channels from the free ones, lowest first. A vanilla id,
-// and a custom id the free channels do not reach, keep the formula.
-inline void Assign()
-{
-    for (int k = 0; k < 3; ++k)
-    {
-        for (int id = 0; id < 256; ++id)
-        {
-            g_table[k][id] = id + kOffset[k];
-        }
-    }
-
-    std::bitset<256> used = g_taken;
-    int channel = 0;
-    int wide = 256;
-    const auto next = [&]() -> int
-    {
-        if (g_wide)
-        {
-            return wide < g_wideChannels ? wide++ : -1;
-        }
-        while (channel < kOff && used.test(channel))
-        {
-            ++channel;
-        }
-        if (channel >= kOff)
-        {
-            return -1;
-        }
-        used.set(channel);
-        return channel;
-    };
-
-    g_assigned = 0;
-    for (const int id : g_ids)
-    {
-        if (id > 255)
-        {
-            break;
-        }
-        const int mono = next(), right = next(), left = next();
-        if (mono < 0 || right < 0 || left < 0)
-        {
-            break;
-        }
-        g_table[kMono][id] = mono;
-        g_table[kRight][id] = right;
-        g_table[kLeft][id] = left;
-        ++g_assigned;
     }
 }
 
@@ -140,60 +69,36 @@ inline std::string Describe()
     return line;
 }
 
-inline void Init(const std::vector<int>& aIds, std::function<void(const std::string&)> aLog)
+// The formula for every id, then three channels from 256 up for each custom station, in roster order.
+inline void Init(const std::vector<int>& aIds, int aChannels, std::function<void(const std::string&)> aLog)
 {
     g_log = std::move(aLog);
     g_ids = aIds;
-    g_taken.reset();
-    g_taken.set(kOff);
-    // Below the first station id: no station, playlist or reflection the game ships uses 1 to 5,
-    // but nothing says the range is free, so no custom station is put there.
-    for (int c = 0; c < 8; ++c)
+    for (int k = 0; k < 3; ++k)
     {
-        g_taken.set(c);
-    }
-    for (const int id : kVanillaIds)
-    {
-        for (int k = 0; k < 3; ++k)
+        for (int id = 0; id < 256; ++id)
         {
-            g_taken.set(id + kOffset[k]);
+            g_table[k][id] = id + kOffset[k];
         }
     }
-    for (const uint8_t c : kGameChannels)
+    g_assigned = 0;
+    int channel = kFirstWide;
+    for (const int id : g_ids)
     {
-        g_taken.set(c);
+        if (id > 255 || channel + 3 > aChannels)
+        {
+            break;
+        }
+        g_table[kMono][id] = channel++;
+        g_table[kRight][id] = channel++;
+        g_table[kLeft][id] = channel++;
+        ++g_assigned;
     }
-    Assign();
     if (g_assigned < static_cast<int>(g_ids.size()))
     {
-        Log(std::to_string(static_cast<int>(g_ids.size()) - g_assigned) + " custom station(s) found no free channels and keep the formula's, "
-            "which another source may share");
+        Log(std::to_string(static_cast<int>(g_ids.size()) - g_assigned) +
+            " custom station(s) found no channels past 255 and keep the formula's");
     }
-}
-
-// A channel the loaded audio metadata uses. Reassigns when it was one a custom station had.
-inline bool Reserve(int aChannel)
-{
-    if (aChannel < 0 || aChannel > 255 || g_taken.test(aChannel))
-    {
-        return false;
-    }
-    g_taken.set(aChannel);
-    bool clash = false;
-    for (int i = 0; i < g_assigned && !clash; ++i)
-    {
-        const int id = g_ids[i];
-        for (int k = 0; k < 3; ++k)
-        {
-            clash = clash || g_table[k][id] == aChannel;
-        }
-    }
-    if (clash)
-    {
-        Assign();
-        Log("channel " + std::to_string(aChannel) + " is used by the game's audio metadata - reassigned: " + Describe());
-    }
-    return true;
 }
 
 // --- the patch -------------------------------------------------------------------------------
