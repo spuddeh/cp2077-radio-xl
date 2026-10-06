@@ -9,6 +9,8 @@
 --   radio_live.txt   one line per listener: kind x y z counts playing station
 --   meter_live.txt   one line per bus: name rms_db peak_db peak_hold_db calls rms_left rms_right peak_left peak_right
 --   params_live.txt  one line per vehicle game parameter: name global scope listener_value scope
+-- Audible Traffic Radios' tuning build writes a fourth, every 250 ms:
+--   atr_live.txt     one line per traffic car with a radio: entity_id level_db openness
 -- This mod only reads and draws them. Both are on by default; each has a hotkey to hide it.
 
 local showMarkers = true
@@ -17,6 +19,7 @@ local showMeters = true
 local listeners = {}
 local meters = {}
 local params = {}
+local atrCars = {}
 local readAt = 0
 
 local KINDS = { [1] = "World", [2] = "Car", [3] = "Hit car (k3)", [4] = "Player (k4)", [5] = "Ambient" }
@@ -72,6 +75,39 @@ local function readFiles()
         end
         f:close()
         params = list
+    end
+    f = io.open("atr_live.txt", "r")
+    if f then
+        local list = {}
+        for line in f:lines() do
+            local id, db, open = line:match("^(%d+) (%S+) (%S+)")
+            if id then list[#list + 1] = { id = tonumber(id), db = tonumber(db), open = tonumber(open) } end
+        end
+        f:close()
+        atrCars = list
+    end
+end
+
+-- Audible Traffic Radios: each traffic car's radio level and openness, above the car.
+local function drawAtrCars(dl, player)
+    local cam = Game.GetCameraSystem()
+    if not cam then return end
+    local w, h = GetDisplayResolution()
+    local pos = player:GetWorldPosition()
+    local cyan = ImGui.GetColorU32(0.3, 0.9, 1, 1)
+    for _, c in ipairs(atrCars) do
+        local car = Game.FindEntityByID(EntityID.new({ hash = c.id }))
+        if car then
+            local p = car:GetWorldPosition()
+            local dx, dy, dz = p.x - pos.x, p.y - pos.y, p.z - pos.z
+            local d = math.sqrt(dx * dx + dy * dy + dz * dz)
+            local s = cam:ProjectPoint(Vector4.new(p.x, p.y, p.z + 2.2, 1))
+            if d < 200 and s.w > 0 and math.abs(s.x) <= 1.2 and math.abs(s.y) <= 1.2 then
+                local sx, sy = w / 2 + s.x * w / 2, h / 2 - s.y * h / 2
+                ImGui.ImDrawListAddText(dl, sx - 40, sy, cyan,
+                    string.format("ATR %+.1f dB  open %.2f  %.0f m", c.db, c.open, d))
+            end
+        end
     end
 end
 
@@ -168,6 +204,9 @@ registerForEvent("onDraw", function()
         readFiles()
     end
     local dl = ImGui.GetForegroundDrawList()
-    if showMarkers then drawMarkers(dl, player) end
+    if showMarkers then
+        drawMarkers(dl, player)
+        drawAtrCars(dl, player)
+    end
     if showMeters then drawMeters(dl) end
 end)
