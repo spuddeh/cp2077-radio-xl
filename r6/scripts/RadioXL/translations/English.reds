@@ -127,13 +127,13 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.muteCalls", "A call is in progress");
     this.Text("RadioXL.tipMuteCalls", "Default: on. A phone or holo call, from the moment it connects until it ends, and a story moment that blocks calling or texting.");
     this.Text("RadioXL.muteScenes", "A scene is playing");
-    this.Text("RadioXL.tipMuteScenes", "Default: on. A conversation or cutscene that takes some control away, sleeping in a bed included, and the hold-to-skip prompt during one.");
+    this.Text("RadioXL.tipMuteScenes", "Default: on. A conversation or cutscene that takes some control away, sleeping in a bed included, and the hold-to-skip prompt during one. V's apartment in Megabuilding H10 is staged as a scene, so this switch covers it.");
     this.Text("RadioXL.muteDrivingScenes", "A driving scene is playing");
     this.Text("RadioXL.tipMuteDrivingScenes", "Default: on. A scripted ride or drive, such as a Delamain trip or a drive where a character talks to you, and a vehicle set to switch the Radioport off.");
     this.Text("RadioXL.muteClubs", "You are inside a club");
     this.Text("RadioXL.tipMuteClubs", "Default: on. Clubs play their own music. Also covers the scene at a club's door.");
     this.Text("RadioXL.muteSafeAreas", "You are in a weapons-free area");
-    this.Text("RadioXL.tipMuteSafeAreas", "Default: on. A place where V's weapons are put away, such as your apartments.");
+    this.Text("RadioXL.tipMuteSafeAreas", "Default: on. A place where V's weapons are put away, such as your bought apartments. V's apartment in Megabuilding H10 is under A scene is playing instead.");
     this.Text("RadioXL.muteQuests", "A quest has blocked the radio");
     this.Text("RadioXL.muteCombatMusic", "Combat music is playing");
     this.Text("RadioXL.tipMuteCombatMusic", "Default: on. Combat music silences the radio, in the car and on the Radioport. Changed during a fight, it applies from the next one.");
