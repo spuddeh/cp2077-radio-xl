@@ -2560,8 +2560,47 @@ void WriteChannels()
     }
 }
 
+// --- Wwise pauses ---
+// Every pause Wwise runs goes through CAkActionPause::Execute (0x1b978e0, no RED4ext hash, so reached by
+// RVA and checked against 2.31's bytes): bank actions from an event, and the ones the engine builds for
+// ExecuteActionOnEvent. An action keeps its id at +0x10, target +0x30, type +0x34 (0x0202 one object,
+// 0x0204/0x0205 all) and the bus flag in bit 0x40 of +0x36.
+using PauseExecFn = int (*)(void*, void*);
+PauseExecFn g_origPauseExec = nullptr;
+
+int DetourPauseExec(void* aAction, void* aPending)
+{
+    const auto a = reinterpret_cast<const uint8_t*>(aAction);
+    uint32_t id = 0, target = 0;
+    uint16_t type = 0;
+    std::memcpy(&id, a + 0x10, 4);
+    std::memcpy(&target, a + 0x30, 4);
+    std::memcpy(&type, a + 0x34, 2);
+    char buf[160];
+    std::snprintf(buf, sizeof(buf), "wwise pause %s action=%u type=0x%x target=%u bus=%d", Stamp().c_str(), id, type,
+                  target, (a[0x36] & 0x40) ? 1 : 0);
+    Log(buf);
+    return g_origPauseExec(aAction, aPending);
+}
+
+void HookPauses()
+{
+    constexpr uintptr_t kRva = 0x1b978e0;
+    constexpr uint8_t kPrologue[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0x7c, 0x24, 0x20, 0x41, 0x56};
+    auto* fn = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr)) + kRva;
+    if (std::memcmp(fn, kPrologue, sizeof(kPrologue)) != 0 ||
+        !g_sdk->hooking->Attach(g_handle, fn, reinterpret_cast<void*>(&DetourPauseExec),
+                                reinterpret_cast<void**>(&g_origPauseExec)))
+    {
+        Log("wwise pause: not hooked (bytes differ from 2.31, or attach failed)");
+        return;
+    }
+    Log("wwise pause: hooked CAkActionPause::Execute");
+}
+
 void InstallTrafficHooks()
 {
+    HookPauses();
     g_startTick = GetTickCount64();
     Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
     Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
