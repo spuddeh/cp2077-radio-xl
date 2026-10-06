@@ -822,51 +822,6 @@ void PollMarker()
     down = now;
 }
 
-// --- experiment: neutralise sys_sfx_and_vo_pause's bus pauses ---
-// The pause actions listed below are aimed at id 0 once they are loaded, so a menu pauses none of those
-// buses. g_pIndex (0x339f7b8) table 3 holds actions (buckets +0x148, count +0x150; the indexed pointer is
-// the action, id +0x10, target +0x30, type +0x34). g_csMain is 0x339ffd0.
-constexpr uint32_t kNeutralise[] = {55005076, 197168231, 208132590, 599705210, 107559070,
-                                    127040125, 447084506, 790907290, 552529924, 890107075, 592197528};
-bool g_neutralised = false;
-
-void NeutralisePauses()
-{
-    if (g_neutralised)
-    {
-        return;
-    }
-    auto* base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
-    const auto index = *reinterpret_cast<uintptr_t*>(base + 0x339f7b8);
-    auto* lock = reinterpret_cast<LPCRITICAL_SECTION>(base + 0x339ffd0);
-    if (!index || !TryEnterCriticalSection(lock))
-    {
-        return;
-    }
-    const auto buckets = *reinterpret_cast<uintptr_t*>(index + 0x148);
-    const auto count = *reinterpret_cast<uint32_t*>(index + 0x150);
-    int done = 0;
-    for (const uint32_t id : kNeutralise)
-    {
-        for (auto a = buckets && count ? *reinterpret_cast<uintptr_t*>(buckets + (id % count) * 8) : 0; a;
-             a = *reinterpret_cast<uintptr_t*>(a + 0x8))
-        {
-            if (*reinterpret_cast<uint32_t*>(a + 0x10) == id && *reinterpret_cast<uint16_t*>(a + 0x34) == 0x0202)
-            {
-                *reinterpret_cast<uint32_t*>(a + 0x30) = 0;
-                ++done;
-                break;
-            }
-        }
-    }
-    LeaveCriticalSection(lock);
-    if (done == static_cast<int>(sizeof(kNeutralise) / sizeof(kNeutralise[0])))
-    {
-        g_neutralised = true;
-        Log("experiment: all " + std::to_string(done) + " menu pause actions neutralised");
-    }
-}
-
 void LogStreamReads();
 
 bool OnUpdate(RED4ext::CGameApplication*)
@@ -2823,28 +2778,6 @@ int DetourSetRtpc(uint32_t aRtpc, float aValue, uint64_t aObject, uint32_t aPlay
     return g_origSetRtpc(aRtpc, aValue, aObject, aPlaying, aMs, aCurve, aBypass);
 }
 
-// --- experiment: blank calls inside gsm::State_SessionPaused::PauseSession (0xb5b6d8) ---
-// menu_skip.txt beside this DLL lists what to skip, by word: audio (OnGamePaused, call at +0x47), ticks
-// (SetTickFilters, +0x1a1), render (the GRender notify, +0x1b6 to +0x1cb), session
-// (SetGameSessionPaused(true), +0x1d6). Each site's bytes are checked before it is blanked with nops.
-struct SkipSite
-{
-    const char* word;
-    size_t at;
-    uint8_t bytes[21];
-    size_t len;
-};
-const SkipSite kSkipSites[] = {
-    {"audio", 0x47, {0xe8, 0xf8, 0x04, 0x00, 0x00}, 5},
-    {"ticks", 0x1a1, {0xe8, 0x9a, 0x6a, 0x7b, 0xff}, 5},
-    {"render", 0x1b6, {0x48, 0x8b, 0x01, 0xff, 0x90, 0x50, 0x04, 0x00, 0x00, 0x48, 0x8b, 0xc8, 0x48, 0x8b, 0x10, 0xff,
-                       0x92, 0x28, 0x01, 0x00, 0x00}, 21},
-    {"session", 0x1d6, {0xe8, 0x35, 0x00, 0x00, 0x00}, 5},
-    // Not in PauseSession: the UI system's pause callback (hash 4268103081, 0xb5bb34) calls OnGamePaused at
-    // +0x60, i.e. 0xb5bb94 = PauseSession + 0x4bc.
-    {"uiaudio", 0x4bc, {0xe8, 0x83, 0x00, 0x00, 0x00}, 5},
-};
-
 // audio::SoundSystem::OnGamePaused(CName reason) (hash 2989429021) and OnGameActive (2970489111): each call
 // logs its reason and the caller's return address, to name the path a menu pauses the game's audio by.
 using OnGamePausedFn = void (*)(void*, RED4ext::CName);
@@ -2886,42 +2819,6 @@ void HookAudioPause()
         (okA ? "hooked" : "NOT hooked"));
 }
 
-void ApplyMenuSkips()
-{
-    HMODULE self = nullptr;
-    GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                       reinterpret_cast<LPCWSTR>(&ApplyMenuSkips), &self);
-    wchar_t path[MAX_PATH];
-    GetModuleFileNameW(self, path, MAX_PATH);
-    std::wstring file(path);
-    file = file.substr(0, file.find_last_of(L"\\/")) + L"\\menu_skip.txt";
-    std::string words;
-    if (FILE* f = _wfopen(file.c_str(), L"rb"))
-    {
-        char buf[256] = {};
-        words.assign(buf, std::fread(buf, 1, sizeof(buf) - 1, f));
-        std::fclose(f);
-    }
-    auto* fn = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr)) + 0xb5b6d8;
-    for (const auto& site : kSkipSites)
-    {
-        if (words.find(site.word) == std::string::npos)
-        {
-            continue;
-        }
-        if (std::memcmp(fn + site.at, site.bytes, site.len) != 0)
-        {
-            Log(std::string("menu skip: ") + site.word + " bytes differ - not blanked");
-            continue;
-        }
-        DWORD old = 0;
-        VirtualProtect(fn + site.at, site.len, PAGE_EXECUTE_READWRITE, &old);
-        std::memset(fn + site.at, 0x90, site.len);
-        VirtualProtect(fn + site.at, site.len, old, &old);
-        FlushInstructionCache(GetCurrentProcess(), fn + site.at, site.len);
-        Log(std::string("menu skip: ") + site.word + " blanked");
-    }
-}
 
 void HookStreamingAndVoicePauses()
 {
@@ -3031,7 +2928,6 @@ void InstallTrafficHooks()
     HookPauses();
     HookPostEvents();
     HookStreamingAndVoicePauses();
-    ApplyMenuSkips();
     HookAudioPause();
     g_startTick = GetTickCount64();
     Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
