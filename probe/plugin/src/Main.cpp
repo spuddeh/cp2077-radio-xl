@@ -2696,6 +2696,38 @@ int DetourSetStateEx(uint32_t aGroup, uint32_t aState, bool aSkipTransition, boo
     return g_origSetStateEx(aGroup, aState, aSkipTransition, aSkipExtension);
 }
 
+// Listener changes: every Add/Remove/SetDefaultListeners goes through AddRemoveOrSetDefaultListeners
+// (0x1ac4790: ids, count, op) and every per-object one through AddRemoveOrSetListeners (0x1ac4890:
+// emitter, ids, count, op). A voice whose game object has no listener goes virtual.
+using DefaultListenersFn = int (*)(const uint64_t*, uint32_t, int);
+using ListenersFn = int (*)(uint64_t, const uint64_t*, uint32_t, int);
+DefaultListenersFn g_origDefaultListeners = nullptr;
+ListenersFn g_origListeners = nullptr;
+
+std::string IdList(const uint64_t* aIds, uint32_t aCount)
+{
+    std::string out;
+    for (uint32_t i = 0; aIds && i < aCount && i < 4; ++i)
+    {
+        out += (i ? "," : "") + std::to_string(aIds[i]);
+    }
+    return out;
+}
+
+int DetourDefaultListeners(const uint64_t* aIds, uint32_t aCount, int aOp)
+{
+    Log("wwise listeners " + Stamp() + " default op=" + std::to_string(aOp) + " count=" + std::to_string(aCount) +
+        " [" + IdList(aIds, aCount) + "]");
+    return g_origDefaultListeners(aIds, aCount, aOp);
+}
+
+int DetourListeners(uint64_t aEmitter, const uint64_t* aIds, uint32_t aCount, int aOp)
+{
+    Log("wwise listeners " + Stamp() + " go=" + std::to_string(aEmitter) + " op=" + std::to_string(aOp) +
+        " count=" + std::to_string(aCount) + " [" + IdList(aIds, aCount) + "]");
+    return g_origListeners(aEmitter, aIds, aCount, aOp);
+}
+
 void HookPostEvents()
 {
     auto* base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
@@ -2719,6 +2751,17 @@ void HookPostEvents()
     const bool okStateEx = std::memcmp(stEx, kStateEx, sizeof(kStateEx)) == 0 &&
                            g_sdk->hooking->Attach(g_handle, stEx, reinterpret_cast<void*>(&DetourSetStateEx),
                                                   reinterpret_cast<void**>(&g_origSetStateEx));
+    constexpr uint8_t kDefaults[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74, 0x24, 0x10, 0x57};
+    constexpr uint8_t kListeners[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48};
+    auto* dl = base + 0x1ac4790;
+    auto* li = base + 0x1ac4890;
+    const bool okDl = std::memcmp(dl, kDefaults, sizeof(kDefaults)) == 0 &&
+                      g_sdk->hooking->Attach(g_handle, dl, reinterpret_cast<void*>(&DetourDefaultListeners),
+                                             reinterpret_cast<void**>(&g_origDefaultListeners));
+    const bool okLi = std::memcmp(li, kListeners, sizeof(kListeners)) == 0 &&
+                      g_sdk->hooking->Attach(g_handle, li, reinterpret_cast<void*>(&DetourListeners),
+                                             reinterpret_cast<void**>(&g_origListeners));
+    Log(std::string("wwise listeners: hooks ") + (okDl ? "ok" : "FAILED") + ", " + (okLi ? "ok" : "FAILED"));
     Log(std::string("wwise state: SetState hooks ") + (okState ? "ok" : "FAILED") + ", " + (okStateEx ? "ok" : "FAILED"));
     Log(std::string("wwise event: PostEvent hooks ") + (okExt ? "ext ok" : "ext FAILED") + ", " +
         (okCustom ? "custom ok" : "custom FAILED"));
