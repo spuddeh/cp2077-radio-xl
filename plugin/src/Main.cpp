@@ -23,6 +23,7 @@
 
 #include "Broadcast.hpp"
 #include "Mix.hpp"
+#include "Startup.hpp"
 #include "Cache.hpp"
 #include "Channels.hpp"
 #include "Clock.hpp"
@@ -1788,6 +1789,15 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         PatchRoster();
         if (g_patched)
         {
+            // A car switched on with no station picks from its whole startup list, not its first 14.
+            radioxl::startup::g_log = &Log;
+            if (const auto enable = reinterpret_cast<uint8_t*>(ResolveByHash(kHashReceiverEnable));
+                enable && std::memcmp(enable + kEnableTest, kTestDlJne, sizeof(kTestDlJne)) == 0)
+            {
+                int32_t disp = 0;
+                std::memcpy(&disp, enable + kEnableJne + 2, sizeof(disp));
+                radioxl::startup::Install(enable + kEnableJneNext + disp, &AllocateNear, &WriteBytes);
+            }
             // Custom stations broadcast past 255, where nothing else does. If the broadcaster cannot
             // be widened they keep the game's own formula for their channels.
             radioxl::broadcast::g_log = &Log;
