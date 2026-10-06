@@ -117,6 +117,7 @@ constexpr Duck kDucks[] = {
 // bundle at every change into the state, so a value written here applies from the next change.
 struct State
 {
+    int table;
     uint32_t bus;
     uint32_t group;
     uint32_t state;
@@ -125,9 +126,13 @@ struct State
     uint16_t count;
 };
 constexpr uint32_t kPlayerRadioTop = 4067771226;  // Music_Radio_Car_Player_DVR
+constexpr uint32_t kRadioMixer = 924789914;  // the top actor mixer over every radio sound
 constexpr State kStates[] = {
-    {kPlayerRadioTop, 2481250406, 2418768486, {0, 2}, {-20.0f, 30.0f}, 2},  // st_menu = st_menu_on
-    {kPlayerRadioTop, 4054796535, 2425410597, {2, 0}, {50.0f, 0.0f}, 1},     // st_pause = st_pause_game_paused
+    {kBuses, kPlayerRadioTop, 2481250406, 2418768486, {0, 2}, {-20.0f, 30.0f}, 2},  // st_menu = st_menu_on
+    {kBuses, kPlayerRadioTop, 4054796535, 2425410597, {2, 0}, {50.0f, 0.0f}, 1},     // st_pause: low-pass
+    // st_pause on the radio mixer: -108 dB, which silences every radio voice while a menu pauses audio.
+    // A world or NPC car radio stays paused by its own bus's pause action; the player's radio has none.
+    {kNodes, kRadioMixer, 4054796535, 2425410597, {0, 0}, {-108.0f, 0.0f}, 1},
 };
 
 struct Curve
@@ -351,7 +356,7 @@ inline bool ApplyPause(const Pause& aPause, bool aMute)
 
 inline bool ApplyState(const State& aState, bool aMute)
 {
-    const uintptr_t bus = Find(kBuses, aState.bus);
+    const uintptr_t bus = Find(aState.table, aState.bus);
     if (!bus)
     {
         return false;

@@ -871,7 +871,6 @@ void LogStreamReads();
 
 bool OnUpdate(RED4ext::CGameApplication*)
 {
-    NeutralisePauses();
     LogStreamReads();
     PollMarker();
     if (g_failed)
