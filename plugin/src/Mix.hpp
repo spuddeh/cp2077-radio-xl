@@ -74,6 +74,9 @@ constexpr Duck kDucks[] = {
     {318512183, -96.0f, 2000, 3000, 4},   // Music_Systemic_Police
 };
 
+// A curve is matched by its parameter, property and curve id: the loader's second argument is 0 for
+// these, and the object they sit on is not passed by id. `target` is the object, looked up only to
+// know its bank is still loaded.
 struct Curve
 {
     Switch owner;
@@ -81,15 +84,16 @@ struct Curve
     uint32_t target;
     uint32_t rtpc;
     uint32_t param;
+    uint32_t curve;
 };
 constexpr Curve kCurves[] = {
-    {kVoices, kBuses, 3776664628, 724631792, 0},   // vo_dialog_active, volume
-    {kVoices, kBuses, 3776664628, 724631792, 2},   // vo_dialog_active, low-pass
-    {kVoices, kBuses, 3776664628, 724631792, 3},   // vo_dialog_active, high-pass
-    {kVoices, kBuses, 4067771226, 949106528, 0},   // rms_loudness_VO_Gameplay, volume
-    {kVoices, kBuses, 4067771226, 3564350091, 0},  // rms_loudness_VO_Dialog_Important, volume
-    {kVoices, kBuses, 4067771226, 3564350091, 2},  // rms_loudness_VO_Dialog_Important, low-pass
-    {kMegabuilding, kNodes, 228915200, 2492096760, 0},  // radio_pocket, rms_loudness_pocket_radio_mb
+    {kVoices, kBuses, 3776664628, 724631792, 0, 1021325208},   // vo_dialog_active, volume
+    {kVoices, kBuses, 3776664628, 724631792, 2, 1017306256},   // vo_dialog_active, low-pass
+    {kVoices, kBuses, 3776664628, 724631792, 3, 768298234},    // vo_dialog_active, high-pass
+    {kVoices, kBuses, 4067771226, 949106528, 0, 1019792690},   // rms_loudness_VO_Gameplay, volume
+    {kVoices, kBuses, 4067771226, 3564350091, 0, 213041943},   // rms_loudness_VO_Dialog_Important, volume
+    {kVoices, kBuses, 4067771226, 3564350091, 2, 532204427},   // rms_loudness_VO_Dialog_Important, low-pass
+    {kMegabuilding, kNodes, 228915200, 2492096760, 0, 68480862},  // radio_pocket, rms_loudness_pocket_radio_mb
 };
 constexpr size_t kCurveCount = sizeof(kCurves) / sizeof(kCurves[0]);
 
@@ -174,7 +178,7 @@ inline uintptr_t Find(int aTable, uint32_t aId)
 
 // The curve loader's hook asks which switched curve this is (-1 for none), loads it flat while its
 // switch is off, and hands back the stored entry once the loader returns.
-inline int Match(uint32_t aTarget, const broadcast::CurveDesc* aDesc)
+inline int Match(uint32_t, const broadcast::CurveDesc* aDesc)
 {
     if (!aDesc || aDesc->count == 0 || aDesc->count > 16)
     {
@@ -183,7 +187,7 @@ inline int Match(uint32_t aTarget, const broadcast::CurveDesc* aDesc)
     for (size_t i = 0; i < kCurveCount; ++i)
     {
         const Curve& c = kCurves[i];
-        if (c.target == aTarget && c.rtpc == aDesc->rtpc && c.param == aDesc->param)
+        if (c.curve == aDesc->curve && c.rtpc == aDesc->rtpc && c.param == aDesc->param)
         {
             return static_cast<int>(i);
         }
@@ -210,7 +214,8 @@ inline void Remember(int aIndex, const broadcast::CurveDesc* aDesc, const broadc
                      uintptr_t aEntry)
 {
     const Curve& c = kCurves[aIndex];
-    if (!aEntry || Read<uint32_t>(aEntry) != c.rtpc || Read<uint32_t>(aEntry + 8) != c.param)
+    if (!aEntry || Read<uint32_t>(aEntry) != c.rtpc || Read<uint32_t>(aEntry + 4) != c.curve ||
+        Read<uint32_t>(aEntry + 8) != c.param)
     {
         Log(std::string(Name(c.owner)) + ": curve " + std::to_string(c.rtpc) + " stored where it was not expected - not switchable");
         return;
@@ -283,7 +288,8 @@ inline bool ApplyCurve(size_t aIndex, bool aMute)
     }
     const uintptr_t table = cap.entry + 0x18;
     const auto stored = Read<uint32_t>(table + 0x08);
-    if (stored != cap.shipped.size() + 2 || Read<uint32_t>(cap.entry) != c.rtpc)
+    if (stored != cap.shipped.size() + 2 || Read<uint32_t>(cap.entry) != c.rtpc ||
+        Read<uint32_t>(cap.entry + 4) != c.curve)
     {
         Log(std::string(Name(c.owner)) + ": curve " + std::to_string(c.rtpc) + " is not as it loaded - left alone");
         return true;
