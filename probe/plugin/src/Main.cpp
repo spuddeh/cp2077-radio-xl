@@ -2784,6 +2784,46 @@ void DetourMusicPause(void* aNode, void* aObject, void* aParams, uint32_t aPlayi
     g_origMusicPause(aNode, aObject, aParams, aPlaying);
 }
 
+// Every RTPC change ends in AK::SoundEngine::_SetRTPCValue (0x1ad1ef0, no RED4ext hash: reached by RVA and
+// checked against 2.31's bytes). radio_broadcast_mute (1631578750) is logged on every change of value per
+// game object; any other parameter the first time it is seen in 30 s.
+using SetRtpcFn = int (*)(uint32_t, float, uint64_t, uint32_t, int32_t, int32_t, bool);
+SetRtpcFn g_origSetRtpc = nullptr;
+std::mutex g_rtpcMutex;
+std::unordered_map<uint64_t, float> g_broadcastMute;
+std::unordered_map<uint32_t, uint64_t> g_rtpcSeen;
+constexpr uint32_t kRtpcBroadcastMute = 1631578750;
+
+int DetourSetRtpc(uint32_t aRtpc, float aValue, uint64_t aObject, uint32_t aPlaying, int32_t aMs, int32_t aCurve,
+                  bool aBypass)
+{
+    bool log = false;
+    {
+        std::lock_guard<std::mutex> guard(g_rtpcMutex);
+        if (aRtpc == kRtpcBroadcastMute)
+        {
+            auto it = g_broadcastMute.find(aObject);
+            log = it == g_broadcastMute.end() || it->second != aValue;
+            g_broadcastMute[aObject] = aValue;
+        }
+        else
+        {
+            const uint64_t now = GetTickCount64();
+            auto& last = g_rtpcSeen[aRtpc];
+            log = !last || now - last > 30000;
+            last = now;
+        }
+    }
+    if (log)
+    {
+        char buf[160];
+        std::snprintf(buf, sizeof(buf), "wwise rtpc %s id=%u value=%.3f go=%llu ms=%d", Stamp().c_str(), aRtpc, aValue,
+                      static_cast<unsigned long long>(aObject), aMs);
+        Log(buf);
+    }
+    return g_origSetRtpc(aRtpc, aValue, aObject, aPlaying, aMs, aCurve, aBypass);
+}
+
 void HookStreamingAndVoicePauses()
 {
     struct Target
@@ -2802,6 +2842,14 @@ void HookStreamingAndVoicePauses()
         {"MusicRenderer::Pause", 1677860578, reinterpret_cast<void*>(&DetourMusicPause),
          reinterpret_cast<void**>(&g_origMusicPause)},
     };
+    {
+        constexpr uint8_t kPrologue[] = {0x48, 0x89, 0x6c, 0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20, 0x41, 0x56};
+        auto* fn = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr)) + 0x1ad1ef0;
+        const bool ok = std::memcmp(fn, kPrologue, sizeof(kPrologue)) == 0 &&
+                        g_sdk->hooking->Attach(g_handle, fn, reinterpret_cast<void*>(&DetourSetRtpc),
+                                               reinterpret_cast<void**>(&g_origSetRtpc));
+        Log(std::string("menu trace: _SetRTPCValue ") + (ok ? "hooked" : "NOT hooked"));
+    }
     for (const auto& t : targets)
     {
         auto* fn = reinterpret_cast<void*>(ResolveByHash(t.hash));
