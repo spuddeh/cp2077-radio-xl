@@ -124,7 +124,6 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.labMuteWhen1", "Every switch is on by default.");
     this.Text("RadioXL.labMuteWhen2", "ON: the Radioport goes quiet in that situation, exactly as the game does.");
     this.Text("RadioXL.labMuteWhen3", "OFF: it keeps playing through it, on every station, the game's own included.");
-    this.Text("RadioXL.labMuteCombat", "Combat and police heat have no switch. They are the game's own mix rules and apply to every station.");
     this.Text("RadioXL.muteCalls", "A call is in progress");
     this.Text("RadioXL.tipMuteCalls", "Default: on. A phone or holo call, from the moment it connects until it ends, and a story moment that blocks calling or texting.");
     this.Text("RadioXL.muteScenes", "A scene is playing");
@@ -136,6 +135,14 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.muteSafeAreas", "You are in a weapons-free area");
     this.Text("RadioXL.tipMuteSafeAreas", "Default: on. A place where V's weapons are put away, such as your apartments.");
     this.Text("RadioXL.muteQuests", "A quest has blocked the radio");
+    this.Text("RadioXL.muteCombatMusic", "Combat music is playing");
+    this.Text("RadioXL.tipMuteCombatMusic", "Default: on. Combat music silences the radio, in the car and on the Radioport. Changed during a fight, it applies from the next one.");
+    this.Text("RadioXL.mutePoliceMusic", "Police music is playing");
+    this.Text("RadioXL.tipMutePoliceMusic", "Default: on. Police chase music silences the radio, in the car and on the Radioport. Changed during a chase, it applies from the next one.");
+    this.Text("RadioXL.muteVoices", "Someone is speaking");
+    this.Text("RadioXL.tipMuteVoices", "Default: on. The radio is turned down and muffled while anyone speaks: conversations, calls, the police scanner. In the car and on the Radioport.");
+    this.Text("RadioXL.muteMegabuilding", "Megabuilding H10's music is playing");
+    this.Text("RadioXL.tipMuteMegabuilding", "Default: on. In H10's halls and lifts the building's own music turns the Radioport down until it is silent.");
     this.Text("RadioXL.tipMuteQuests", "Default: on. A story moment in which a quest switches the radio off, blocks fast travel or takes your weapons away.");
   }
 }

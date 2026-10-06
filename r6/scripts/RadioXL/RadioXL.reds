@@ -89,6 +89,9 @@ public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
 // catalog reads is a snapshot. Empty when the plugin cannot see the station.
 public native func RadioXL_StationTracks(station: CName) -> array<CName>;
 public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool, refill: Bool) -> Int32;
+// A switch in Wwise's mix: 0 combat music, 1 police music, 2 voices, 3 H10's building music. `mute`
+// true is the game's own behaviour. False when the plugin could not reach the mix.
+public native func RadioXL_SetMixSwitch(which: Int32, mute: Bool) -> Bool;
 // For the script API. Frequency takes the ERadioStationList value, vanilla or custom; the others a
 // custom station's index. Description falls back to the manifest's plain text, then its `en-us`
 // text. Position is seconds since the station's current slot began, negative when unreadable.

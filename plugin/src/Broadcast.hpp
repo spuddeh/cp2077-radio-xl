@@ -34,6 +34,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace radioxl::broadcast
 {
@@ -164,6 +165,12 @@ struct CurveDesc
 using CurveLoaderFn = int (*)(void*, uint32_t, uint64_t, CurveDesc*, GraphPoint*, void**);
 inline CurveLoaderFn g_origCurveLoader = nullptr;
 
+// The mix switches (Mix.hpp) see every curve through the same hook: which switched curve it is, the
+// points to load for it, and the entry the loader stored.
+inline int (*g_mixMatch)(uint32_t, const CurveDesc*) = nullptr;
+inline const GraphPoint* (*g_mixPoints)(int, const CurveDesc*, const GraphPoint*, std::vector<GraphPoint>&) = nullptr;
+inline void (*g_mixRemember)(int, const CurveDesc*, const GraphPoint*, uintptr_t) = nullptr;
+
 inline int CurveLoader(void* aContainer, uint32_t aTarget, uint64_t aUnused, CurveDesc* aDesc, GraphPoint* aPoints,
                        void** aOut)
 {
@@ -181,7 +188,21 @@ inline int CurveLoader(void* aContainer, uint32_t aTarget, uint64_t aUnused, Cur
         }
         return g_origCurveLoader(aContainer, aTarget, aUnused, aDesc, wide, aOut);
     }
-    return g_origCurveLoader(aContainer, aTarget, aUnused, aDesc, aPoints, aOut);
+    const int mix = (g_mixMatch && aDesc && aPoints) ? g_mixMatch(aTarget, aDesc) : -1;
+    if (mix < 0)
+    {
+        return g_origCurveLoader(aContainer, aTarget, aUnused, aDesc, aPoints, aOut);
+    }
+    std::vector<GraphPoint> flat;
+    void* entry = nullptr;
+    void** out = aOut ? aOut : &entry;
+    const int result = g_origCurveLoader(aContainer, aTarget, aUnused, aDesc,
+                                         const_cast<GraphPoint*>(g_mixPoints(mix, aDesc, aPoints, flat)), out);
+    if ((result == 1 || result == 3) && *out)
+    {
+        g_mixRemember(mix, aDesc, aPoints, reinterpret_cast<uintptr_t>(*out));
+    }
+    return result;
 }
 
 using ResolveFn = uintptr_t (*)(uint32_t);

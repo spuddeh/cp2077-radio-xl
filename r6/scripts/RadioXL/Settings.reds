@@ -55,6 +55,18 @@ public class RadioXLConfig extends ScriptableSystem {
   public let muteClubs: Bool = true;
   public let muteSafeAreas: Bool = true;
   public let muteQuests: Bool = true;
+  // The mix switches, applied by the plugin.
+  public let muteCombatMusic: Bool = true;
+  public let mutePoliceMusic: Bool = true;
+  public let muteVoices: Bool = true;
+  public let muteMegabuilding: Bool = true;
+
+  public func ApplyMix() -> Void {
+    RadioXL_SetMixSwitch(0, this.muteCombatMusic);
+    RadioXL_SetMixSwitch(1, this.mutePoliceMusic);
+    RadioXL_SetMixSwitch(2, this.muteVoices);
+    RadioXL_SetMixSwitch(3, this.muteMegabuilding);
+  }
 
   // The dropdown's option index: 0 most cars, 1 every car, 2 off.
   public let trafficStations: Int32 = 0;
@@ -104,6 +116,7 @@ public class RadioXLConfig extends ScriptableSystem {
     this.m_provider.BeginRestore();
     DVRCF_Store.RestoreInto(gi, "RadioXL", this.m_provider, this.m_provider.BuildSchema());
     this.m_provider.EndRestore();
+    this.ApplyMix();
     GameInstance.GetCallbackSystem()
       .RegisterCallback(n"Session/Ready", this, n"OnSessionReady")
       .SetLifetime(CallbackLifetime.Forever);
@@ -325,7 +338,14 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tip("RadioXL.tipMuteSafeAreas");
     b.Toggle("muteQuests", "RadioXL.muteQuests");
     b.Tip("RadioXL.tipMuteQuests");
-    b.Label("RadioXL.labMuteCombat");
+    b.Toggle("muteCombatMusic", "RadioXL.muteCombatMusic");
+    b.Tip("RadioXL.tipMuteCombatMusic");
+    b.Toggle("mutePoliceMusic", "RadioXL.mutePoliceMusic");
+    b.Tip("RadioXL.tipMutePoliceMusic");
+    b.Toggle("muteVoices", "RadioXL.muteVoices");
+    b.Tip("RadioXL.tipMuteVoices");
+    b.Toggle("muteMegabuilding", "RadioXL.muteMegabuilding");
+    b.Tip("RadioXL.tipMuteMegabuilding");
 
     return b.Build();
   }
@@ -547,6 +567,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "muteClubs") { return c.muteClubs; }
       if Equals(key, "muteSafeAreas") { return c.muteSafeAreas; }
       if Equals(key, "muteQuests") { return c.muteQuests; }
+      if Equals(key, "muteCombatMusic") { return c.muteCombatMusic; }
+      if Equals(key, "mutePoliceMusic") { return c.mutePoliceMusic; }
+      if Equals(key, "muteVoices") { return c.muteVoices; }
+      if Equals(key, "muteMegabuilding") { return c.muteMegabuilding; }
       if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
       if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
     }
@@ -590,6 +614,11 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "muteClubs") { c.muteClubs = value; }
       if Equals(key, "muteSafeAreas") { c.muteSafeAreas = value; }
       if Equals(key, "muteQuests") { c.muteQuests = value; }
+      if Equals(key, "muteCombatMusic") { c.muteCombatMusic = value; }
+      if Equals(key, "mutePoliceMusic") { c.mutePoliceMusic = value; }
+      if Equals(key, "muteVoices") { c.muteVoices = value; }
+      if Equals(key, "muteMegabuilding") { c.muteMegabuilding = value; }
+      c.ApplyMix();
       // A switch changed while a restriction is in force takes effect now, not at the next scene.
       RadioXLRestrictions.Refresh();
       return;

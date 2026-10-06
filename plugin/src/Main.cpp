@@ -22,6 +22,7 @@
 #include <RED4ext/RED4ext.hpp>
 
 #include "Broadcast.hpp"
+#include "Mix.hpp"
 #include "Cache.hpp"
 #include "Channels.hpp"
 #include "Clock.hpp"
@@ -1614,6 +1615,26 @@ void PoolNames()
     }
 }
 
+// A "Mute the radio when..." switch that lives in Wwise's mix: 0 combat music, 1 police music, 2 voices,
+// 3 megabuilding music. `mute` true is the game's own behaviour.
+void RadioXL_SetMixSwitch(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    int32_t which = -1;
+    bool mute = true;
+    RED4ext::GetParameter(aFrame, &which);
+    RED4ext::GetParameter(aFrame, &mute);
+    ++aFrame->code;
+    radioxl::mix::Set(which, mute);
+    if (aOut)
+        *aOut = radioxl::mix::g_ready;
+}
+
+bool MixUpdate(RED4ext::CGameApplication*)
+{
+    radioxl::mix::Tick();
+    return false;
+}
+
 void RegisterNatives()
 {
     PoolNames();
@@ -1719,6 +1740,15 @@ void RegisterNatives()
         rtti->RegisterFunction(fn);
     }
     {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_SetMixSwitch", "RadioXL_SetMixSwitch",
+                                                    &RadioXL_SetMixSwitch);
+        fn->flags.isNative = true;
+        fn->AddParam("Int32", "which");
+        fn->AddParam("Bool", "mute");
+        fn->SetReturnType("Bool");
+        rtti->RegisterFunction(fn);
+    }
+    {
         auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationConsume", "RadioXL_StationConsume",
                                                     &RadioXL_StationConsume);
         fn->flags.isNative = true;
@@ -1763,6 +1793,15 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
             radioxl::broadcast::g_log = &Log;
             if (radioxl::broadcast::Widen(&ResolveByHash, &WriteBytes, aSdk, aHandle))
             {
+                radioxl::mix::g_log = &Log;
+                if (radioxl::mix::Init(&ResolveByHash))
+                {
+                    radioxl::broadcast::g_mixMatch = &radioxl::mix::Match;
+                    radioxl::broadcast::g_mixPoints = &radioxl::mix::Points;
+                    radioxl::broadcast::g_mixRemember = &radioxl::mix::Remember;
+                    static RED4ext::v1::GameState mixState{.OnEnter = nullptr, .OnUpdate = MixUpdate, .OnExit = nullptr};
+                    aSdk->gameStates->Add(aHandle, RED4ext::EGameStateType::Running, &mixState);
+                }
                 std::vector<int> ids;
                 for (const int32_t e : g_enumOf)
                 {
