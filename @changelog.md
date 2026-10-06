@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Changed
+- A car switched on with no station set picks from its whole startup list (`Startup.hpp`). The
+  receiver's turn-on block copied `matchingStartupRadioStations` into a 14-slot stack array, so
+  entries past the 14th never reached the pick. It is detoured at +0x54 to a stub that copies the
+  whole list, runs the game's own filter (the block's call at +0xe2, applied while the radio system
+  plays its limit of stations) and picks, then rejoins at the `TryGetRadioStationChannel` call.
+  Every address comes from the block (reached through the hashed enable routine) and every site is
+  byte-checked; on a mismatch the 14-entry pick stays. Measured: lists of 15 offered all 15, and
+  the filter cut one to the 2 stations already playing.
 - Traffic station lists: RadioXL only adds and removes its own stations (#73). `Traffic.reds`
   `Apply` takes each list as it is now, drops every custom station (`Ours`, all slots), and appends
   the wanted ones; whether a list is shared is re-read from it each time. The saved vanilla copy is
