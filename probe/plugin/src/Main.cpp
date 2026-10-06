@@ -20,6 +20,9 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <intrin.h>
+#include <iterator>
+#include <map>
 #include <unordered_map>
 
 namespace
@@ -802,6 +805,7 @@ bool SafeWalk(std::string& aReport)
 void CheckLiveRadios();
 void SweepListeners();
 void WriteMeters();
+void WriteChannels();
 
 // Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
 void PollMarker()
@@ -831,6 +835,7 @@ bool OnUpdate(RED4ext::CGameApplication*)
         CheckLiveRadios();
         SweepListeners();
         WriteMeters();
+        WriteChannels();
     }
     if (now - g_lastTick < 1000)
     {
@@ -2333,9 +2338,124 @@ void Attach(const HookTarget& aTarget, Fn aDetour, Fn* aOriginal)
     Log(std::string("traffic: hooked ") + aTarget.name);
 }
 
+// --- broadcast channel users ---
+// Every broadcast channel the game sets goes through audio::SetSoundParameter (0x33afc8, entity id, parameter,
+// value, emitter name, ramp) as one of five parameters: the three a radio station and its receivers set, the TV
+// channel and the reflection channel. Each emitter's current value per parameter is kept, a change is logged as
+// `channel set` with the function that set it (`from=` an RVA), and channels_live.txt beside meter_live.txt lists
+// every emitter on each value, so a channel two sources share shows as one line with two users. A channel fixed
+// inside a bank never passes through here.
+constexpr HookTarget kSetSoundParameter{"audio::SetSoundParameter", 1874005891, 0x33afc8,
+                                        {0x48, 0x83, 0xec, 0x38, 0x48, 0x8b, 0x05, 0x4d}};
+
+struct ChannelParam
+{
+    uint64_t hash;
+    const char* name;
+};
+constexpr ChannelParam kChannelParams[] = {
+    {0xe96bc1db34134bcc, "mono"},
+    {0xbd4665c7c72920f1, "right"},
+    {0xe88df021660bc324, "left"},
+    {0xe79edd506174a8cf, "tv"},
+    {0xa22c80d6ba1a71bc, "reflection"},
+};
+
+struct ChannelUser
+{
+    uint64_t entity;
+    uint64_t emitter;
+    int param;      // index into kChannelParams
+    int value;
+    uintptr_t from; // RVA of the caller
+};
+
+using SetSoundParameterFn = void (*)(uint64_t, RED4ext::CName, float, RED4ext::CName, float);
+SetSoundParameterFn g_origSetSoundParameter = nullptr;
+SRWLOCK g_channelLock = SRWLOCK_INIT;
+std::unordered_map<uint64_t, ChannelUser> g_channelUsers;  // key: entity ^ emitter ^ param, folded
+std::atomic<bool> g_channelsDirty{false};
+
+void DetourSetSoundParameter(uint64_t aEntity, RED4ext::CName aParam, float aValue, RED4ext::CName aEmitter,
+                             float aRamp)
+{
+    const uintptr_t from = reinterpret_cast<uintptr_t>(_ReturnAddress()) -
+                           reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    g_origSetSoundParameter(aEntity, aParam, aValue, aEmitter, aRamp);
+
+    int param = -1;
+    for (int i = 0; i < static_cast<int>(std::size(kChannelParams)); ++i)
+    {
+        if (kChannelParams[i].hash == aParam.hash)
+        {
+            param = i;
+        }
+    }
+    if (param < 0)
+    {
+        return;
+    }
+    const int value = static_cast<int>(std::lround(aValue));
+    const uint64_t key = (aEntity * 0x9E3779B97F4A7C15ull) ^ (aEmitter.hash * 31) ^ static_cast<uint64_t>(param);
+    bool changed = false;
+    AcquireSRWLockExclusive(&g_channelLock);
+    auto it = g_channelUsers.find(key);
+    if (it == g_channelUsers.end() || it->second.value != value)
+    {
+        g_channelUsers[key] = ChannelUser{aEntity, aEmitter.hash, param, value, from};
+        changed = true;
+    }
+    ReleaseSRWLockExclusive(&g_channelLock);
+    if (changed)
+    {
+        g_channelsDirty = true;
+        char buf[224];
+        std::snprintf(buf, sizeof(buf), "channel set %s %s=%d ent=%llx emitter=%s from=0x%llx", Stamp().c_str(),
+                      kChannelParams[param].name, value, static_cast<unsigned long long>(aEntity),
+                      Text(aEmitter.hash).c_str(), static_cast<unsigned long long>(from));
+        Log(buf);
+    }
+}
+
+// channels_live.txt: one line per channel value in use, `<value> <param>:<entity>:<emitter>:<from> ...`.
+// The radio parameters and the TV parameter are different numbers on the same channel space only where a bank's
+// curve maps them so; the file lists the raw value each was given.
+void WriteChannels()
+{
+    if (!g_channelsDirty.exchange(false) || g_livePath.empty())
+    {
+        return;
+    }
+    std::map<int, std::string> byValue;
+    AcquireSRWLockShared(&g_channelLock);
+    for (const auto& [key, u] : g_channelUsers)
+    {
+        char item[160];
+        std::snprintf(item, sizeof(item), " %s:%llx:%s:0x%llx", kChannelParams[u.param].name,
+                      static_cast<unsigned long long>(u.entity), Text(u.emitter).c_str(),
+                      static_cast<unsigned long long>(u.from));
+        byValue[u.value] += item;
+    }
+    ReleaseSRWLockShared(&g_channelLock);
+    std::string text;
+    for (const auto& [value, users] : byValue)
+    {
+        text += std::to_string(value) + users + "\n";
+    }
+    std::wstring path = g_livePath.substr(0, g_livePath.find_last_of(L"\\/")) + L"\\channels_live.txt";
+    const std::wstring temp = path + L".tmp";
+    if (FILE* f = _wfopen(temp.c_str(), L"wb"))
+    {
+        std::fwrite(text.data(), 1, text.size(), f);
+        std::fclose(f);
+        MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+}
+
 void InstallTrafficHooks()
 {
     g_startTick = GetTickCount64();
+    Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
     Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
     Attach(kUpdateAudio, &DetourUpdateAudio, &g_origUpdateAudio);
     Attach(kPerformAudioAction, &DetourPerformAudioAction, &g_origPerformAudioAction);
