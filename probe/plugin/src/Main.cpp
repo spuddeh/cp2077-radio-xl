@@ -2843,6 +2843,47 @@ const SkipSite kSkipSites[] = {
     {"session", 0x1d6, {0xe8, 0x35, 0x00, 0x00, 0x00}, 5},
 };
 
+// audio::SoundSystem::OnGamePaused(CName reason) (hash 2989429021) and OnGameActive (2970489111): each call
+// logs its reason and the caller's return address, to name the path a menu pauses the game's audio by.
+using OnGamePausedFn = void (*)(void*, RED4ext::CName);
+using OnGameActiveFn = void (*)(void*, RED4ext::CName);
+OnGamePausedFn g_origOnGamePaused = nullptr;
+OnGameActiveFn g_origOnGameActive = nullptr;
+
+void LogAudioPause(const char* aWhat, RED4ext::CName aReason, void* aReturn)
+{
+    const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    char buf[192];
+    std::snprintf(buf, sizeof(buf), "audio %s %s reason=%s (%llu) from 0x%llx", aWhat, Stamp().c_str(),
+                  aReason.ToString(), static_cast<unsigned long long>(aReason.hash),
+                  static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(aReturn) - base));
+    Log(buf);
+}
+
+void DetourOnGamePaused(void* aSystem, RED4ext::CName aReason)
+{
+    LogAudioPause("paused", aReason, _ReturnAddress());
+    g_origOnGamePaused(aSystem, aReason);
+}
+
+void DetourOnGameActive(void* aSystem, RED4ext::CName aReason)
+{
+    LogAudioPause("active", aReason, _ReturnAddress());
+    g_origOnGameActive(aSystem, aReason);
+}
+
+void HookAudioPause()
+{
+    auto* paused = reinterpret_cast<void*>(ResolveByHash(2989429021));
+    auto* active = reinterpret_cast<void*>(ResolveByHash(2970489111));
+    const bool okP = paused && g_sdk->hooking->Attach(g_handle, paused, reinterpret_cast<void*>(&DetourOnGamePaused),
+                                                      reinterpret_cast<void**>(&g_origOnGamePaused));
+    const bool okA = active && g_sdk->hooking->Attach(g_handle, active, reinterpret_cast<void*>(&DetourOnGameActive),
+                                                      reinterpret_cast<void**>(&g_origOnGameActive));
+    Log(std::string("audio pause trace: OnGamePaused ") + (okP ? "hooked" : "NOT hooked") + ", OnGameActive " +
+        (okA ? "hooked" : "NOT hooked"));
+}
+
 void ApplyMenuSkips()
 {
     HMODULE self = nullptr;
@@ -2989,6 +3030,7 @@ void InstallTrafficHooks()
     HookPostEvents();
     HookStreamingAndVoicePauses();
     ApplyMenuSkips();
+    HookAudioPause();
     g_startTick = GetTickCount64();
     Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
     Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
