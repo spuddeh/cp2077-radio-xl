@@ -870,6 +870,7 @@ void NeutralisePauses()
 bool OnUpdate(RED4ext::CGameApplication*)
 {
     NeutralisePauses();
+    LogStreamReads();
     PollMarker();
     if (g_failed)
     {
@@ -2728,6 +2729,100 @@ int DetourListeners(uint64_t aEmitter, const uint64_t* aIds, uint32_t aCount, in
     return g_origListeners(aEmitter, aIds, aCount, aOp);
 }
 
+// --- streaming and voice pauses, for the menu silence ---
+// WwiseContainerStreamingContainerDevice::BatchRead (hash 1860118917) is every streamed read: counted per
+// second. CAkPBI::_Pause(TransParams&) (184618297), CAkPBI::_Pause(bool) (1771177946) and
+// CAkMusicRenderer::Pause (1677860578) pause a voice outside an action; each call logs its return address.
+using BatchReadFn = void (*)(void*, uint32_t, void*);
+using PbiPauseTransFn = void (*)(void*, void*);
+using PbiPauseBoolFn = void (*)(void*, bool);
+using MusicPauseFn = void (*)(void*, void*, void*, uint32_t);
+BatchReadFn g_origBatchRead = nullptr;
+PbiPauseTransFn g_origPbiPauseTrans = nullptr;
+PbiPauseBoolFn g_origPbiPauseBool = nullptr;
+MusicPauseFn g_origMusicPause = nullptr;
+std::atomic<uint32_t> g_batchReads{0};
+std::atomic<uint32_t> g_batchItems{0};
+std::atomic<int> g_pauseLogs{0};
+
+void LogPauseCaller(const char* aWhat, void* aReturn)
+{
+    if (g_pauseLogs.fetch_add(1) < 400)
+    {
+        const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+        char buf[128];
+        std::snprintf(buf, sizeof(buf), "voice pause %s %s from 0x%llx", Stamp().c_str(), aWhat,
+                      static_cast<unsigned long long>(reinterpret_cast<uintptr_t>(aReturn) - base));
+        Log(buf);
+    }
+}
+
+void DetourBatchRead(void* aDevice, uint32_t aCount, void* aItems)
+{
+    g_batchReads.fetch_add(1);
+    g_batchItems.fetch_add(aCount);
+    g_origBatchRead(aDevice, aCount, aItems);
+}
+
+void DetourPbiPauseTrans(void* aPbi, void* aParams)
+{
+    LogPauseCaller("PBI(trans)", _ReturnAddress());
+    g_origPbiPauseTrans(aPbi, aParams);
+}
+
+void DetourPbiPauseBool(void* aPbi, bool aFlag)
+{
+    LogPauseCaller(aFlag ? "PBI(bool=1)" : "PBI(bool=0)", _ReturnAddress());
+    g_origPbiPauseBool(aPbi, aFlag);
+}
+
+void DetourMusicPause(void* aNode, void* aObject, void* aParams, uint32_t aPlaying)
+{
+    LogPauseCaller("music", _ReturnAddress());
+    g_origMusicPause(aNode, aObject, aParams, aPlaying);
+}
+
+void HookStreamingAndVoicePauses()
+{
+    struct Target
+    {
+        const char* name;
+        uint32_t hash;
+        void* detour;
+        void** original;
+    };
+    const Target targets[] = {
+        {"BatchRead", 1860118917, reinterpret_cast<void*>(&DetourBatchRead), reinterpret_cast<void**>(&g_origBatchRead)},
+        {"PBI::_Pause(trans)", 184618297, reinterpret_cast<void*>(&DetourPbiPauseTrans),
+         reinterpret_cast<void**>(&g_origPbiPauseTrans)},
+        {"PBI::_Pause(bool)", 1771177946, reinterpret_cast<void*>(&DetourPbiPauseBool),
+         reinterpret_cast<void**>(&g_origPbiPauseBool)},
+        {"MusicRenderer::Pause", 1677860578, reinterpret_cast<void*>(&DetourMusicPause),
+         reinterpret_cast<void**>(&g_origMusicPause)},
+    };
+    for (const auto& t : targets)
+    {
+        auto* fn = reinterpret_cast<void*>(ResolveByHash(t.hash));
+        const bool ok = fn && g_sdk->hooking->Attach(g_handle, fn, t.detour, t.original);
+        Log(std::string("menu trace: ") + t.name + (ok ? " hooked" : " NOT hooked"));
+    }
+}
+
+void LogStreamReads()
+{
+    static uint64_t last = 0;
+    const uint64_t now = GetTickCount64();
+    if (now - last < 1000)
+    {
+        return;
+    }
+    last = now;
+    char buf[96];
+    std::snprintf(buf, sizeof(buf), "stream reads %s batches=%u items=%u", Stamp().c_str(), g_batchReads.exchange(0),
+                  g_batchItems.exchange(0));
+    Log(buf);
+}
+
 void HookPostEvents()
 {
     auto* base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
@@ -2786,6 +2881,7 @@ void InstallTrafficHooks()
 {
     HookPauses();
     HookPostEvents();
+    HookStreamingAndVoicePauses();
     g_startTick = GetTickCount64();
     Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
     Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
