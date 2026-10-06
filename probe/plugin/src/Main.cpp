@@ -1294,6 +1294,27 @@ const AkQuery& Ak()
     return q;
 }
 
+// Wwise's global lock, a CRITICAL_SECTION the audio thread holds for its whole render pass. Every query above
+// enters it, so calling them from the game thread waits out the render pass: milliseconds of stall. Each batch of
+// queries tries the lock first and is skipped, to retry on the next pass, while the audio thread holds it. The
+// section is re-entrant, so the queries inside take it again freely. Its address is the lea at +0x17 in
+// CAkFunctionCritical's enter (0x1af6d90): 48 8D 0D rel32.
+LPCRITICAL_SECTION WwiseLock()
+{
+    static const LPCRITICAL_SECTION lock = []() -> LPCRITICAL_SECTION
+    {
+        const auto enter = ResolveRva<const uint8_t*>(0x1af6d90, {0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B});
+        if (!enter || enter[0x17] != 0x48 || enter[0x18] != 0x8D || enter[0x19] != 0x0D)
+        {
+            return nullptr;
+        }
+        int32_t rel = 0;
+        std::memcpy(&rel, enter + 0x1a, sizeof(rel));
+        return reinterpret_cast<LPCRITICAL_SECTION>(const_cast<uint8_t*>(enter) + 0x1e + rel);
+    }();
+    return lock;
+}
+
 // RTPC ids (FNV-1 of the names in eventsmetadata.json).
 constexpr uint32_t kRtpcBroadcastChannel = 3643107758;  // radio_broadcast_channel (mono receivers)
 constexpr uint32_t kRtpcBroadcastLeft = 975869506;      // radio_broadcast_channel_left (stereo receivers)
@@ -1513,7 +1534,8 @@ void CheckLiveRadios()
     const uint64_t now = GetTickCount64();
     // `wwise` lines, once a second: every playing traffic receiver and every other tuned receiver.
     static uint64_t lastWwise = 0;
-    if (now - lastWwise >= 1000)
+    const auto wwiseLock = WwiseLock();
+    if (now - lastWwise >= 1000 && wwiseLock && TryEnterCriticalSection(wwiseLock))
     {
         lastWwise = now;
         for (const auto& [entity, radio] : live)
@@ -1567,6 +1589,7 @@ void CheckLiveRadios()
                           Text(receiver.broadcastEvent).c_str());
             Log(head + AkVoiceText(pid));
         }
+        LeaveCriticalSection(wwiseLock);
     }
     for (const auto& [entity, radio] : live)
     {
@@ -2205,6 +2228,11 @@ void WatchVehicleParams()
     {
         return;
     }
+    const auto lock = WwiseLock();
+    if (!lock || !TryEnterCriticalSection(lock))
+    {
+        return;
+    }
     std::string line, live;
     char part[96];
     for (const auto& param : kWatchedParams)
@@ -2223,6 +2251,7 @@ void WatchVehicleParams()
                       listenerType);
         live += part;
     }
+    LeaveCriticalSection(lock);
     if (line != last)
     {
         last = line;
