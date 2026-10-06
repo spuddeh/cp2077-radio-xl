@@ -867,6 +867,8 @@ void NeutralisePauses()
     }
 }
 
+void LogStreamReads();
+
 bool OnUpdate(RED4ext::CGameApplication*)
 {
     NeutralisePauses();
