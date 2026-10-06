@@ -822,8 +822,54 @@ void PollMarker()
     down = now;
 }
 
+// --- experiment: neutralise sys_sfx_and_vo_pause's bus pauses ---
+// The pause actions listed below are aimed at id 0 once they are loaded, so a menu pauses none of those
+// buses. g_pIndex (0x339f7b8) table 3 holds actions (buckets +0x148, count +0x150; the indexed pointer is
+// the action, id +0x10, target +0x30, type +0x34). g_csMain is 0x339ffd0.
+constexpr uint32_t kNeutralise[] = {55005076, 197168231, 208132590, 599705210, 107559070,
+                                    127040125, 447084506, 790907290, 552529924, 890107075, 592197528};
+bool g_neutralised = false;
+
+void NeutralisePauses()
+{
+    if (g_neutralised)
+    {
+        return;
+    }
+    auto* base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+    const auto index = *reinterpret_cast<uintptr_t*>(base + 0x339f7b8);
+    auto* lock = reinterpret_cast<LPCRITICAL_SECTION>(base + 0x339ffd0);
+    if (!index || !TryEnterCriticalSection(lock))
+    {
+        return;
+    }
+    const auto buckets = *reinterpret_cast<uintptr_t*>(index + 0x148);
+    const auto count = *reinterpret_cast<uint32_t*>(index + 0x150);
+    int done = 0;
+    for (const uint32_t id : kNeutralise)
+    {
+        for (auto a = buckets && count ? *reinterpret_cast<uintptr_t*>(buckets + (id % count) * 8) : 0; a;
+             a = *reinterpret_cast<uintptr_t*>(a + 0x8))
+        {
+            if (*reinterpret_cast<uint32_t*>(a + 0x10) == id && *reinterpret_cast<uint16_t*>(a + 0x34) == 0x0202)
+            {
+                *reinterpret_cast<uint32_t*>(a + 0x30) = 0;
+                ++done;
+                break;
+            }
+        }
+    }
+    LeaveCriticalSection(lock);
+    if (done == static_cast<int>(sizeof(kNeutralise) / sizeof(kNeutralise[0])))
+    {
+        g_neutralised = true;
+        Log("experiment: all " + std::to_string(done) + " menu pause actions neutralised");
+    }
+}
+
 bool OnUpdate(RED4ext::CGameApplication*)
 {
+    NeutralisePauses();
     PollMarker();
     if (g_failed)
     {
