@@ -1801,6 +1801,7 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
                     radioxl::broadcast::g_mixRemember = &radioxl::mix::Remember;
                     static RED4ext::v1::GameState mixState{.OnEnter = nullptr, .OnUpdate = MixUpdate, .OnExit = nullptr};
                     aSdk->gameStates->Add(aHandle, RED4ext::EGameStateType::Running, &mixState);
+                    radioxl::mix::HookRadioUpdate(&ResolveByHash, aSdk, aHandle);
                 }
                 std::vector<int> ids;
                 for (const int32_t e : g_enumOf)

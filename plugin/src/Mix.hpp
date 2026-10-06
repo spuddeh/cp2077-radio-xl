@@ -66,6 +66,20 @@ constexpr int kActions = 3;  // the indexed pointer is the action itself
 // music on Music_Diagetic plays on through a menu with them. An action keeps its target at +0x30, its
 // type at +0x34 (0x0202, pause one object) and the target-is-a-bus flag in bit 0x40 of +0x36, and
 // looks the target up each time it runs: aimed at id 0 it pauses nothing. The resumes are left alone.
+// A paused session also sets GSoundSystem+0x1e0, and while it is set audio::RadioSystem::Update skips
+// every station: no clock, no song, so the radio holds where it was. While the menus switch is off the
+// hook clears the flag for the radio system's own update and restores it straight after, so the music,
+// director and playlist systems stay paused. RadioSystem::Update reads the flag through
+// `mov rax, [rip+rel32]` at +0x2d and `cmp byte [rax+0x1e0], r14b` at +0x34.
+constexpr uint32_t kHashRadioUpdate = 3455127956;  // 0x247fa0
+constexpr size_t kFlagLoadAt = 0x2d;
+constexpr uint8_t kFlagLoad[] = {0x48, 0x8B, 0x05};
+constexpr uint8_t kFlagCmp[] = {0x44, 0x38, 0xB0, 0xE0, 0x01, 0x00, 0x00};
+using RadioUpdateFn = void (*)(void*, float, void*);
+inline RadioUpdateFn g_origRadioUpdate = nullptr;
+inline uintptr_t* g_soundSystemVar = nullptr;
+inline std::atomic<bool> g_heldReported{false};
+
 struct Pause
 {
     uint32_t action;
@@ -436,6 +450,32 @@ inline bool ApplyCurve(size_t aIndex, bool aMute)
     return true;
 }
 
+inline void RadioUpdate(void* aSystem, float aDelta, void* aInfo)
+{
+    uint8_t* flag = nullptr;
+    if (!g_mutes[kMenus].load() && g_soundSystemVar && *g_soundSystemVar)
+    {
+        flag = reinterpret_cast<uint8_t*>(*g_soundSystemVar + 0x1e0);
+        if (*flag == 0)
+        {
+            flag = nullptr;
+        }
+    }
+    if (!flag)
+    {
+        g_origRadioUpdate(aSystem, aDelta, aInfo);
+        return;
+    }
+    if (!g_heldReported.exchange(true))
+    {
+        Log("menus: the radio keeps playing through a paused session");
+    }
+    const uint8_t held = *flag;
+    *flag = 0;
+    g_origRadioUpdate(aSystem, aDelta, aInfo);
+    *flag = held;
+}
+
 // Called from the game-state update. Returns once everything wanted is in place.
 inline void Tick()
 {
@@ -483,6 +523,28 @@ inline void Set(int aSwitch, bool aMute)
         Log(std::string(Name(static_cast<Switch>(aSwitch))) + (aMute ? " lowers the radio" : " no longer lowers the radio"));
     }
     g_pending = true;
+}
+
+// Hooks the radio system's update for the menus switch; without it menus still hold the radio.
+inline void HookRadioUpdate(uintptr_t (*aResolve)(uint32_t), const RED4ext::v1::Sdk* aSdk,
+                            RED4ext::v1::PluginHandle aHandle)
+{
+    auto* fn = reinterpret_cast<uint8_t*>(aResolve(kHashRadioUpdate));
+    if (!fn || std::memcmp(fn + kFlagLoadAt, kFlagLoad, sizeof(kFlagLoad)) != 0 ||
+        std::memcmp(fn + kFlagLoadAt + 7, kFlagCmp, sizeof(kFlagCmp)) != 0)
+    {
+        Log("byte check FAILED at the radio system's update - menus still hold the radio");
+        return;
+    }
+    int32_t rel = 0;
+    std::memcpy(&rel, fn + kFlagLoadAt + 3, sizeof(rel));
+    g_soundSystemVar = reinterpret_cast<uintptr_t*>(fn + kFlagLoadAt + 7 + rel);
+    if (!aSdk->hooking->Attach(aHandle, fn, reinterpret_cast<void*>(&RadioUpdate),
+                               reinterpret_cast<void**>(&g_origRadioUpdate)))
+    {
+        g_soundSystemVar = nullptr;
+        Log("could not hook the radio system's update - menus still hold the radio");
+    }
 }
 
 // Finds g_pIndex and g_csMain through a hashed function; without both, the switches do nothing.
