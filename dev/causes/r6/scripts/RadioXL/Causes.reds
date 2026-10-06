@@ -1,7 +1,7 @@
 // ======================================================================================
 // Mod Name: RadioXL
 // Author: Spuddeh
-// Description: Logs every cause that raises or drops a Radioport restriction, by name.
+// Description: Development only, never shipped: logs every cause that raises or drops a Radioport restriction.
 // File Version: 0.8.0
 // ======================================================================================
 //

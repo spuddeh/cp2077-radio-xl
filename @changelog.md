@@ -35,8 +35,9 @@
     `RadioSystem::Update` hooked to run with `GSoundSystem+0x1e0` cleared. Measured: the radio
     plays in the inventory, map and hub while other world sound pauses; the Escape menu still
     silences it.
-- `Causes.reds` (development logging): `cause +/-` lines per restriction cause, and the source
-  holding `ForceEmptyHands`.
+- `dev/causes/` (development only, outside the release's `contentDir`, deployed to Testing as its own
+  MO2 mod `RadioXL Causes [DEV]`): `Causes.reds` logs `cause +/-` lines per restriction cause and
+  the source holding `ForceEmptyHands`.
 - Custom stations broadcast on channels 256 and up (#69). Every broadcast source shares 256
   channels and the game fills 222 of them: stations (8 to 21, 58 to 71, 228 to 241), TVs (40 to 50,
   by the TV channel curve), playlists, reflections, and 113 sends whose channel is fixed in
