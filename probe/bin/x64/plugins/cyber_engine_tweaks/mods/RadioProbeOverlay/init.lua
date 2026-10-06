@@ -103,7 +103,7 @@ local function drawAtrCars(dl, player)
             local p = car:GetWorldPosition()
             local dx, dy, dz = p.x - pos.x, p.y - pos.y, p.z - pos.z
             local d = math.sqrt(dx * dx + dy * dy + dz * dz)
-            local s = cam:ProjectPoint(Vector4.new(p.x, p.y, p.z + 1.2, 1))
+            local s = cam:ProjectPoint(Vector4.new(p.x, p.y, p.z + 1.7, 1))
             if d < 200 and s.w > 0 and math.abs(s.x) <= 1.2 and math.abs(s.y) <= 1.2 then
                 local sx, sy = w / 2 + s.x * w / 2, h / 2 - s.y * h / 2
                 ImGui.ImDrawListAddText(dl, sx - 40, sy, cyan,
