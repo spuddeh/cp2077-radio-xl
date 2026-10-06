@@ -8,6 +8,7 @@
 -- Radio Station Probe (RED4ext) writes two files into this folder every 100 ms:
 --   radio_live.txt   one line per listener: kind x y z counts playing station
 --   meter_live.txt   one line per bus: name rms_db peak_db peak_hold_db calls rms_left rms_right peak_left peak_right
+--   params_live.txt  one line per vehicle game parameter: name global scope listener_value scope
 -- This mod only reads and draws them. Both are on by default; each has a hotkey to hide it.
 
 local showMarkers = true
@@ -15,6 +16,7 @@ local showMeters = true
 
 local listeners = {}
 local meters = {}
+local params = {}
 local readAt = 0
 
 local KINDS = { [1] = "World", [2] = "Car", [3] = "Hit car (k3)", [4] = "Player (k4)", [5] = "Ambient" }
@@ -60,6 +62,16 @@ local function readFiles()
         end
         f:close()
         meters = byName
+    end
+    f = io.open("params_live.txt", "r")
+    if f then
+        local list = {}
+        for line in f:lines() do
+            local n, g, gt, l, lt = line:match("^(%S+) (%S+) (%S+) (%S+) (%S+)")
+            if n then list[#list + 1] = { name = n, global = tonumber(g), gt = gt, listener = tonumber(l), lt = lt } end
+        end
+        f:close()
+        params = list
     end
 end
 
@@ -128,6 +140,13 @@ local function drawMeters(dl)
                 ImGui.ImDrawListAddRectFilled(dl, x0, cy, x0 + bw * frac(db), cy + ch, col)
             end
         end
+    end
+    -- The vehicle game parameters, each as global value and the value on the player's listener, with the scope
+    -- Wwise resolved it from (0 default, 1 global, 2 game object).
+    local py = y0 + #METERS * (th + bh + 2 * ch + 20)
+    for i, p in ipairs(params) do
+        ImGui.ImDrawListAddText(dl, x0, py + (i - 1) * (th + 2), white,
+            string.format("%s   global %.2f (%s)   listener %.2f (%s)", p.name, p.global, p.gt, p.listener, p.lt))
     end
 end
 

@@ -805,6 +805,7 @@ bool SafeWalk(std::string& aReport)
 void CheckLiveRadios();
 void SweepListeners();
 void WriteMeters();
+void WatchVehicleParams();
 void WriteChannels();
 
 // Scroll Lock writes a marker line, so a pop heard in game can be matched to the lines around it.
@@ -835,6 +836,7 @@ bool OnUpdate(RED4ext::CGameApplication*)
         CheckLiveRadios();
         SweepListeners();
         WriteMeters();
+        WatchVehicleParams();
         WriteChannels();
     }
     if (now - g_lastTick < 1000)
@@ -1297,6 +1299,9 @@ constexpr uint32_t kRtpcBroadcastChannel = 3643107758;  // radio_broadcast_chann
 constexpr uint32_t kRtpcBroadcastLeft = 975869506;      // radio_broadcast_channel_left (stereo receivers)
 constexpr uint32_t kRtpcEngageMovingFaster = 139023859; // veh_engage_moving_faster (NPC mixer volume)
 
+// The player's audio listener, as the last voice query reported it; 0 until one has.
+uint64_t g_listenerGo = 0;
+
 // One voice as Wwise sees it: its game object, whether that object is active, how many voices it holds, the
 // event, the channel RTPCs as resolved for this playing id (value and the scope it came from: 0 default,
 // 1 global, 2 game object, 3 playing id, 4 unavailable), the NPC volume RTPC, max radius, and the dry level to
@@ -1325,6 +1330,10 @@ bool SafeAkVoice(uint32_t aPlayingId, char* aBuf, size_t aSize)
         uint64_t listeners[4] = {};
         uint32_t listenerCount = 4;
         ak.listeners(go, listeners, &listenerCount);
+        if (listenerCount)
+        {
+            g_listenerGo = listeners[0];
+        }
         int n = std::snprintf(aBuf, aSize,
                               "pid=%u go=%llx active=%u voices=%u event=%u chan=%.0f/t%d left=%.0f/t%d fast=%.2f/t%d radius=%.1f listeners=%u",
                               aPlayingId, static_cast<unsigned long long>(go), active ? 1u : 0u, voices, eventId,
@@ -2156,6 +2165,76 @@ void SweepListeners()
         std::fwrite(live.data(), 1, live.size(), f);
         std::fclose(f);
         MoveFileExW(temp.c_str(), g_livePath.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+}
+
+// --- the vehicle interior parameters ---
+// Each 100 ms: the game parameters vanilla uses for being in a car, read global (scope 1) and on the player's
+// listener (scope 2), each as value/scope-it-came-from. A `vehicle params` line is logged on any change, and the
+// values are written to params_live.txt beside radio_live.txt for the overlay.
+struct WatchedParam
+{
+    const char* name;
+    uint32_t id;
+};
+constexpr WatchedParam kWatchedParams[] = {
+    {"veh_interior", 290459857},
+    {"veh_player_mounted", 2820449795},
+    {"amb_interior", 1470762554},
+};
+
+bool SafeReadParam(uint32_t aId, uint64_t aGameObject, int aScope, float* aValue, int* aType)
+{
+    __try
+    {
+        *aType = aScope;
+        *aValue = -1.0f;
+        Ak().rtpc(aId, aGameObject, 0, aValue, aType);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+void WatchVehicleParams()
+{
+    static std::string last;
+    if (!Ak().ok || g_livePath.empty())
+    {
+        return;
+    }
+    std::string line, live;
+    char part[96];
+    for (const auto& param : kWatchedParams)
+    {
+        float global = -1.0f, onListener = -1.0f;
+        int globalType = 0, listenerType = 0;
+        SafeReadParam(param.id, ~0ull, 1, &global, &globalType);
+        if (g_listenerGo)
+        {
+            SafeReadParam(param.id, g_listenerGo, 2, &onListener, &listenerType);
+        }
+        std::snprintf(part, sizeof(part), " %s=%.2f/t%d listener=%.2f/t%d", param.name, global, globalType,
+                      onListener, listenerType);
+        line += part;
+        std::snprintf(part, sizeof(part), "%s %.2f %d %.2f %d\n", param.name, global, globalType, onListener,
+                      listenerType);
+        live += part;
+    }
+    if (line != last)
+    {
+        last = line;
+        Log("vehicle params " + Stamp() + line);
+    }
+    const std::wstring path = g_livePath.substr(0, g_livePath.find_last_of(L'\\') + 1) + L"params_live.txt";
+    const std::wstring temp = path + L".tmp";
+    if (FILE* f = _wfopen(temp.c_str(), L"wb"))
+    {
+        std::fwrite(live.data(), 1, live.size(), f);
+        std::fclose(f);
+        MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING);
     }
 }
 
