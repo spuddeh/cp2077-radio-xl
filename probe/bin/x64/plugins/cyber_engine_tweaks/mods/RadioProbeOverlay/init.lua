@@ -10,7 +10,7 @@
 --   meter_live.txt   one line per bus: name rms_db peak_db peak_hold_db calls rms_left rms_right peak_left peak_right
 --   params_live.txt  one line per vehicle game parameter: name global scope listener_value scope
 -- Audible Traffic Radios' tuning build writes a fourth, every 250 ms:
---   atr_live.txt     one line per traffic car with a radio: entity_id level_db openness
+--   atr_live.txt     one line per traffic car with a radio: entity_id level_db openness receiver
 -- This mod only reads and draws them. Both are on by default; each has a hotkey to hide it.
 
 local showMarkers = true
@@ -80,8 +80,10 @@ local function readFiles()
     if f then
         local list = {}
         for line in f:lines() do
-            local id, db, open = line:match("^(%d+) (%S+) (%S+)")
-            if id then list[#list + 1] = { id = tonumber(id), db = tonumber(db), open = tonumber(open) } end
+            local id, db, open, receiver = line:match("^(%d+) (%S+) (%S+) ?(%S*)")
+            if id then
+                list[#list + 1] = { id = tonumber(id), db = tonumber(db), open = tonumber(open), receiver = receiver }
+            end
         end
         f:close()
         atrCars = list
@@ -101,11 +103,11 @@ local function drawAtrCars(dl, player)
             local p = car:GetWorldPosition()
             local dx, dy, dz = p.x - pos.x, p.y - pos.y, p.z - pos.z
             local d = math.sqrt(dx * dx + dy * dy + dz * dz)
-            local s = cam:ProjectPoint(Vector4.new(p.x, p.y, p.z + 2.2, 1))
+            local s = cam:ProjectPoint(Vector4.new(p.x, p.y, p.z + 1.2, 1))
             if d < 200 and s.w > 0 and math.abs(s.x) <= 1.2 and math.abs(s.y) <= 1.2 then
                 local sx, sy = w / 2 + s.x * w / 2, h / 2 - s.y * h / 2
                 ImGui.ImDrawListAddText(dl, sx - 40, sy, cyan,
-                    string.format("ATR %+.1f dB  open %.2f  %.0f m", c.db, c.open, d))
+                    string.format("ATR %s %+.1f dB  open %.2f  %.0f m", c.receiver, c.db, c.open, d))
             end
         end
     end
