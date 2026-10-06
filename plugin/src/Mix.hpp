@@ -5,11 +5,12 @@
 // File Version: 0.8.0
 // ======================================================================================
 //
-// Four switches, each on by default (the game's own behaviour):
+// Five switches, each on by default (the game's own behaviour):
 //   combat music  - Music_Systemic_Combat ducks the player radio bus by -96 dB while it plays
 //   police music  - Music_Systemic_Police, the same duck
 //   voices        - five side-chain curves lower the player radio while anyone speaks
 //   megabuilding  - H10's building music turns the Radioport down through rms_loudness_pocket_radio_mb
+//   menus         - a menu state lowers and muffles the player radio, and a pause muffles it
 // A duck is switched by writing its entry's volume on the ducking bus; a curve by loading it again
 // through the bank's own curve loader, flat or as shipped. Every Wwise address is reached from a
 // RED4ext hash and its bytes are checked; a write happens only under Wwise's global lock, tried, never
@@ -39,6 +40,7 @@ enum Switch : int
     kPolice,
     kVoices,
     kMegabuilding,
+    kMenus,
     kSwitchCount
 };
 
@@ -77,6 +79,26 @@ constexpr Duck kDucks[] = {
 // A curve is matched by its parameter, property and curve id: the loader's second argument is 0 for
 // these, and the object they sit on is not passed by id. `target` is the object, looked up only to
 // know its bank is still loaded.
+// A state's values on a bus. The bus keeps its state data at [object+0x38]: groups chained from +0x08
+// through +0x10, each holding its owner (object+0x28) at +0x18, its states at +0x20 (count +0x28, 0x18
+// bytes each) and its id at +0x40. A state entry holds its id at +0 and its own property bundle at
+// +8: a u16 count, the u16 property ids, then the floats from the next 4-byte boundary. Wwise reads the
+// bundle at every change into the state, so a value written here applies from the next change.
+struct State
+{
+    uint32_t bus;
+    uint32_t group;
+    uint32_t state;
+    uint16_t props[2];
+    float values[2];
+    uint16_t count;
+};
+constexpr uint32_t kPlayerRadioTop = 4067771226;  // Music_Radio_Car_Player_DVR
+constexpr State kStates[] = {
+    {kPlayerRadioTop, 2481250406, 2418768486, {0, 2}, {-20.0f, 30.0f}, 2},  // st_menu = st_menu_on
+    {kPlayerRadioTop, 4054796535, 2425410597, {2, 0}, {50.0f, 0.0f}, 1},     // st_pause = st_pause_game_paused
+};
+
 struct Curve
 {
     Switch owner;
@@ -118,7 +140,7 @@ inline uintptr_t* g_indexVar = nullptr;
 inline LPCRITICAL_SECTION g_lock = nullptr;
 inline std::mutex g_captureMutex;
 inline Captured g_captured[kCurveCount];
-inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true};
+inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true, true};
 inline std::atomic<bool> g_pending{false};
 inline bool g_ready = false;
 inline SetFn g_set = nullptr;
@@ -139,6 +161,7 @@ inline const char* Name(Switch aSwitch)
     case kPolice: return "police music";
     case kVoices: return "voices";
     case kMegabuilding: return "megabuilding music";
+    case kMenus: return "menus";
     default: return "?";
     }
 }
@@ -272,6 +295,69 @@ inline bool ApplyDuck(const Duck& aDuck, bool aMute)
     return true;
 }
 
+inline bool ApplyState(const State& aState, bool aMute)
+{
+    const uintptr_t bus = Find(kBuses, aState.bus);
+    if (!bus)
+    {
+        return false;
+    }
+    const auto data = Read<uintptr_t>(bus + 0x38);
+    uintptr_t group = data ? Read<uintptr_t>(data + 0x08) : 0;
+    for (int i = 0; group && i < 32; ++i, group = Read<uintptr_t>(group + 0x10))
+    {
+        if (Read<uint32_t>(group + 0x40) != aState.group)
+        {
+            continue;
+        }
+        if (Read<uintptr_t>(group + 0x18) != bus + 0x28)
+        {
+            break;
+        }
+        const auto states = Read<uintptr_t>(group + 0x20);
+        const auto count = Read<uint32_t>(group + 0x28);
+        for (uint32_t s = 0; states && s < count && s < 64; ++s)
+        {
+            const uintptr_t entry = states + s * 0x18;
+            if (Read<uint32_t>(entry) != aState.state)
+            {
+                continue;
+            }
+            const auto bundle = Read<uintptr_t>(entry + 8);
+            if (!bundle || Read<uint16_t>(bundle) != aState.count)
+            {
+                break;
+            }
+            for (uint16_t p = 0; p < aState.count; ++p)
+            {
+                if (Read<uint16_t>(bundle + 2 + p * 2) != aState.props[p])
+                {
+                    Log("the state " + std::to_string(aState.state) + " is not the game's - left alone");
+                    return true;
+                }
+            }
+            const uintptr_t values = bundle + ((2u * aState.count + 5u) & ~3u);
+            for (uint16_t p = 0; p < aState.count; ++p)
+            {
+                const float now = Read<float>(values + p * 4);
+                if (now != aState.values[p] && now != 0.0f)
+                {
+                    Log("the state " + std::to_string(aState.state) + " holds an unexpected value - left alone");
+                    return true;
+                }
+            }
+            for (uint16_t p = 0; p < aState.count; ++p)
+            {
+                *reinterpret_cast<float*>(values + p * 4) = aMute ? aState.values[p] : 0.0f;
+            }
+            return true;
+        }
+        break;
+    }
+    Log("the state " + std::to_string(aState.state) + " was not found on " + std::to_string(aState.bus) + " - left alone");
+    return true;
+}
+
 inline bool ApplyCurve(size_t aIndex, bool aMute)
 {
     const Curve& c = kCurves[aIndex];
@@ -330,6 +416,10 @@ inline void Tick()
     for (size_t i = 0; i < kCurveCount; ++i)
     {
         done = ApplyCurve(i, g_mutes[kCurves[i].owner].load()) && done;
+    }
+    for (const State& st : kStates)
+    {
+        done = ApplyState(st, g_mutes[kMenus].load()) && done;
     }
     LeaveCriticalSection(g_lock);
     if (!done)

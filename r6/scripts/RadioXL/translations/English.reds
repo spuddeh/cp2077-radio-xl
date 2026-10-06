@@ -143,6 +143,8 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipMuteVoices", "Default: on. The radio is turned down and muffled while anyone speaks: conversations, calls, the police scanner. In the car and on the Radioport.");
     this.Text("RadioXL.muteMegabuilding", "Megabuilding H10's music is playing");
     this.Text("RadioXL.tipMuteMegabuilding", "Default: on. In H10's halls and lifts the building's own music turns the Radioport down until it is silent.");
+    this.Text("RadioXL.muteMenus", "A menu is open");
+    this.Text("RadioXL.tipMuteMenus", "Default: on. The radio is turned down and muffled while a menu is open, and muffled while the game is paused. In the car and on the Radioport. Changed with a menu open, it applies from the next one.");
     this.Text("RadioXL.tipMuteQuests", "Default: on. A story moment in which a quest switches the radio off, blocks fast travel or takes your weapons away.");
   }
 }

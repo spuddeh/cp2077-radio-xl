@@ -60,12 +60,14 @@ public class RadioXLConfig extends ScriptableSystem {
   public let mutePoliceMusic: Bool = true;
   public let muteVoices: Bool = true;
   public let muteMegabuilding: Bool = true;
+  public let muteMenus: Bool = true;
 
   public func ApplyMix() -> Void {
     RadioXL_SetMixSwitch(0, this.muteCombatMusic);
     RadioXL_SetMixSwitch(1, this.mutePoliceMusic);
     RadioXL_SetMixSwitch(2, this.muteVoices);
     RadioXL_SetMixSwitch(3, this.muteMegabuilding);
+    RadioXL_SetMixSwitch(4, this.muteMenus);
   }
 
   // The dropdown's option index: 0 most cars, 1 every car, 2 off.
@@ -346,6 +348,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tip("RadioXL.tipMuteVoices");
     b.Toggle("muteMegabuilding", "RadioXL.muteMegabuilding");
     b.Tip("RadioXL.tipMuteMegabuilding");
+    b.Toggle("muteMenus", "RadioXL.muteMenus");
+    b.Tip("RadioXL.tipMuteMenus");
 
     return b.Build();
   }
@@ -571,6 +575,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "mutePoliceMusic") { return c.mutePoliceMusic; }
       if Equals(key, "muteVoices") { return c.muteVoices; }
       if Equals(key, "muteMegabuilding") { return c.muteMegabuilding; }
+      if Equals(key, "muteMenus") { return c.muteMenus; }
       if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
       if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
     }
@@ -618,6 +623,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "mutePoliceMusic") { c.mutePoliceMusic = value; }
       if Equals(key, "muteVoices") { c.muteVoices = value; }
       if Equals(key, "muteMegabuilding") { c.muteMegabuilding = value; }
+      if Equals(key, "muteMenus") { c.muteMenus = value; }
       c.ApplyMix();
       // A switch changed while a restriction is in force takes effect now, not at the next scene.
       RadioXLRestrictions.Refresh();
