@@ -60,11 +60,21 @@ constexpr int kNodes = 0;
 constexpr int kBuses = 1;
 constexpr int kActions = 3;  // the indexed pointer is the action itself
 
-// sys_sfx_and_vo_pause holds one pause per bus; this one pauses the player radio's top bus while a
-// menu or the pause screen is up. An action keeps its target at +0x30, its type at +0x34 (0x0202,
-// pause one object) and the target-is-a-bus flag in bit 0x40 of +0x36, and looks the target up each
-// time it runs: aimed at id 0 it finds nothing and pauses nothing. The matching resume is left alone.
-constexpr uint32_t kRadioPause = 592197528;
+// sys_sfx_and_vo_pause holds one pause per bus while a menu or the pause screen is up. Two of them
+// silence the radio: one pauses the player radio's top bus, the other Music_Diagetic, where every
+// station's playlist plays and broadcasts from, so a receiver left running hears nothing. Other world
+// music on Music_Diagetic plays on through a menu with them. An action keeps its target at +0x30, its
+// type at +0x34 (0x0202, pause one object) and the target-is-a-bus flag in bit 0x40 of +0x36, and
+// looks the target up each time it runs: aimed at id 0 it pauses nothing. The resumes are left alone.
+struct Pause
+{
+    uint32_t action;
+    uint32_t bus;
+};
+constexpr Pause kPauses[] = {
+    {592197528, 4067771226},  // Music_Radio_Car_Player_DVR
+    {890107075, 666212655},   // Music_Diagetic
+};
 
 constexpr uint32_t kPlayerRadioBus = 3776664628;  // Music_Diagetic_Radios_Vehicle_Player_DVR
 
@@ -302,24 +312,25 @@ inline bool ApplyDuck(const Duck& aDuck, bool aMute)
     return true;
 }
 
-inline bool ApplyPause(bool aMute)
+inline bool ApplyPause(const Pause& aPause, bool aMute)
 {
-    const uintptr_t action = Find(kActions, kRadioPause, 0);
+    const uintptr_t action = Find(kActions, aPause.action, 0);
     if (!action)
     {
         return false;
     }
     const auto target = Read<uint32_t>(action + 0x30);
     if (Read<uint16_t>(action + 0x34) != 0x0202 || !(Read<uint8_t>(action + 0x36) & 0x40) ||
-        (target != kPlayerRadioTop && target != 0))
+        (target != aPause.bus && target != 0))
     {
-        Log("the menu pause is not the game's - left alone");
+        Log("the menu pause " + std::to_string(aPause.action) + " is not the game's - left alone");
         return true;
     }
-    const uint32_t want = aMute ? kPlayerRadioTop : 0;
+    const uint32_t want = aMute ? aPause.bus : 0;
     if (target != want)
     {
         *reinterpret_cast<uint32_t*>(action + 0x30) = want;
+        Log("menu pause " + std::to_string(aPause.action) + (aMute ? " pauses its bus again" : " pauses nothing"));
     }
     return true;
 }
@@ -450,7 +461,10 @@ inline void Tick()
     {
         done = ApplyState(st, g_mutes[kMenus].load()) && done;
     }
-    done = ApplyPause(g_mutes[kMenus].load()) && done;
+    for (const Pause& pause : kPauses)
+    {
+        done = ApplyPause(pause, g_mutes[kMenus].load()) && done;
+    }
     LeaveCriticalSection(g_lock);
     if (!done)
     {
