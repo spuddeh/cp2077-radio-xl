@@ -21,6 +21,7 @@
 #include <Windows.h>
 #include <RED4ext/RED4ext.hpp>
 
+#include "Broadcast.hpp"
 #include "Cache.hpp"
 #include "Channels.hpp"
 #include "Clock.hpp"
@@ -1668,6 +1669,14 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         PatchRoster();
         if (g_patched)
         {
+            // Dev switch while broadcast channels past 255 are being measured: the file's presence turns it on.
+            if (std::filesystem::exists(PluginDirectory() / "dev_wide_channels"))
+            {
+                radioxl::broadcast::g_log = &Log;
+                radioxl::broadcast::Widen(&ResolveByHash, &WriteBytes, aSdk, aHandle);
+                radioxl::channels::g_wide = radioxl::broadcast::g_widened;
+                radioxl::channels::g_wideChannels = static_cast<int>(radioxl::broadcast::kChannels);
+            }
             radioxl::channels::Init(static_cast<int>(g_stations.size()), &Log);
             radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
         }

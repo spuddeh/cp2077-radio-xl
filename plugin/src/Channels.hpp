@@ -61,6 +61,8 @@ alignas(64) inline int32_t g_table[3][256];
 
 inline std::bitset<256> g_taken;   // the game's channels, the fourteen's and the off channel
 inline int g_customCount = 0;
+inline bool g_wide = false;           // the broadcaster takes channels past 255 (Broadcast.hpp)
+inline int g_wideChannels = 0;
 inline int g_assigned = 0;          // custom stations with channels of their own
 inline std::function<void(const std::string&)> g_log;
 
@@ -86,8 +88,13 @@ inline void Assign()
 
     std::bitset<256> used = g_taken;
     int channel = 0;
+    int wide = 256;
     const auto next = [&]() -> int
     {
+        if (g_wide)
+        {
+            return wide < g_wideChannels ? wide++ : -1;
+        }
         while (channel < kOff && used.test(channel))
         {
             ++channel;
