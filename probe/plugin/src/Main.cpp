@@ -10,6 +10,7 @@
 // with nobody listening is a station whose flag never cleared, and this logs which listener is
 // keeping it set.
 
+#include <mutex>
 #include <Windows.h>
 #include <RED4ext/RED4ext.hpp>
 
@@ -2583,6 +2584,100 @@ int DetourPauseExec(void* aAction, void* aPending)
     return g_origPauseExec(aAction, aPending);
 }
 
+// Every event the game posts goes through one of two AK::SoundEngine::PostEvent overloads (0x1ac8d90 by id
+// with external sources, 0x1ac8e70 by id with custom parameters). Each event is logged the first time it
+// is seen in 30 s, so repeats (footsteps, impacts) do not flood the log.
+using PostEventExtFn = uint32_t (*)(uint32_t, uint64_t, uint32_t, void*, void*, uint32_t, void*, uint32_t);
+using PostEventCustomFn = uint32_t (*)(uint32_t, uint64_t, uint32_t, void*, void*, void*, uint32_t);
+PostEventExtFn g_origPostEventExt = nullptr;
+PostEventCustomFn g_origPostEventCustom = nullptr;
+std::mutex g_eventSeenMutex;
+std::unordered_map<uint32_t, uint64_t> g_eventSeen;
+
+void NoteEvent(uint32_t aEvent, uint64_t aObject)
+{
+    const uint64_t now = GetTickCount64();
+    {
+        std::lock_guard<std::mutex> guard(g_eventSeenMutex);
+        auto& last = g_eventSeen[aEvent];
+        if (last && now - last < 30000)
+        {
+            last = now;
+            return;
+        }
+        last = now;
+    }
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "wwise event %s id=%u go=%llu", Stamp().c_str(), aEvent,
+                  static_cast<unsigned long long>(aObject));
+    Log(buf);
+}
+
+uint32_t DetourPostEventExt(uint32_t aEvent, uint64_t aObject, uint32_t aFlags, void* aCallback, void* aCookie,
+                            uint32_t aExternals, void* aExternal, uint32_t aPlaying)
+{
+    NoteEvent(aEvent, aObject);
+    return g_origPostEventExt(aEvent, aObject, aFlags, aCallback, aCookie, aExternals, aExternal, aPlaying);
+}
+
+uint32_t DetourPostEventCustom(uint32_t aEvent, uint64_t aObject, uint32_t aFlags, void* aCallback, void* aCookie,
+                               void* aCustom, uint32_t aPlaying)
+{
+    NoteEvent(aEvent, aObject);
+    return g_origPostEventCustom(aEvent, aObject, aFlags, aCallback, aCookie, aCustom, aPlaying);
+}
+
+// State changes: AK::SoundEngine::SetState (0x1acfb50, group/state) and its four-argument overload
+// (0x1acfbc0). States change rarely, so every call is logged.
+using SetStateFn = int (*)(uint32_t, uint32_t);
+using SetStateExFn = int (*)(uint32_t, uint32_t, bool, bool);
+SetStateFn g_origSetState = nullptr;
+SetStateExFn g_origSetStateEx = nullptr;
+
+int DetourSetState(uint32_t aGroup, uint32_t aState)
+{
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "wwise state %s group=%u state=%u", Stamp().c_str(), aGroup, aState);
+    Log(buf);
+    return g_origSetState(aGroup, aState);
+}
+
+int DetourSetStateEx(uint32_t aGroup, uint32_t aState, bool aSkipTransition, bool aSkipExtension)
+{
+    char buf[128];
+    std::snprintf(buf, sizeof(buf), "wwise state %s group=%u state=%u (ex)", Stamp().c_str(), aGroup, aState);
+    Log(buf);
+    return g_origSetStateEx(aGroup, aState, aSkipTransition, aSkipExtension);
+}
+
+void HookPostEvents()
+{
+    auto* base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+    constexpr uint8_t kExt[] = {0x48, 0x8b, 0xc4, 0x48, 0x89, 0x58, 0x08, 0x48, 0x89, 0x68, 0x10};
+    constexpr uint8_t kCustom[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10};
+    auto* ext = base + 0x1ac8d90;
+    auto* custom = base + 0x1ac8e70;
+    const bool okExt = std::memcmp(ext, kExt, sizeof(kExt)) == 0 &&
+                       g_sdk->hooking->Attach(g_handle, ext, reinterpret_cast<void*>(&DetourPostEventExt),
+                                              reinterpret_cast<void**>(&g_origPostEventExt));
+    const bool okCustom = std::memcmp(custom, kCustom, sizeof(kCustom)) == 0 &&
+                          g_sdk->hooking->Attach(g_handle, custom, reinterpret_cast<void*>(&DetourPostEventCustom),
+                                                 reinterpret_cast<void**>(&g_origPostEventCustom));
+    constexpr uint8_t kState[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x20};
+    constexpr uint8_t kStateEx[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10};
+    auto* st = base + 0x1acfb50;
+    auto* stEx = base + 0x1acfbc0;
+    const bool okState = std::memcmp(st, kState, sizeof(kState)) == 0 &&
+                         g_sdk->hooking->Attach(g_handle, st, reinterpret_cast<void*>(&DetourSetState),
+                                                reinterpret_cast<void**>(&g_origSetState));
+    const bool okStateEx = std::memcmp(stEx, kStateEx, sizeof(kStateEx)) == 0 &&
+                           g_sdk->hooking->Attach(g_handle, stEx, reinterpret_cast<void*>(&DetourSetStateEx),
+                                                  reinterpret_cast<void**>(&g_origSetStateEx));
+    Log(std::string("wwise state: SetState hooks ") + (okState ? "ok" : "FAILED") + ", " + (okStateEx ? "ok" : "FAILED"));
+    Log(std::string("wwise event: PostEvent hooks ") + (okExt ? "ext ok" : "ext FAILED") + ", " +
+        (okCustom ? "custom ok" : "custom FAILED"));
+}
+
 void HookPauses()
 {
     constexpr uintptr_t kRva = 0x1b978e0;
@@ -2601,6 +2696,7 @@ void HookPauses()
 void InstallTrafficHooks()
 {
     HookPauses();
+    HookPostEvents();
     g_startTick = GetTickCount64();
     Attach(kSetSoundParameter, &DetourSetSoundParameter, &g_origSetSoundParameter);
     Attach(kInitializeAudio, &DetourInitializeAudio, &g_origInitializeAudio);
