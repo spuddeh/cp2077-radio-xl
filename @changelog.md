@@ -52,7 +52,7 @@
   821564187, reached through its `jne` at +0x110, `cmp eax, 14` at +0x12), which loaded a car saved
   on a custom station on a random vanilla one. The block's `cmp edx, 14` at +0x6F caps a 14-slot
   stack buffer and stays. Measured on Testing: two Tool FM hijacks and a Pacific Dreams control kept
-  their station. The save load is not checked in game.
+  their station, and a car saved on Outrun Waves loaded on Outrun Waves (2026-10-06).
 
 ## [0.7.0] - 2026-10-05
 
