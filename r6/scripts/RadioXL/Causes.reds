@@ -74,12 +74,33 @@ protected cb func OnSceneTierChange(newState: Int32) -> Bool {
 @addField(PlayerPuppet)
 private let m_radioxlEmptyHands: Bool;
 
+// ForceEmptyHands is held by any of five sources (DefaultTransition.IsEmptyHandsForced): a safe
+// zone, the quest fact ForceEmptyHands, a NoCombat effect (not while fast-forwarding), a
+// VehicleScene effect, or the state machine's own parameter (scene tier, inspection, minigame),
+// which script cannot read and is named only when none of the others holds.
 @wrapMethod(PlayerPuppet)
 protected cb func OnUpperBodyStateChange(newState: Int32) -> Bool {
   let emptyHands: Bool = newState == 5;
   if NotEquals(emptyHands, this.m_radioxlEmptyHands) {
     this.m_radioxlEmptyHands = emptyHands;
-    RadioXLLog(s"cause \(emptyHands ? "+" : "-") upper body ForceEmptyHands");
+    let sources: String = "";
+    if this.GetPlayerStateMachineBlackboard().GetInt(GetAllBlackboardDefs().PlayerStateMachine.Zones) == 2 {
+      sources += " safe-zone";
+    }
+    if GameInstance.GetQuestsSystem(this.GetGame()).GetFact(n"ForceEmptyHands") > 0 {
+      sources += " quest-fact";
+    }
+    if StatusEffectSystem.ObjectHasStatusEffectWithTag(this, n"NoCombat")
+       && !StatusEffectSystem.ObjectHasStatusEffectWithTag(this, n"FastForward") {
+      sources += " NoCombat";
+    }
+    if StatusEffectSystem.ObjectHasStatusEffectWithTag(this, n"VehicleScene") {
+      sources += " VehicleScene";
+    }
+    if emptyHands && StrLen(sources) == 0 {
+      sources = " state-parameter";
+    }
+    RadioXLLog(s"cause \(emptyHands ? "+" : "-") upper body ForceEmptyHands [\(StrMid(sources, 1))]");
   }
   return wrappedMethod(newState);
 }
