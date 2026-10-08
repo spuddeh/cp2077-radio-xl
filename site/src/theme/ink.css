@@ -1,0 +1,404 @@
+/*
+ * Widget shapes from the game's atlases, drawn in CSS at the 1080p render scale (half the
+ * 3840x2160 authoring canvas).
+ *
+ * A chamfered frame is an edge ring (evenodd polygon) under a fill inset by 1px, so a
+ * translucent fill never shows the edge through it. The diagonal must be 1px measured across
+ * the line, which is sqrt(2) along an axis: the ring's inner points sit 0.41px past the cut,
+ * and the fill's cut is 0.59px shorter. Any other offset draws a thinner or thicker diagonal.
+ */
+
+:root {
+  --font-ui: 'Rajdhani', 'Segoe UI', sans-serif;
+  --weight-body: 500;   /* MainColors.BodyFontWeight: Medium */
+  --weight-header: 600; /* MainColors.HeaderFontWeight: Semi-Bold */
+
+  --bg: var(--fs-primary-background-darkest);
+  --cut-cell: 12px;  /* atlas_shapes_sync cell_bg / cell_fg */
+  --cut-plate: 8px;  /* notification_assets Plate_main / Plate_main_Stroke */
+  --divider: 1.5px;  /* vehicles_radio divider-top: 3px authored */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--red);
+  font: var(--weight-body) var(--font-readable-small) / 1.2 var(--font-ui);
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+::selection { background: var(--faint-blue); color: var(--active-blue); }
+
+/* --- chamfered frame --------------------------------------------------------------------- */
+
+.ink-frame {
+  --cut: var(--cut-cell);
+  --edge: var(--red);
+  --edge-opacity: 1;
+  --fill: transparent;
+  --fill-opacity: 1;
+  position: relative;
+  isolation: isolate;
+}
+.ink-frame::before,
+.ink-frame::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.ink-frame::before {
+  inset: 0;
+  z-index: -2;
+  background: var(--edge);
+  opacity: var(--edge-opacity);
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 0,
+    1px 1px, 1px calc(100% - 1px), calc(100% - var(--cut) - 0.41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - var(--cut) - 0.41px), calc(100% - 1px) 1px, 1px 1px);
+}
+.ink-frame::after {
+  inset: 1px;
+  z-index: -1;
+  background: var(--fill);
+  opacity: var(--fill-opacity);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut) + 0.59px), calc(100% - var(--cut) + 0.59px) 100%, 0 100%);
+}
+/* The same frame cut at the bottom left instead (atlas_shapes_sync color_flip). */
+.ink-frame.cut-bl::before {
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 0,
+    1px 1px, 1px calc(100% - var(--cut) - 0.41px), calc(var(--cut) + 0.41px) calc(100% - 1px),
+    calc(100% - 1px) calc(100% - 1px), calc(100% - 1px) 1px, 1px 1px);
+}
+.ink-frame.cut-bl::after {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, calc(var(--cut) - 0.59px) 100%, 0 calc(100% - var(--cut) + 0.59px));
+}
+
+/* --- settings row: settings_main.inkwidget settingsSelector* ---------------------------- */
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 1.25fr);
+  align-items: stretch;
+  min-height: 40px;
+  gap: 0;
+}
+.row + .row { margin-top: 6px; }
+
+.row-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 16px 0 14px;
+  color: var(--button-text-color-b-default);
+  font-size: var(--font-readable-medium);
+}
+.row-label::before { /* indentLine */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: var(--divider);
+  background: var(--button-frame-color-default);
+  opacity: 0;
+}
+.row:hover .row-label,
+.row:focus-within .row-label { color: var(--button-text-color-b-hover); }
+.row:hover .row-label::before,
+.row:focus-within .row-label::before { background: var(--button-frame-color-hover); opacity: 1; }
+
+.row-note {
+  grid-column: 1 / -1;
+  padding: 4px 14px 0;
+  font-size: var(--font-readable-xsmall);
+  color: var(--neutral);
+  opacity: 0.6;
+}
+/* character_creation_step_2 warning: fluff_triangle and ReadableSmall text, both MainColors.Red */
+.row-note.fault {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--red);
+  font-size: var(--font-readable-small);
+  opacity: 1;
+}
+/* The same row, in the styles' warning colour: the build still runs. */
+.row-note.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--warning);
+  font-size: var(--font-readable-small);
+  opacity: 1;
+}
+/* One block of text beside the icon, and a path or a setting breaks rather than widening the row. */
+.row-note .note-text { min-width: 0; }
+.row-note code { overflow-wrap: anywhere; }
+.fault-icon {
+  flex: none;
+  width: 18px;
+  height: 16px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+.row-note a { color: var(--blue); }
+
+.cell {
+  --edge: var(--button-frame-color-default);
+  --edge-opacity: var(--button-frame-opacity-default);
+  --fill: var(--button-bg-color-default);
+  --fill-opacity: var(--button-bg-opacity-default);
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 calc(var(--cut-cell) + 4px) 0 14px;
+  color: var(--blue);
+  font-size: var(--font-readable-medium);
+}
+.row:hover .cell,
+.row:focus-within .cell {
+  --edge: var(--button-frame-color-hover);
+  --edge-opacity: var(--button-frame-opacity-press);
+  --fill: var(--button-bg-color-hover);
+  --fill-opacity: var(--button-bg-opacity-hover);
+}
+
+.cell input[type='text'],
+.cell input:not([type]) {
+  width: 100%;
+  background: none;
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  color: var(--blue);
+}
+.cell textarea {
+  width: 100%;
+  background: none;
+  border: 0;
+  outline: 0;
+  padding: 8px 0;
+  color: var(--blue);
+  resize: vertical;
+  min-height: 5em;
+}
+.copy-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border-left: 2px solid var(--warning);
+}
+.copy-block pre {
+  flex: 1;
+  margin: 0;
+  color: var(--blue);
+  font-size: var(--font-readable-xsmall);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.copy-block-button {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.6;
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.copy-block-button:hover { --edge-opacity: 1; }
+.notice-steps { margin: 4px 0; padding-left: 1.3em; }
+.notice-steps li { margin: 2px 0; }
+.notice-aside { display: block; margin-top: 2px; font-size: var(--font-readable-xsmall); opacity: 0.85; }
+.cell input::placeholder,
+.cell textarea::placeholder { color: var(--grey); opacity: 0.55; }
+
+/* --- On / Off: settingsSelectorBool ----------------------------------------------------- */
+
+.bool {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  justify-content: flex-end;
+}
+.bool button {
+  --cut: 6px;
+  --edge: var(--bool-frame-color-off-default);
+  --edge-opacity: var(--bool-frame-opacity-off-default);
+  --fill: transparent;
+  min-width: 72px;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--grey);
+  text-transform: uppercase;
+}
+.bool button[aria-pressed='true'].on {
+  --edge: var(--bool-frame-color-on-default);
+  --edge-opacity: 1;
+  --fill: var(--bool-filler-color-on-default);
+  --fill-opacity: 0.18;
+  color: var(--bool-text-color-on-default);
+}
+.bool button[aria-pressed='true'].off {
+  --edge: var(--bool-frame-color-off-default);
+  --edge-opacity: 1;
+  --fill: var(--bool-filler-color-off-default);
+  --fill-opacity: 0.25;
+  color: var(--bool-text-color-off-default);
+}
+.bool button:hover { --edge-opacity: 1; }
+
+/* --- float slider: settingsSelectorFloat ------------------------------------------------ */
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.slider output { min-width: 3.2em; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.slider .slider-value {
+  width: auto;
+  min-width: 4em;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  outline: 0;
+  color: inherit;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  cursor: text;
+}
+.slider .slider-value:hover:not(:disabled),
+.slider .slider-value:focus { border-bottom-color: var(--mild-blue); }
+.slider .slider-value:focus { color: var(--blue); }
+.slider .slider-value:disabled { cursor: default; opacity: 0.45; }
+.slider input[type='range'] {
+  flex: 1;
+  appearance: none;
+  height: 16px;
+  background: none;
+  cursor: pointer;
+}
+.slider input[type='range']::-webkit-slider-runnable-track { height: 2px; background: var(--mild-blue); }
+.slider input[type='range']::-moz-range-track { height: 2px; background: var(--mild-blue); }
+.slider input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 8px;
+  height: 16px;
+  margin-top: -7px;
+  border: 0;
+  background: var(--blue);
+}
+.slider input[type='range']::-moz-range-thumb { width: 8px; height: 16px; border: 0; border-radius: 0; background: var(--blue); }
+
+/* --- stepper: settingsSelectorStringList (arrow_rect, dots) ---------------------------- */
+
+.stepper {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  width: 100%;
+  gap: 4px 8px;
+  padding-block: 6px;
+}
+.stepper-value { grid-column: 2; grid-row: 1; text-align: center; }
+/* The arrows span the value and the dots, so they sit at the cell's middle. */
+.stepper .prev { grid-column: 1; grid-row: 1 / span 2; }
+.stepper .next { grid-column: 3; grid-row: 1 / span 2; }
+.stepper button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--red);
+  opacity: 0.55;
+}
+.stepper button:hover { background: var(--blue); opacity: 1; }
+.stepper .prev { clip-path: polygon(100% 0, 100% 100%, 15% 50%); }
+.stepper .next { clip-path: polygon(0 0, 85% 50%, 0 100%); }
+.stepper-dots {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+}
+.stepper-count {
+  grid-column: 2;
+  grid-row: 2;
+  text-align: center;
+  font-size: var(--font-readable-xsmall);
+  opacity: 0.5;
+}
+.stepper-dots span { width: 22px; height: 3px; background: var(--red); opacity: 0.3; }
+.stepper-dots span.here { background: var(--blue); opacity: 1; }
+
+/* --- section header ---------------------------------------------------------------------- */
+
+.section {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 26px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
+  text-transform: uppercase;
+  font-weight: var(--weight-header);
+  font-size: var(--font-readable-font-size);
+  letter-spacing: 0.02em;
+}
+.section .count { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.6; font-weight: var(--weight-body); }
+
+/* --- input hints: inputHints + inputDisplayController ---------------------------------- */
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  align-items: center;
+  font-size: var(--font-readable-small);
+  text-transform: uppercase;
+}
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--red);
+}
+.hint kbd {
+  --cut: 5px;
+  --edge: currentColor;
+  --edge-opacity: 0.7;
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  font: var(--weight-header) var(--font-readable-xsmall) var(--font-ui);
+}
+.hint:hover { color: var(--blue); }
+.hint:disabled { color: var(--grey); cursor: default; opacity: 0.6; }

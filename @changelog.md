@@ -1,0 +1,755 @@
+# Changelog - RadioXL
+
+## [Unreleased]
+
+### Added
+- Script API version 2 (`RadioXLAPI.Version()` returns 2). Reads and setters for the Sound tab (`EqPresets`,
+  `EqPreset`, `StationEqPreset`, `SuggestedEqPreset`, `ActiveEqPreset`, `EqBand`, `Processing`,
+  `ProcessingStage`, `Boost`, `RadioportLikeCar`), the mute situations (`SituationMuted`, by
+  `RadioXLSituation`), the mix switches (`MixMuted`, by the new enum `RadioXLMix`) and the 0.7.0 traffic
+  settings (`TrafficStations`, `RandomWorldRadios`, `RandomStreams`). A setter for an RCF-held value calls
+  `RadioXLConfig.Persist()`. New event `RadioXL/EqChanged` (`RadioXLEqChangedEvent`: `Station()`,
+  `Preset()`, deduplicated in `RadioXLEvents.EqChanged`) and `OnEqChanged` for CET. `tests/api` step 10
+  checks every one: 97 of 97 on foot and in a car, both event routes equal.
+- Equaliser, nine bands, global and per station (#70). `Eq.hpp` builds a bank in memory (`kBankId`
+  3385278659) with three Parametric EQ ShareSets of three peaking bands each (63 Hz to 16 kHz, an octave
+  apart, Q 1.41), loads it with `LoadBankMemoryCopy` and inserts them with `SetBusEffect` into slots 0 to 2
+  of `Music_Diagetic_Radios_Vehicle_Player_DVR` (3776664628, car and Radioport) and
+  `Music_Diagetic_Radios_Metro_Player_DVR` (2319597885). Each band's gain is an in-bank RTPC curve on
+  `radioxl_eq_band_N`, set with `SetRTPCValue` on the global game object. Measured with the probe across
+  all 19 stations: every band equals the station's preset minus its trim, within 0.02 dB.
+- Presets as files (#70): `red4ext/plugins/RadioXL/presets/*.json` (`{"name", "bands"[9]}`, -24 to 24 dB),
+  read strictly at load by `Presets.hpp`; a bad file is logged and skipped, a duplicate name skipped,
+  Flat first. Each plays `-10*log10(mean(10^(g/10)))` dB down so a preset changes tone, not level.
+  Sixteen ship: Flat, Bass boost, Treble boost, Vocal, Loudness and eleven genre presets.
+  `RadioXL_EqPresetCount/Name/Band`.
+- Per-station preset and suggestions (#70). `State.reds` saves `eqPreset`, `eqBands` and `stationEq`
+  in state.json; `RadioXLEqualiser.Apply` runs on every station change. The Stations tab has an
+  Equaliser dropdown per station (keys `eq:<station>`) with RadioXL's suggestion marked
+  "(suggested)": a table in `Eq.reds` for the 13 game stations, none for Growl FM. Suggestions never
+  live in the preset files, which players edit and share. RCF's restore of the equaliser rows is ignored.
+- Processing, Off / Broadcast / Custom, off by default (#70, #52). Three more ShareSets in the same bank:
+  AGC (Compressor 1503678448: -36 dB, 2:1, 1 s, 3 s, +8.5 dB) in slot 3 of both radio buses; peak
+  compressor (801420832: -18 dB, 3:1, 0.01 s, 0.08 s, +1.5 dB) and limiter (Peak Limiter 1705528755:
+  -6 dB, 10:1, 0.01 s look-ahead, 0.1 s, 0 dB) in slots 2 and 3 of `Music_Radio_Car_Player_DVR`.
+  Threshold and output gain are live game parameters. Make-up gains level-matched with the probe over
+  30-second holds.
+- Volume boost, 0 to 12 dB, on the Sound tab (#70). `Mix.hpp` sets BusVolume on the two radio buses
+  above (3776664628, 2319597885), below every slider and send and ahead of the limiter on the top bus
+  (`Music_Radio_Car_Player_DVR` 4067771226, where a boost would land after that bus's own effects),
+  through `CAkBus::SetAkProp` (hash 1329276021, the Set Bus Volume
+  action's setter: a runtime modifier, Independent, linear 100 ms), so it lands after the Car Radio and Radioport
+  sliders and after the car mixer's broadcast send. A first version on the two actor mixers also raised that send,
+  which plays the car radio into the world past the slider. The ceiling is 12 dB because the game's output runs
+  through Mastering Suite on the System audio device, whose limiter acts on the whole mix: measured with the game's
+  output recorded, the peaks stop at -0.02 dBFS from +6 and nothing clips; past +12 the radio would pull every other
+  sound down on its peaks.
+- The car radio's cabin reverb follows the Car Radio volume and the boost. The car mixer 231101095's game aux send
+  (property 12, -4 dB, on when `veh_engage_moving_faster` is 1) feeds the reverb the game sets on the car
+  (`revb_indoor_car_hipercar` for a hypercar) and left the voice before the slider's buses, so a parked car's
+  station was heard at slider 0. `ApplyCarReverb` attaches the slider's own `volume_music_car_radio` curve (5
+  points, additive dB) to that send through the node's `SetRTPC` (hash 2226136046, checked against vtable
+  +0x1c0) and adds the boost to its -4 dB through `SetAkProp`. Measured on that bus, the 911 parked: at slider 0
+  the station's peaks fell from -15.5 to -26.5 dB (the bus without the radio); at slider 100 +18 the bus rose
+  from -37 to -19 dB.
+- "Sound like a car radio", on a new Sound tab (#70). On foot the player's game object holds
+  `veh_radio_tier` 1 and the Radioport's mixer 801426841 maps it to a lower level with low-pass 25 and
+  high-pass 15; a car plays at tier 2, clean. `Mix.hpp` switch `kRadioport` (6th, native index 5)
+  captures the mixer's three tier curves (volume 117034723, low-pass 875835072, high-pass 372331119)
+  through the bank loader hook and, when on, sets every point below tier 2 to 0 (`Flatten`), so tier
+  2 still silences the Radioport in a vehicle. A playing voice takes a rewritten curve only at its
+  next tier change, and each Radioport start is a new voice, so `RadioXLConfig.RestartRadioport`
+  switches `radio_port_station` on `pocket_radio_emitter` to none and back after 0.1 s
+  (`RadioXLRadioportRetune`). Measured: with the switch on, the Radioport read -26.3 to -27.4 dB
+  against the car's -27.3 to -28.3 on the same station seconds earlier, and a switch-on moved a
+  playing Radioport from about -42 to -31 dB.
+
+### Changed
+- A car switched on with no station set picks from its whole startup list (`Startup.hpp`). The
+  receiver's turn-on block copied `matchingStartupRadioStations` into a 14-slot stack array, so
+  entries past the 14th never reached the pick. It is detoured at +0x54 to a stub that copies the
+  whole list, runs the game's own filter (the block's call at +0xe2, applied while the radio system
+  plays its limit of stations) and picks, then rejoins at the `TryGetRadioStationChannel` call.
+  Every address comes from the block (reached through the hashed enable routine) and every site is
+  byte-checked; on a mismatch the 14-entry pick stays. Measured: lists of 15 offered all 15, and
+  the filter cut one to the 2 stations already playing.
+- Traffic station lists: RadioXL only adds and removes its own stations (#73). `Traffic.reds`
+  `Apply` takes each list as it is now, drops every custom station (every roster slot), and appends
+  the wanted ones; whether a list is shared is re-read from it each time. The saved vanilla copy is
+  gone, so Audible Traffic Radios' in-place additions and its Morro Rock spelling fix survive any
+  traffic setting change, in either load order.
+- The "Mute the radio when..." switches are situations (#72). `Restrictions.reds`: each of the 12
+  `PocketRadioRestrictions` is held by the situations its live causes belong to (`Holders`, re-read
+  from the game state on every `HandleRestriction`, through `RadioXLReapply` on `PocketRadio`), and
+  lifts only when every holder is switched off. Six situations: calls (`PhoneCall`, its fast-travel
+  block, `PhoneNoCalling`/`Texting`), scenes (scene tier 2+, scene-forced empty hands, the skip
+  prompt), driving scenes (`VehicleScene*`, `VehicleBlockPocketRadio`, and the tier, hands and skip
+  prompt while one holds), clubs (`InDaClub`, the `impulse` lock, and the same while `InDaClub`
+  holds), weapons-free areas (empty hands from a safe zone or `NoCombat`), quests (other quest locks,
+  a quest's fast-travel block, the `ForceEmptyHands` fact). Quest locks are tracked by source;
+  `ALL_SOURCES` clears them. `Settings.reds` `MigrateMuteKeys` moves the twelve old keys to the
+  situation each was named for and drops the rest. Removed the `Companions` table and the two
+  duplicate wraps of `OnStatusEffectApplied` / `HandleRestriction` (the inner one recorded the
+  switched value as the game's). `RadioXLAPI.SilencedBy` and `RadioXL/Silenced` report what the
+  Radioport is told. Measured: apartment, club and scene switches each lift and restore in game.
+- Five mix switches in the plugin (`Mix.hpp`, `RadioXL_SetMixSwitch`), all on by default (#72, #24,
+  #30). Every Wwise address is reached from a RED4ext hash (the curve loader, 653209842 for `g_pIndex`
+  and the `g_csMain` lock, 3455127956 for `RadioSystem::Update`) with its bytes checked; writes run
+  under a tried `g_csMain` and only over the expected value.
+  - Combat and police music: the duck entry on `Music_Systemic_Combat` / `_Police` for the player
+    radio bus is written 0 dB / -96 dB (a data write; `AddDuck` has no hashed caller). Applies from
+    the next duck.
+  - Someone is speaking: `vo_dialog_active` (volume, LPF, HPF) on 3776664628 and
+    `rms_loudness_VO_Gameplay` / `_VO_Dialog_Important` on 4067771226, matched by curve id as the
+    hooked loader stores them and rewritten through `CAkConversionTable::Set` (reached through the
+    loader's own call at +0x126), flat or as shipped.
+  - Megabuilding H10's music: `radio_pocket`'s curve on `rms_loudness_pocket_radio_mb` the same way.
+  - A menu is open: `st_pause`'s -108 dB on the radio actor mixer 924789914 (the cause of the menu
+    silence), the bus low-pass and `st_menu_on` written to 0; pause actions 592197528 and 890107075
+    (`sys_sfx_and_vo_pause` on the player radio bus and `Music_Diagetic`) aimed at id 0;
+    `RadioSystem::Update` hooked to run with `GSoundSystem+0x1e0` cleared. Measured: the radio
+    plays in the inventory, map and hub while other world sound pauses; the Escape menu still
+    silences it.
+- `dev/causes/` (development only, outside the release's `contentDir`, deployed to Testing as its own
+  MO2 mod `RadioXL Causes [DEV]`): `Causes.reds` logs `cause +/-` lines per restriction cause and
+  the source holding `ForceEmptyHands`.
+- Custom stations broadcast on channels 256 and up (#69). Every broadcast source shares 256
+  channels and the game fills 222 of them: stations (8 to 21, 58 to 71, 228 to 241), TVs (40 to 50,
+  by the TV channel curve), playlists, reflections, and 113 sends whose channel is fixed in
+  `sfx_container`, `vo`, `radio` and `cp_music`; a station's left on 78 carried an ambience send into
+  the Radioport's left ear. `Broadcast.hpp`: `CDPVoiceBroadcaster` (u16 counts at `+4`, buffer
+  pointers at `+0x208`) is replaced by a copy with 1024 of each; `GetInstance` returns it, fourteen
+  `+0x208` displacements become `+0x808`, eight channel bounds become 1024 (`Unregister`'s
+  `(channel - 1) <= 0xfe` included), and `CDPVoiceBroadcastSwapBuffers` jumps to `Swap`. The bank
+  curve loader (`0x1b08bf0`, hash 3699780356) is hooked: a radio channel curve that is exactly
+  (0,0)-(255,255) loads as (0,0)-(1023,1023). `Channels.hpp`: a 3 x 256 table of each internal id's
+  channels (the formula, and three from 256 per custom station), read by stubs that replace the
+  `cvtsi2ss` at fifteen sites in `RadioStation::PlaySong`, `HandleAnnouncementVO`, `Init`,
+  `RadioEmitter::SetBroadcastChannelParam` and the emitter post at `0x219a45c`. When the
+  broadcaster cannot be widened, custom stations keep the formula and the log says so. Measured:
+  Radioport and world radio on 256 to 303, no bleed.
+- Custom stations start at enum 26 (internal id 34), one past Kurtz (#71). `TryGetRadioStationChannel`
+  special-cases `radio_station_police` (23) and `radio_station_kurtz` (33), which custom stations #2
+  and #12 took. Roster slots 14 to 25 hold no station but those two names at 15 and 25 (label keys
+  `Gameplay-Devices-Radio-PoliceStation`, and `NoneStation` for Kurtz, which has none). New natives
+  `RadioXL_SlotEnum`, `RadioXL_EnumSlot`, `RadioXL_EnumEnd`; `Dial.reds`, `API.reds`,
+  `MyStation.reds`, `Deck.reds` and `Traffic.reds` take a custom station's enum from them, and a
+  loop over enum values ends at `RadioXLDial.EnumEnd()`. The vehicle step stub takes separate enum
+  and dial counts. Ceiling: 101 custom stations. Measured: police and Kurtz on their vanilla
+  channels, five custom stations play on slots 26 to 30.
+- Docs: Known Limits says 101 custom stations; the traffic setting no longer says traffic radios are
+  never heard; a new troubleshooting entry says world radios follow the sound effects volume.
+
+### Removed
+- `Channels.reds` and `RadioXL_ReserveChannel`, which reported playlist and reflection channels so a
+  station under 256 avoided them; custom stations no longer broadcast under 256.
+
+### Tools
+- `probe/`: per-channel (left and right) bus meters in `meter_live.txt`, the `bus meter` line and the
+  overlay; `channel set` log lines and `channels_live.txt` from a hook on `audio::SetSoundParameter`
+  for the five broadcast channel parameters.
+- `tools/channel-test.py`: tone stations (a different sine on each side of each) and a recording
+  analyser. `tools/broadcast-sends.py`: every broadcast send in a bank with its fixed channel or the
+  parameter that drives it (Wwise object types 16 and 17).
+
+### Fixed
+- A car taken from traffic on a custom station came up on a random vanilla station from its own
+  list, or with the radio off (#68). `Main.cpp` `PatchRoster` raises three more 14 bounds with the
+  station total, byte-verified with the rest: the traffic hand-over callback that
+  `vehicle::Audio::InitializeAudioSystem` stores on the radio system (`0xdc85dc`, hash 1585323804,
+  `cmp eax, 14` at +0x4E), the receiver turn-on block's second check after its random pick
+  (`+0x174`, `cmp dword [rdi+0xc], 14`), and `vehicle::Audio::LoadFromPSData`'s cold block (hash
+  821564187, reached through its `jne` at +0x110, `cmp eax, 14` at +0x12), which loaded a car saved
+  on a custom station on a random vanilla one. The block's `cmp edx, 14` at +0x6F caps a 14-slot
+  stack buffer and stays. Measured on Testing: two Tool FM hijacks and a Pacific Dreams control kept
+  their station, and a car saved on Outrun Waves loaded on Outrun Waves (2026-10-06).
+
+## [0.7.0] - 2026-10-05
+
+### Added
+- Custom stations on traffic car radios (#63): `Traffic.reds`, `RadioXLTraffic`. A traffic car
+  picks only from its `audioVehicleMetadata.matchingStartupRadioStations` (`TrafficVehicleEmitter::
+  PlayRadio` reads `VehicleMetadata +0x88` through emitter `+0x140`), so the service keeps each
+  list's vanilla copy at metadata load (`Capture`, from `RadioXLService.Register`) and rebuilds the
+  lists from the setting: Most cars (lists holding all nine shared stations, 142 receivers), Every
+  car (every non-police, non-empty list), Off. Applied at load, on RCF restore and on every change;
+  a mid-session change reaches the next car (measured: 0 custom in 36 picks after Off). The game
+  keeps a traffic-only station silent (the radio mode 1 gate), so this is not audible yet: it is
+  groundwork for making traffic radios heard (`entities/audible-traffic-radios` in the vault).
+- World radios and jukeboxes that start on a random station can land on a custom one (#63): a wrap
+  of `RadioStationDataProvider.GetRandomStation` adds each custom station as one more equal share
+  beside the thirteen vanilla picks (Samizdat excluded). Logged as `world radio: random start on`.
+- `randomStreams` (off by default): stream stations count for both random picks.
+- Settings rows `trafficStations` (dropdown index 0 Most cars, 1 Every car, 2 Off),
+  `randomWorldRadios`, `randomStreams`, after the Stations section's text and a divider.
+- `addUnlistedFiles` (#66): a manifest key, off by default. `Folder.hpp` (`SyncFolder`, no
+  filesystem calls, tested) adds every unlisted WAV/MP3/OGG/FLAC under the station folder, titled
+  by the builder's `titleFromFile`, and removes listed files that are gone; a stream station is left
+  alone. `Main.cpp` `SyncStationFolder` rewrites `station.json` IN PLACE, laid out as the builder
+  writes it (`WriteJsonIndented`), only on a change and only when the new text reads back through
+  `ReadManifest`. Measured: the rewrite stays in the station's own MO2 folder.
+- Track length cache (#66): `Cache.hpp`, `red4ext/plugins/RadioXL/cache.json`, keyed
+  `<source>/<normalised path>` with size, modified time (ticks as text) and length. Unseen entries
+  pruned, written only on a change, gitignored. Measured: 131 lengths from the cache on a relaunch.
+- `RadioXL_StationTrackLegacy` native: a track's old position-based event name, for migration only.
+
+- Station builder 0.4.0 (#67): an "Add songs I drop into this folder later" switch writing
+  `addUnlistedFiles: true` only when on (`manifest.ts`, `store.ts`, `App.tsx`); on opening a station,
+  `importStation.ts` collects the audio extras under the station folder that no track names
+  (`UnlistedFile`) and `components/ImportOffers.tsx` offers two checklists: add them as tracks
+  (`addUnlisted`, out of the extras, measured like any added song) and remove tracks with no audio
+  file (`removeTracks`). Checked in the page with a test zip.
+
+### Fixed
+- Station builder 0.4.0: `layout.css` (29 rules) and `ink.css` (7) named `--font-readable-x-small`,
+  which no token defines, so small text took its parent's size; in the `font` shorthand of the key
+  hint it voided the whole declaration. Renamed to `--font-readable-xsmall`.
+- A WAV AudioXL refuses was listed and scheduled, and played nothing: AudioXL accepts the
+  registration and rejects the file only when it loads it, after the station is built, and logs it
+  in its own log. `Duration.hpp` `WavRefusal` mirrors AudioXL's `ValidateWav` (fmt chunk first,
+  format tag 1, 1 to 8 channels, 16 or 24 bits) and the loader drops a failing WAV before the length
+  lookup, logging `is a WAV AudioXL will not play (<why>) - dropped`. Measured against AudioXL 0.5.1
+  with a 32-bit float WAV: `rejected WAV: format tag must be 1`.
+
+### Changed
+- A custom track's event name and title key come from its file (#65): `<station>_<8 hex>`,
+  FNV-1a 32 of the `file` path (forward slashes, ASCII lower case) or the `url`; a second track
+  with the same identity is dropped and logged. `RadioXLConfig.MigrateSongKeys` moves each stored
+  `song:<station>_NN` key to the new name in RCF's JSON before `RestoreInto` (RCF restores only
+  schema keys), keeping a new key already present, then drops the old one. Measured: 113 settings
+  moved, and removing Tool FM's first file left the others' settings on their songs. A mod that
+  hard-codes a custom track's event name sees it change.
+- Docs: world radios save their station by list position, a known limit (#62); deleting
+  `cache.json` as the fix for a song with the wrong length.
+- `release-check` (workspace): refuses any shipped file the mod's `.gitignore` excludes.
+
+### Investigated, no change
+- #64: announcement VO sets the same three channel RTPCs as `PlaySong`, so it routes like the
+  station's songs; `veh_radio_tier` is an RTPC on the car's own sound object, applied to its
+  receiver whatever the station.
+- #62: car radios save their station by name (`vehicleAudioPSData.activeRadioStation`); jukeboxes
+  re-pick on every attach; world radios keep `RadioControllerPS.activeStation` as an index.
+
+## [0.6.0] - 2026-09-30
+
+### Added
+- A red warning in game when a stream station cannot play (#55): `Warnings.reds`,
+  `RadioXLWarnings`. After the HUD is up (`QuestTrackerGameController.OnInitialize`, as
+  NCZoningCore does, because the `WarningMessage` slot drops a message sent before its controller
+  listens) it reads `StreamState` for every stream station: `Blocked` names
+  `allowHttpConnections`, a registration AudioXL refused names the URL's host as the
+  `allowedHost` line to add, and a stream that never got a row points at AudioXL's log for a
+  redirect host. Rechecked every 15 s for five minutes while any stream is still connecting; once
+  per station per game launch; queued 11 s apart. Strings are `RadioXL.warnStream*`.
+- `docs/script-api.md`: the script API for mod authors. Its redscript examples live in
+  `tests/api/.../DocExamples.reds`, so the test mod's compile checks them.
+- Station builder: a typed level beside each slider (`parseGain`, `Slider.parse`), sliders at 1 %
+  (#53); a play button on a stream track through a plain audio element, since the gain node's
+  cross-origin route needs headers a stream rarely sends; the stream notice covers redirects (#55).
+- The script API (#39). `RadioXLAPI` (`API.reds`) is the one class other mods may rely on; every
+  other member is public only because the module needs it. `Version()` is 1. Reads: `Stations()` in
+  dial order, `StationName`, `StationFrequency`, `StationDialPosition`, `StationIcon`,
+  `IsCustomStation`, `StationMod`, `StationHasNews` (true for the fourteen), `IsStreamStation`,
+  `StreamState`, `StationDescription`, `StationExtension`, `Tracks`, `Idents`, `TrackTitle`,
+  `TrackLength` (a vanilla song's is its event-table `maxDuration`), `IsStreamingFriendly`,
+  `TrackFile`, `TrackGain` (station × track), `SongState`, `IsSongPlayable`, `MyStation`,
+  `IsStationSkipped`, `IdentsMuted`, `NewsMuted`, `Receiver`, `CurrentStation`, `CurrentTrack`,
+  `Remaining`, `Position`, `History`, `HistoryCursor`, `SilencedBy`. Acts, all through the deck:
+  `NextSong`, `PreviousSong`, `PlaySong` (new `RadioXLDeck.Request`: refuses a song that is not
+  `CanPlay`, consumes and counts it, records it when the player is on that station), `NextStation`,
+  `PreviousStation`, `TuneStation` (new `RadioXLDeck.Tune`, split out of `JumpToMyStation`),
+  `SetSongState`, `SetStationSkipped`, `SetMyStation`, `SetIdentsMuted`, `SetNewsMuted`,
+  `ShowNowPlaying`. Stations are named by CName and songs by track event throughout.
+- Events (`Events.reds`): ten Codeware callback names, `RadioXL/Ready` (register sticky),
+  `SongChanged`, `StationChanged`, `RadioPower`, `CatalogRefreshed`, `SongStateChanged`,
+  `MutesChanged`, `Silenced`, `MyStationChanged`, `StationSkipChanged`, each registered with
+  `RegisterEvent` against its own event class and sent with `DispatchEventAs`. Every dispatch also
+  calls a no-op instance method on the `RadioXLEvents` service for CET to `Observe`: CET refuses an
+  `Observe` on a static outright ("Function Total in class RadioXL.RadioXLDial does not exist").
+  Power and station are read from `RadioXLDeck.Receiver` and compared with the last announced
+  (`RadioXLEvents.Observe`), called from the Radioport poll every second and from the vehicle
+  station-change and toggle wraps and the Radioport toggle at once. Song changes are announced from
+  the vehicle popup's song-changed wrap and the Radioport poll, before the deck acts, so `requested`
+  reads the deck's pending set (`RadioXLDeck.IsPending`).
+- Manifest `description` (#60): one string, or an object of `xx-xx` language codes; 1000 characters
+  counted as code points (`kMaxDescription`), a longer one dropped with a warning and the station
+  kept. `radioxl::Description` picks the language, then the plain text, then `en-us`. Registered
+  per language through the Codeware provider under `<station key>-desc` (`RadioXL_DescriptionKey`);
+  `RadioXLTexts` carries its language. RadioXL shows it nowhere.
+- Manifest `extensions`: an object, each value handed to the named mod as compact JSON text
+  (`WriteJson` in `Json.hpp`) and never read.
+- Natives `RadioXL_Frequency` (enum value, vanilla table included), `RadioXL_StationSource`,
+  `RadioXL_StationDescription`, `RadioXL_StationExtension`, `RadioXL_StationPosition` (the clock at
+  `+0x14c` by station name, `SafeReadClock`). Tests for both manifest fields.
+- `RadioXLService` keeps the events table and the rows AudioXL refused; `RadioXLDial.StationRecord`
+  and `VanillaRecordName` give any station's record; the catalog gained `Owner`, `TitleOf` (moved
+  from the deck) and `Idents`; `RadioXLConfig.Persist` writes RCF's file through
+  `DVRCF_Store.PersistFrom`. `SetSongState` and `SetStationSkipped` return whether the value changed.
+- Station builder: a Description field with a character counter, and `extensions` and other
+  languages' descriptions carried through a reopen.
+
+### Fixed
+- Switching a car radio off sent `RadioPower` Radioport on and off within a millisecond while the
+  player sat in the car: the radio key's toggle reaches the Radioport too, and it shadows the car
+  radio's state until it handles that toggle. `RadioXLEvents.KindOf` ignores the Radioport while
+  the player is mounted, for the events and for `Receiver`, `CurrentStation` and `CurrentTrack`.
+  Measured in game.
+- `RadioXLRestrictions.IsCompanionOfLifted` called `ArrayContains` straight on `Companions(s)`'s
+  return, the redscript rvalue bug that reads the array from uninitialised memory; bound to a local.
+  The same bug crashed the game three times in the API test harness, which is how it surfaced.
+- A song switched off with the never-again key was held in memory only: RCF's restore at the next
+  Session/Ready put the saved value back over it (read from the code). The key now calls
+  `RadioXLConfig.Persist`.
+- With no song switched off, `Arrived` returned before recording anything, so the history held only
+  the songs the keys asked for and previous skipped over the station's own picks. The
+  `DisabledCount() == 0` early return is gone; the switched-on check below it does the same job.
+- The station builder named no cause when a file could not be read (#45). A source file whose path
+  passes Windows' 260 characters cannot be opened, and the browser surfaces that as
+  `TypeError: network error` with nothing else, so the reported symptom was a build that stopped on
+  a track for no stated reason. `BuildError` carries an `advice` line, `readFailureAdvice` writes it
+  from the name's length, and the failure panel renders it under the message and in the copyable
+  log. `BuildError`'s constructor takes plain fields rather than parameter properties, which Node's
+  type stripping rejects, so `build.ts` is importable from a test at all.
+
+## [0.5.1] - 2026-09-26
+
+### Fixed
+- My station did nothing on getting into a car whose radio was off, which the first car of a
+  session always is. A car with its radio off resumes no station, so the sit-down pass found the
+  receiver off and the `OnVehicleRadioStationChanged` catch never fired. `DriveEvents.OnEnter` now
+  also queues `SchedulePowerOn`, a pass one second later (`m_resumeWait`, past the 200 to 320 ms a
+  resume takes). If no resume has disarmed it and the receiver is still off, `Apply` disarms and
+  sends `SendRadioEvent(true, true, position)`, whose toggle flag powers the receiver before
+  setting the station. Disarming first keeps the change it causes from tuning a second time. The
+  `tipPlayOnEnter` text says a radio that is off is switched on.
+
+## [0.5.0] - 2026-09-22
+
+### Changed
+- `State.reds` keeps `state.json` through RedFunctions instead of RedFileSystem and RedData. RCF
+  3.0.0 dropped both and imports `RedFunctions.Storage` and `RedFunctions.Json` unguarded, so the
+  claim these headers carried - that a player with the settings panel has RedFileSystem - stopped
+  being true, and an RCF 3.0.0 player silently lost the remembered station and both mutes. Both
+  plugins store under `r6/storages/<mod>/`, so an existing `state.json` is read where it lies and
+  no migration runs. The cached storage handle is gone with them: RedFileSystem hands a storage out
+  once per run, `ModStorage.Open` does not, so each read and write opens its own. `ReadJson` and
+  `WriteJson` are calls on the storage, which retires the file object and its null checks.
+  No fallback to the old pair - the guards name RedFunctions alone.
+
+## [0.4.1] - 2026-09-20
+
+### Fixed
+- My station never tuned a car radio on entry (#59). A car resumes its last station 200 to 320 ms
+  after the driver's seat is taken, measured against Vehicle Radio Display Fix's log across three
+  entries; the pass scheduled from `DriveEvents.OnEnter` read the receiver 0.1 s in, found it off
+  and returned. `OnVehicleRadioStationInitialized` did not reach script on that path at all - a
+  probe line ahead of its guards printed zero times in a full session - so nothing retried, and the
+  player kept whatever station the car resumed to. `MyStation.reds` now wraps
+  `PlayerPuppet.OnVehicleRadioStationChanged`, which the engine raises when the resume happens
+  rather than at a time guessed ahead of it. Sitting down arms the catch and the first change
+  disarms it, so a station picked by hand afterwards is left alone; a five second window backstops
+  a car whose radio is off and so never resumes. The existing `current == station` check ends the
+  loop from RadioXL's own tune. Confirmed in game: Body Heat for 85 ms, then the remembered station.
+  `VehRadioState` is not a usable signal for this: the game does not write that value at mount, so
+  a listener on it answers only for a player who also runs Vehicle Radio Display Fix.
+
+### Changed
+- Every return in `Schedule` and `Apply` logs its reason, and `Schedule` names the moment that asked
+  (`the player sat down`, `the vehicle radio was toggled`, `the Radioport came on`, `the vehicle
+  radio resumed its station`). Ten of the twelve paths returned silently, so a refusal and a hook
+  that never fired produced an identical log.
+
+## [0.4.0] - 2026-09-19
+
+### Added
+- A per-track level (#42): optional `tracks[].gain`, 0 to 4, default 1, multiplied with the
+  station's `gain`. `Manifest.hpp` reads and clamps it the way the station one is read, naming the
+  file and line; `RadioXL_StationTrackGain` hands it to script; `RadioXL.reds` sets each row to
+  station gain x track gain, with the fallback's 0.56 still on top. `ManifestTests.cpp` covers the
+  read, the default, the clamp line, a string refused and a stream with a gain. Checked in game by
+  capture on the Radioport: a track at 0.5 lands 6 dB under one at 1 within the method's noise
+  (residuals +0.3 / -0.3 at 1, +0.4 / +0.9 at 0.5 in a noisy room). A raise too: a -8.4 dBFS file
+  at the builder's suggested 2.34 plays clean and about 7 dB up; a +2 dBFS master at 2 crackles
+  from the first beat and reads about 2.5 dB short of +6, the energy the wrap loses.
+- Builder 0.2.0: a level slider per track (0 to 400 % with the dB shown), a play button that hears
+  the track at that level, and a measurement of every file as it is added: integrated loudness
+  and true peak in the browser (`src/loudness.ts`, EBU R128 in a worker), then the suggestion that
+  puts the file on `target.json`'s `fileLufsTarget` bounded by its peak with a 1 dB margin, the
+  same arithmetic as `level-target.py file`. Auto level, on by default, sets each track's level as
+  its measurement lands and makes the slider read-only; off, the sliders are the author's from
+  where they are, with "use it" per track and "Use suggested levels" for all. A station opened
+  with a track gain in it opens with auto level off. The footer links to the current Nexus page.
+  `buildManifest` writes a track gain only when it is not 1; opening a manifest reads it back; a
+  stream keeps a manual level. `loudness.test.ts` checks the meter against the BS.1770 table and
+  the EBU Tech 3341 tones and the suggestion against the tool's printed gains for every Tool FM
+  file; the browser test measures a WAV tone and takes its suggestion. The builder's version is
+  printed in the page footer; `site/CHANGELOG.md` carries one entry per version, and
+  `site/scripts/nexus-builder-file.py` makes the Nexus misc file and its description from it.
+
+- `showFrequency` (#49): optional, `false` shows the station's name alone as the label while the
+  frequency still places it on the dial. `Label()` in `Manifest.hpp` honours it, the name rules
+  are unchanged, and the manifest tests cover the label both ways and a non-bool refused. The
+  builder has the switch beside Frequency and its previews follow it.
+
+### Changed
+- The manifest's `gain` runs 0 to 4 instead of 0 to 1 (#41). `Manifest.hpp` gains `kMaxGain`; the
+  clamp message reads `"gain" is 0 to 4 - clamped`; a raised gain is read as written and tested.
+  The station README grows a Level section stating the rule a raise must obey: AudioXL scales
+  16-bit samples with a bare cast on the unity-rate path (`AudioFeed.cpp`), so peak + gain past
+  0 dBFS wraps rather than clips. The plugin reads headers only, so the check lives in the builder.
+- Builder: the Volume slider runs 0 to 400 % with the dB shown either side of 100 %;
+  `buildManifest` writes any gain other than 1; a RadioExt `volume` above 1 imports as written up to
+  4 with a note that RadioExt's value was tuned against its own player; an opened manifest's gain is
+  clamped to 4, not 1. `manifest-rules.test.ts` accepts a gain above 1. Checked in game: a station
+  at gain 2 plays a file peaking at -8 dBFS clean and 6 dB up, and a full-scale master crackles.
+
+### Added
+- `tools/level-target.py` (#44): the offline level target. Reads `audio_2_soundbanks.archive`
+  directly (every entry is stored uncompressed), dumps `radio.bnk`, `cp_music.bnk` and `init.bnk`
+  with wwiser, walks every `mus_radio_*` event from `eventsmetadata.json` to its segment, track and
+  `.wem`, decodes each through `wwtools.dll` by ctypes, measures it with ffmpeg `ebur128`, and puts
+  it on the chain with the station's send trim. `report` writes `tools/level-target/vanilla-levels.{json,md}`
+  and `target.json`; `check` compares a capture against the model; `file` measures any audio the
+  way the builder will and prints the peak-bounded gain. Result: 188 music tracks at -19.3 to -5.2
+  LUFS (median -11.0), a file target of -11.1 LUFS on `radioxl_radio` (the align entry below has how it was settled), no dynamics on either radio
+  bus, and `3803692087` is the master bus itself.
+- `tools/measure-loudness.py report --json <file>` writes the capture in the shape `check` reads.
+- `tools/level-target.py align <capture.wav> --route mono|stereo [--station DIR] [--track NN=<audio>]`
+  (#44): the capture check done per track, because a station's own tracks spread 3 to 8 dB and a
+  median comparison cannot reach 1 LU. Finds which track plays when by spectral fingerprint (32 log
+  bands, 25 ms frames, 2 s mean removed, 20 s chunks correlated by FFT) over every decoded vanilla
+  track, each `--station`'s files and any `--track` another mod adds to a vanilla station; measures
+  capture and source over the same stretch; reports chain, model and residual per passage; measures
+  the recording's floor and does not count a passage the room lifts by more than 1 dB. Vanilla
+  fingerprints are cached in `work/fingerprints.npz`. No probe log. Needs numpy and scipy.
+  `measure_one` takes an optional excerpt. On the captures already on disk: five Growl FM tracks at
+  the Radioport put the method's own noise at about 1 LU per passage. Then nine captures on the
+  Radioport, a car and a spawned world radio, with synthetic noise tracks and two marked routing
+  banks, settled the model:
+  - **The two sends were assigned to the wrong receivers.** With the copied send that carries the
+    left/right channel curves marked 12 dB down, the Radioport and a car dropped by it and a world
+    radio did not. `SEND_STEREO` is the Radioport and vehicles, `SEND_MONO` is world devices;
+    `align --route` and `measure-loudness.py report --json` follow that.
+  - **The receivers themselves:** the Radioport passes both channels straight through (a left-only
+    file plays left only; independent channels sum to +3 dB); a world radio sums the two channels
+    into one (identical channels +4.2 dB over one channel, independent +2.0, a mono file +1.6).
+  - **A custom sound adds nothing of its own.** Eight stations on the Radioport against the
+    corrected column: seven vanilla within about 1 LU, Tool FM at -0.3. `RADIOXL_PATH_DB` is 0.
+    The "+2 dB" came from using Vexelstrom as the yardstick while the model still added its
+    segment volumes (next bullet); Growl FM's "4 dB at a device" was 2 dB of the wrong column and
+    the rest device scatter.
+  - **A segment's own Volume is not on the chain.** Wwise folds every Volume in the hierarchy into
+    one gain after the insert effects (the same reason the -96 dB dry mute does not silence the
+    sends), so the +1 to +4 dB on eleven segments never reaches a receiver. With it out of the sum
+    the eight-station pass is within 0.5 LU on every station, Vexelstrom included, and the file
+    target is -11.1 LUFS. This is also why a per-track level has to be in the samples: `SetGain`
+    is the only stage before the sends a framework controls.
+  - Ruled out along the way: the Time Stretch insert (a bank without it measures the same), every
+    static gain in the banks, Wwise loudness normalisation (none set), duplicate definitions across
+    banks (none), a second station bleeding at a device (none).
+
+## [0.3.0] - 2026-09-16
+
+### Changed
+- The manifest's `speaker` is replaced by `news` (#16). `news: true` writes the station's
+  `audioRadioSpeakerType` as `Stanley`, false or absent writes `None`; the native
+  `RadioXL_StationSpeaker` (String) becomes `RadioXL_StationNews` (Bool) and `RadioXLSpeaker` is
+  gone. No other speaker is offered: Mike's lines name Morro Rock, Ash is bound to Growl FM by
+  name, and Stanley's name no station. A `speaker` key is reported as an unknown key. Traced
+  on 2.31: a queued announcement resolves through the token table (`0x4fe680`, last station in hash
+  order with any listener), an unqueued one through `0xb44688` (first match in the nearby list);
+  both require the station's speaker to match. A Stanley greeting was heard on Tool FM.
+- Renamed from Native Radio Framework to RadioXL: the framework takes over DigitalVixen's RadioXL
+  name and Nexus page (33488) from the 0.1.0 script player. Plugin `RadioXL.dll`, redscript module
+  `RadioXL`, natives `RadioXL_*`, records `RadioStation.RadioXL_<name>` / `UIIcon.RadioXL_<name>`,
+  localization keys `...-RadioXL-<name>`, custom-sound type `radioxl_radio` in `radioxl_routing.bnk`
+  (rebuilt; ids are FNV of the new strings), station manifests under
+  `red4ext/plugins/RadioXL/stations/`. GitHub repo `spuddeh/cp2077-radio-xl`.
+- AudioXL 0.4.0 is the minimum, for stream stations; 0.3.0 streams compressed tracks of 45 s or more from disk, which
+  removes the resident-PCM cost that made WAV the recommendation (#4), and adds `PlayFrom`,
+  `Position`, `IsPlaying` and `Pause`.
+
+### Fixed
+- A song with no `title` was silent at world radios and with Streamer Mode on (#33). `AddTitle`
+  skipped the `audioRadioTrack` row for an untitled song, so it had no `isStreamingFriendly`, and the
+  engine refuses such a track when no player receiver listens or Streamer Mode is on. Every song now
+  gets a row; an untitled one registers a single space as its text, so the radio popup reads blank
+  instead of the widget's `TRACK NAME` placeholder. Verified in game on a three-song untitled station.
+- Toggling a vehicle radio off and on while on a custom station landed on a random vanilla one
+  (#27). The receiver's turn-on block treats a stored station at or past 14 as none chosen; the
+  bound is raised to the station total with the other three. The block has no RED4ext hash, so
+  the plugin follows the enable routine's own `jne` to it and verifies the bytes there.
+
+### Removed
+- Shuffle (#22): the setting, the manifest `shuffle` field, the plugin's read of RCF's file at boot
+  (`ReadShuffleMode`), the `RadioXL_ShuffleVanilla` native, and the script's reorder of vanilla
+  `tracks` with its EP1 metadata callbacks. The engine draws songs at random itself: the picker
+  (`0x6bcdfc`, 2.31) rolls from a remaining-tracks list and refills it when empty, and the station
+  probe logged Body Heat and PHONKWAVE picks out of stored order with RadioXL not reordering
+  anything. A `shuffle` key in a manifest is now logged as unknown and ignored. Tool FM's manifest
+  drops it.
+
+### Added
+- `frequency` is its own manifest field, a number from 10 to 999, required, and `displayName` is
+  the name alone, required (#40). The plugin composes the label (`Label`, `FrequencyText`: one
+  decimal, two when written), so every station reads the same way on the dial, and `Manifest.hpp`
+  refuses a name that starts or ends with a number reading as a frequency, contains the
+  frequency, is empty, or has a space at an end, two in a row or a control character
+  (`ReadsAsFrequency`, `NameIsUntidy`). A 0.3.0 manifest with the number at the front of the name
+  is refused, and the log says to move it. The checks run last so an earlier fault stays the first
+  logged; every test manifest gained both fields on lines it already had. `BuildDial` orders by the
+  field and logs a shared frequency. `stations/README.md` states the rules. The builder page writes
+  the field, faults a missing or badly formed name, opens a 0.3.0 manifest by moving the number into
+  the field with a note (`importStation.ts`), maps RadioExt's `fm` straight across, and
+  `manifest-rules.test.ts` carries the refused and accepted cases. Tool FM and Hangouts FM manifests
+  moved to the field.
+- The catalog follows a station whose track list the engine changes during a session (#38).
+  Body Heat's metadata entry is swapped for `radio_station_05_pop_completed_sq017` (the same 13
+  tracks plus `off_the_leash` and `user_friendly`) once `sq017_enable_kerry_usc_radio_songs` is
+  set, about a minute after load; the pairing is hardcoded in the exe and it is the only such
+  variant, so no other station changes. `RadioXL_StationTracks` (`Schedule.hpp`) hands the
+  catalog the live list through the station object; `Catalog.Refresh` rebuilds one station's
+  tracks in place, keeping known track objects and titling new ones from the same table as at
+  build, and runs when the deck or the never-again key meets a track it does not know and, for
+  every station, when the Stations tab draws (`RefreshAll`, the schema is rebuilt per open). The
+  swap also leaves the remaining list with no buffer, so `Consume`'s refill grows the list through
+  the SDK `DynArray` (Clear, Reserve, PushBack: the engine's own allocator by hash) instead of
+  requiring capacity. Measured: the tab lists both songs after the swap, the next key draws them,
+  and the probe's `remain` line (now with `cap=`) went 0 cap 13 to 14 cap 19 on the first press.
+- A song the keys request leaves the station's own remaining list and counts as a pick (#36).
+  Two natives in `plugin/src/Schedule.hpp` on the station object the clock resolves, any state:
+  `RadioXL_StationRemaining(station: CName) -> array<CName>` maps the entries of `+0x160` (count
+  `+0x16c`, 4-byte track indices, measured) through the metadata's `tracks` (RTTI offset, `+0x38`
+  on 2.31) to event names; `RadioXL_StationConsume(station, track, countPick) -> Int32` erases the
+  entry (tail moved down, then the size dropped) and, when `countPick`, adds one to `+0x170`; 1
+  erased, 0 known but not listed, -1 unknown. `Deck.DrawFromStation` draws at random among the
+  list's playable, switched-on entries and `Draw` keeps the bag as the fallback for an empty or
+  unreachable list; `Play` consumes every request, a key press counting and the automatic skip not,
+  because the engine counted the song it skipped past. Both SEH-guarded; a fault disables them
+  with one log line. Measured with the probe's new `remain` line: four presses on Growl FM took
+  remaining 15 to 11 and picks 1 to 5 with the RNG untouched; on Body Heat a blip followed the
+  third press at the next natural song end and the counter went back to 0. Also seen: Body Heat's
+  track list grew from 13 to 15 about a minute after load (the two songs the Kerry quest unlocks, fact set on the save) and
+  the engine emptied its remaining list when it did.
+  A third run then showed a list the keys drained staying empty for good (Tool FM at 0 through 25
+  presses: the engine refills only on its own pick), and the history jumbling under sub-second
+  presses. So `Consume` gained `refill`: the deck draws among every song when the list is empty
+  or holds nothing switched on, and the request writes `0..n-1` back first (capacity `+0x168`
+  permitting) before erasing its pick, as the picker does; the script bag is gone. And the one
+  pending key became a set of the keys requested in the last two seconds, so a late report of an
+  older request reads as a request answered, not as an engine pick that truncates the history.
+- Simple Radio Control folded in (#35), on a four-tab panel: Controls, My station, Stations,
+  Mute. `Controls.reds` holds every setting and the bind table (one set of keys for both radios,
+  ids `nextKey`..`myStationKey`; the Radioport set `pocket*` and the `mod:<id>` modifiers exist
+  behind `separateRadioportKeys` and `useModifiers`, both `Rebuilds`); `Input.reds` matches a
+  press on Codeware's Input/Key with the receiver decided at the press; `Deck.reds` is next,
+  previous, never-again and the automatic skip through `RequestSongOnRadioStation`;
+  `Catalog.reds` reads every station and track from the cooked metadata at session ready and
+  owns the ident and announcement mutes; `MyStation.reds` tunes the remembered station on the
+  three receiver-on moments; `Notifications.reds` the popup, the on-screen line and the 1 s
+  Radioport poll; `State.reds` the mod's own `state.json` in RedFileSystem storage `RadioXL`.
+  The Stations tab folds each station's songs behind a `show:<station>` switch. Panel strings
+  are keys (`RadioXL.*`) in `translations/English.reds`, read through `RadioXLText`; the
+  twelve situation switches moved onto the same keys. The master Enabled switch was dropped.
+  RCF's restore is ignored for `rememberStation`, `muteIdents` and `muteNews`, bracketed by
+  `BeginRestore`/`EndRestore` around both `RestoreInto` and `Register`. Optional dependencies
+  RedFileSystem and RedData added. Run in game the same day: every feature passed. After the
+  run: the songs are listed under every station with no fold (`show:` rows gone), the situation
+  switches' note is three label rows, and the Radioport poll shows the popup on the first read
+  too, so switching the Radioport on shows what is playing.
+  Then the next key was changed from walking the track list to a random pick (`RandRange`,
+  exclusive upper bound as the game's own scripts use it), avoiding the song playing and the last
+  four heard while enough others remain; previous pops a per-station history of eight that the
+  arrival handler keeps, with a `m_backing` flag so the landing does not push the song it left.
+  The automatic skip past a switched-off song picks the same way. The Radioport keys became a
+  heading inside Keys, the long labels became one-line rows, a divider separates a station's
+  step-over switch from its songs, and never-again puts "Switched off: <song>" on screen.
+  The random pick then became a per-station shuffle bag (Fisher-Yates over the enabled,
+  playable tracks minus the current one; a song the station plays itself leaves the bag through
+  `Record`) and the history a cursor over every song that played: `Seek` walks it either way,
+  `Draw` refills the bag past its end, and a song the engine picks while the cursor is back
+  truncates the forward part. A requested arrival is told apart from an engine pick by the
+  pending key.
+- Station idents (#29): a track with `"ident": true` goes into `audioRadioStationMetadata.blips`
+  (`audioRadioBlip.blipEventName`) instead of `tracks`, with no `audioRadioTrack` row. It keeps its
+  event-table row and AudioXL row. New native `RadioXL_StationTrackIsIdent`. `Manifest.hpp` refuses
+  a non-bool `ident`, an ident `url` track, and a station of idents only. `Clock.hpp` gives an ident
+  track key 0, logs every song change and every ident start with the station clock. Measured on a
+  test station (three 45 s tones, idents of 5.0 and 6.1 s): 2 idents in 7 song changes, each between
+  two songs, song-to-song gaps 45.2 / 49.5 / 45.0 / 45.3 / 50.5 / 45.2 s, no title shown.
+- Web streams (#23): a track may be `{ "url": "http(s)://...", "title": ... }` in place of `file`,
+  as its station's only track. `Manifest.hpp` refuses `file` and `url` together, a non-http URL and
+  a URL beside other tracks, and gives the track `kStreamDuration` (3600 s); `Main.cpp` skips the
+  header read for it and hands the URL through `RadioXL_StationTrackFile`; `Clock.hpp` leaves the
+  station out, since a URL row refuses `PlayFrom`. `Audio.reds` registers it with `RegisterSound`,
+  logs `HttpStatus` when `HttpAllowed` is false, and calls `Poll` and `PendingRemote` from the
+  level-trim retry. A URL row appears seconds to minutes after registration; a diagnostic build
+  calling neither saw both stream rows 13 s after boot, so the calls are not a requirement. The retry bound is 60 polls. Verified on the Radioport,
+  a car and a world device; tune-back reconnects (`Position` 15.9 before a 60 s tune-away, 5.9
+  after). Loudness measured with the new `tools/measure-loudness.py`: vanilla -16.3 to -19.6 LUFS,
+  a loud stream at gain 1 -17.8, so streams take the default gain.
+- `tools/measure-loudness.py`: records the game's loopback channel and splits it by the station
+  probe's log into per-station integrated loudness and true peak.
+- A manifest's `icon` may name an existing UIIcon record (`UIIcon.RadioHipHop`) with no `atlas`
+  (#21). `Manifest.hpp` accepts `UIIcon.<name>` without an atlas, warns and drops an `atlas`
+  beside one; `Dial.reds` points `RadioStation.RadioXL_<name>.icon` at the record and makes no
+  `UIIcon.RadioXL_<name>`. A record missing at `OnApply` is logged and the glyph is used; yaml
+  records import before any `OnApply`, so another mod's record is visible there. `Build` is split
+  into the station record and `BuildIcon`. Tests in `ManifestTests.cpp` (`TestIconRecord`).
+- Shuffle (#22): a four-way setting (Off, Every station, Vanilla only, Custom only), read by the
+  plugin from RCF's own file at boot because RCF restores settings after the metadata has loaded;
+  the script reorders vanilla `tracks` arrays as the base and EP1 metadata load, the plugin
+  reorders custom stations as manifests are read. A manifest's `shuffle` is three-valued: `true`
+  always, `false` never, absent follows the setting. Measured: a session-time reorder is ignored,
+  so it takes effect on the next launch. DJ song nodes post by name and are unaffected.
+- The mute switches apply to every station on the Radioport, vanilla included, and a switch is a
+  situation: a lifted switch also lifts the companion restrictions its situation raises. Measured
+  sets: a holo call brings `BlockFastTravel` and `QuestContentLock`; a vehicle scene brings
+  `PhoneNoCalling`, `UpperBodyState` and the skip prompt; a scene brings `UpperBodyState` and the
+  skip prompt. A wrap on `OnStatusEffectApplied` records every tag an effect carries before the
+  game walks them, so the first companion already sees its situation and the radio never drops
+  for the unlock delay. Every hint names its trigger in the game's code and its default; tab text
+  is a `Label` row, since a `Tip` attaches to the last row built.
+- Resume on tune-back (#1), from the engine's own station clock. The engine posts a custom track
+  from 0 and hands no offset; the station object's clock (`+0x14c`) counts seconds since its slot
+  began, on engine time, whether or not anyone listens. `plugin/src/Clock.hpp` reads it four times
+  a second from the plugin's game-state update, asks the engine which track the station is on
+  (`GetRadioStationCurrentTrackName`, matched by the track's localization key), and arms that row
+  through AudioXL's `PlayFrom` over RTTI. Replaces `Clock.reds`, a DelaySystem watch that wrote the
+  playing voice's position back each tick: the station selector on foot stops sim time while it is
+  open, the watch stopped with it, and the second station picked from an open selector started from
+  0. Verified in game: a tune-back lands at the station clock and swaps from an open selector resume.
+- "Mute radio when..." (`Settings.reds`, `Restrictions.reds`): twelve switches in the Redscript
+  Configuration Framework panel, one per `PocketRadioRestrictions` member, all on by default. Off
+  lifts that restriction for a custom station only, through a wrap of `PocketRadio.HandleRestriction`
+  that records the world's value and hands the pocket radio the switched one; a `TurnOn` wrap gives a
+  vanilla station the restriction back. RCF is optional; without it the defaults apply. Combat and
+  police heat, RadioXL 0.1.0's other two switches, are Wwise mix states on the radio buses and have no
+  switch on the game's own radio route.
+- The RadioXL glyph as the fallback icon (#18): `archive/pc/mod/RadioXL.archive` (DV's, one 256x256
+  part) replaces the game's `no_station` part, and `UIIcon.RadioXL` is created at `OnApply` so a
+  RadioXL 0.1.0 station yaml naming it stays valid. The vanilla atlas is still put back on a world
+  device's logo widget for a vanilla station.
+- `RadioXLAPI.RegisterStation(name)`: a RadioXL 0.1.0 station's script compiles and is logged rather
+  than failing script validation for every redscript mod on the machine. The station is not created;
+  adopting the old shape is #10.
+- `r6/storages/RedscriptConfigFramework/RadioXL.card.json` and `RadioXL.docs.txt`: the RCF card and
+  the in-game documentation, written for the framework.
+
+## [0.2.0] - 2026-09-08
+
+### Added
+- `plugin/src/Json.hpp` and `plugin/src/Manifest.hpp`: the manifest is read by a strict JSON parser
+  (RFC 8259 plus a byte-order mark; no comments, trailing commas or single quotes) and checked field
+  by field. Every fault is logged as `<Mod>/station.json:<line>: <what>`, a syntax fault with its
+  column too, and a manifest with one is skipped whole. Refused: `name` missing or outside
+  `[A-Za-z0-9_]`, `tracks` missing, empty or not an array, a track with no `file`, a `speaker` the
+  game does not have, `gain` not a number, `icon` without `atlas`. Logged and ignored: an unknown
+  key, `gain` outside 0..1, `atlas` without `icon`. Replaces the substring scanner, which read a
+  title containing `"file"` as the file and stopped an array at a `]` inside a title.
+  `plugin/tests/ManifestTests.cpp` covers one case per rule, run by `ctest`. (#8)
+- The vehicle receiver's next-station step is detoured. The block at `+0x68..+0x92` of the
+  set-station function maps the current index through a dial-order switch on 0..13, adds one modulo
+  14, and maps back through the inverse switch; both switches misanswer a custom index and the
+  remainder is used, so neither erasing nor retuning the division works. The 42 bytes become a `jmp`
+  to a 55-byte stub, allocated within rip-relative reach and made executable before any game byte
+  is written, that calls the game's own switches for the fourteen, uses the slot index as the dial
+  position past them, and takes the total as a 32-bit immediate. Eight more bytes verified first;
+  the stub's call targets are read from the verified block. The dial order the switches encode is
+  88.9 to 107.5. (#7)
+- The plugin owns the dial order. `BuildDial` asks the game's switch for the fourteen's order at
+  patch time, then inserts each custom station before the first station whose frequency is above
+  the number at the front of its display name, against the fourteen vanilla frequencies in
+  `kVanillaFrequency`; a station with no number goes last. The next-station stub reads two tables
+  behind its code (`position[total]`, `dial[total]`) instead of calling the switches, and two new
+  natives, `RadioXL_DialPosition` and `RadioXL_DialStation`, hand the same tables to `Dial.reds`:
+  `GetRadioStationUIIndex` / `GetRadioStationByUIIndex` map every station through them, the
+  cycling replacements keep vanilla's Samizdat skip anchored to the station rather than position
+  5, and the vehicle list inserts a custom station at its dial position plus one. One order on
+  every receiver. (#14)
+- A `RadioStation` record's `index` is written as the station's dial position, not its enum
+  value. The popup hands `record.Index()` to `SendRadioEvent`, which converts it through
+  `GetRadioStationByUIIndex`, so the field is a UI index; vanilla carries 0 for 88.9 to 13 for
+  107.5. The enum value equalled the position only while custom stations were appended, and the
+  first station inserted inside the vanilla dial made every station above it play the content of
+  the one below. (#14)
+- The fourteen vanilla `RadioStation` records are rewritten to their new dial positions at load.
+  Their `index` flats are fixed vanilla positions, so a custom station inserted below one left two
+  records on one index: the popup lit both and selecting either played the station now holding
+  that position. Measured with a station at 97.5: it and Body Heat both lit and both played it,
+  Tool FM at 104.9 and Morro Rock did the same, and every vanilla station above played the
+  station one position below. (#14)
+- `tools/audioxl-feed-probe.patch`: the AudioXL measurement build behind #1, #3 and #15. Logs how the
+  engine pulls from `AudioFeed::Execute`, the slot position at voice start and every retire.
+- The engine's station NAME table is extended alongside the roster, so a custom station's label is
+  a native localization key. Both of its readers reduce the index modulo 14; the division is erased.
+- Station name and song titles registered as real localization entries, inserted into
+  `onscreens.json` in sorted position under both hash widths.
+- `RadioStation` and `UIIcon` TweakDB records built from the manifest in `ScriptableTweak.OnApply`,
+  with the index the roster assigned. A station naming no icon gets the game's own `no_station` part.
+- The vehicle radio list sorted by the frequency at the front of the display name.
+- A per-station DJ through the manifest's `speaker`, defaulting to `None`.
+- `plugin/src/Duration.hpp`: each track's length read from the audio file's headers at plugin load
+  (MP3 via Xing/Info/VBRI or a frame walk, FLAC, Ogg Vorbis, WAV), exposed as
+  `RadioXL_StationTrackDuration`. A track with no readable length is dropped and logged.
+
+### Fixed
+- Every rip-relative displacement the roster patch writes is range-checked before the cast, and the
+  patch is abandoned if one does not fit. Each table is allocated within reach of one reader; the
+  other reader of the same table was only in reach by the layout of the 2.31 image. (#11)
+- World-device crackle: `mod_sfx_radio`'s stereo Broadcast Send is trimmed +2.9 dB where every
+  vanilla station sits between -4 and +0.9 dB, so a master on 0 dBFS wrapped in the next 16-bit
+  stage at world devices. First trimmed to 0.56 in the samples through `AudioXLNative.SetGain`,
+  which corrects one receiver at a time: the stereo path needs -4.95 dB and the mono path -3.0.
+  The level now comes off the samples entirely - see the routing bank below. New optional manifest
+  key `gain` (0..1) and native `RadioXL_StationGain`. (#3)
+- A station's level is a send trim, carried by `red4ext/plugins/RadioXL/radioxl_routing.bnk`
+  and the `radioxl_radio` custom-sound type it defines: a byte clone of `mod_sfx_radio`'s Event, Play
+  action and CAkSound, citing the bank's **own copies** of Radio Vexelstrom's two Broadcast Sends
+  (-2.0 dB stereo, -5.0 dB mono) rather than `radio.bnk`'s objects, which a patch could move out
+  from under it. Built by `tools/make_routing_bank.py`; every id is FNV-derived from an `radioxl_`
+  string. `kDefaultGain` is 1.0, and the 0.56 applies only on the `mod_sfx_radio` fallback, where it
+  multiplies a station's own gain rather than replacing it. Measured: 0 wrap artefacts in 550 s
+  against 6,250 in 160 s, true peak -1.4 dBFS, a custom station inside the vanilla loudness spread.
+  Confirmed in game: station switching stops the previous track, a vehicle takes over from the
+  Radioport, a world device attenuates with distance, a wanted star ducks and combat stops the audio,
+  the Music slider still moves it, WAV tracks play, and the bank survives loading a second save. (#17)
+- The custom-sound TYPE gets its own row in the audio event table. AudioXL stores a row's type as the
+  CName hash of the type string and the engine resolves that name through `eventsmetadata.json`, so
+  a type absent from it plays nothing and reports nothing: the bank loaded, all 84 tracks registered,
+  both stations built, every log line read as success, and every station was silent. (#17)
+- Each track played twice on world devices: not the LAME gapless trim, which made the declared
+  duration *exact* and so put every track on a coin flip. The engine re-posts a slot's track when the
+  voice ends while that slot is still current, and the event row holds a 32-bit float whose step is
+  15 microseconds at three minutes. Measured on two tracks four microseconds either side of their own
+  length: the one rounded up played twice, the one rounded down played once. The row is now written
+  at `duration - 0.5 s`, as vanilla does by seconds (`mus_radio_12_afterlife` declares 166 for 169.7).
+  Verified over three boundaries at ratios 1.000 and 0.998. (#15)
+- The station clock observer (`Clock.reds`) reads a station's position from
+  `GetRadioStationCurrentTrackName`, which returns the track's **localization key** rather than its
+  event name, resolved through `GetLocalizedTextByKey`. Restarts on every `Session/Ready` with a
+  generation retiring the old chain, because a session's delay callbacks do not outlive it and the
+  main menu is a session of its own. Instrument only; not for release. (#1)
+- The station was silent on every receiver when its registration waited for AudioXL to report
+  durations: the engine builds its station set while `cooked_metadata` loads, and a station added
+  afterwards is never constructed. Event rows, membership, the station entry and the text are now all
+  written as their resources load; only the AudioXL registration polls.
+- AudioXL routing is `mod_sfx_radio`, the game's own radio route. An `axl_*` type is a 2D sound the
+  radio system does not own.
+- Natives are registered module-qualified (`RadioXL.RadioXL_*`); a bare registration fails
+  script validation for every redscript mod on the machine.
+- `RED4EXT_HEADER_ONLY` is no longer defined twice (the SDK's `Common.hpp` defines it).
+
+
+## [0.1.0] - 2026-09-07
+
+### Added
+- RED4ext plugin that extends the engine's compiled radio station roster, so a custom station is a
+  real station rather than a separate player.
+- Vehicle receiver bound raised, so a custom station can be selected in a car.
+- Station manifests discovered from `red4ext/plugins/RadioXL/stations/<Mod>/station.json`.
+- Redscript service that registers each station's metadata entry and its membership of the station
+  map at runtime.
+
+### Notes
+- Nothing vanilla is replaced. No archive ships, so station mods cannot conflict with each other.

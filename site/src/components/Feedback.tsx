@@ -1,0 +1,206 @@
+import { useEffect, useRef } from 'react'
+import { InkWidget, type InkWidgetData, type InkWidgetHandle } from './InkWidget'
+import progressData from '../ink/progress.json'
+import toastData from '../ink/toast.json'
+import glyph from '../assets/radioxl-glyph.png'
+
+const PROGRESS = progressData as unknown as InkWidgetData
+const TOAST = toastData as unknown as InkWidgetData
+
+const BAR = 'wrapper/Personal_Link_Main_Elements_Canvas/Process_Bar_Main_Line'
+const BAR_EXTRA = 'wrapper/Personal_Link_Main_Elements_Canvas/Process_Bar_Extra_Line'
+const HEADER = 'wrapper/Quickhack_Elements_Canvas/Attention_Flex_TEXT'
+const LOADING = 'wrapper/Quickhack_Elements_Canvas/loading_Canvas/loading_text_Panel/LOADING_text'
+const PERCENT = 'wrapper/Quickhack_Elements_Canvas/loading_Canvas/loading_text_Panel/LOADING_Percentage_text'
+const CONNECTION = 'wrapper/Quickhack_Elements_Canvas/loading_Canvas/inkTextWidget11'
+const PERCENT_SIGN = 'wrapper/Quickhack_Elements_Canvas/loading_Canvas/loading_text_Panel/LOADING_PRCT_text'
+const COMPLETED = 'wrapper/Quickhack_Elements_Canvas/LOADING_COMPLETE_text'
+const FAILED = 'wrapper/Quickhack_Elements_Canvas/LOADING_FAILED_text'
+
+const TOAST_TITLE = 'Item_recived_All/LeftCorner_Ico/NewItemReceived/New_Item'
+const TOAST_ICON = 'Item_recived_All/L_R/Plate/inkFlexWidget9/Item_Icon'
+const TOAST_SHADOW = 'shadowBlob'
+
+/** HUDProgressBarController: the bar is 996 authored pixels at 100%. */
+const BAR_WIDTH = 996
+
+export type BuildPhase = 'running' | 'done' | 'failed'
+
+/**
+ * hud_progress_bar.inkwidget: Quickhack_Intro as a build starts, the bar and percentage while it
+ * runs, then Quickhack_Outro (completed) or Quickhack_Outro_Failed.
+ */
+export function BuildProgress(props: {
+  phase: BuildPhase | null
+  title: string
+  written: number
+  total: number
+  animate: boolean
+  onFinished: () => void
+}) {
+  const widget = useRef<InkWidgetHandle>(null)
+  const { phase, animate, onFinished } = props
+
+  useEffect(() => {
+    if (!phase) return
+    const hold = (ms: number) => new Promise((r) => setTimeout(r, animate ? 0 : ms))
+    if (phase === 'running') widget.current?.play('Quickhack_Intro')
+    if (phase === 'done' || phase === 'failed') {
+      let cancelled = false
+      widget.current
+        ?.play(phase === 'done' ? 'Quickhack_Outro' : 'Quickhack_Outro_Failed')
+        .then(() => hold(1200))
+        .then(() => !cancelled && onFinished())
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [phase, animate, onFinished])
+
+  if (!phase) return null
+  // The bar spans the middle 1000 of the widget's 2000 authored pixels; fit that to the window.
+  const scale = Math.min(0.7, (window.innerWidth - 32) / 1000)
+  const share = props.total ? Math.min(1, props.written / props.total) : 0
+  const mb = (b: number) => (b / 1048576).toFixed(1)
+  return (
+    <div className="build-overlay" role="status" aria-live="polite">
+      <InkWidget
+        ref={widget}
+        data={PROGRESS}
+        scale={scale}
+        animate={animate}
+        className="build-progress"
+        texts={{
+          [HEADER]: props.title,
+          [LOADING]: 'Writing',
+          // The panel spaces its three texts at their authored widths; one string keeps the sign on the number.
+          [PERCENT]: `${Math.round(share * 100)}%`,
+          [PERCENT_SIGN]: '',
+          [CONNECTION]: `${mb(props.written)} / ${mb(props.total)} MB`,
+          [COMPLETED]: 'Saved',
+          [FAILED]: 'Failed',
+        }}
+        styles={{
+          [BAR]: { width: share * BAR_WIDTH },
+          [BAR_EXTRA]: { display: 'none' },
+          ...(!animate && phase === 'done' ? { [COMPLETED]: { opacity: 1 }, [HEADER]: { opacity: 0 } } : {}),
+          ...(!animate && phase === 'failed' ? { [FAILED]: { opacity: 1 }, [HEADER]: { opacity: 0 } } : {}),
+        }}
+      />
+      <span className="visually-hidden">{`${props.title}: ${Math.round(share * 100)}%`}</span>
+    </div>
+  )
+}
+
+export interface Toast {
+  id: number
+  title: string
+  message: string
+}
+
+export interface Failure {
+  /** One line naming the step and the file, in the page. */
+  message: string
+  /** What to do about it, when the failure itself names nothing actionable. */
+  advice?: string | null
+  /** Everything a bug report needs, copied as text. */
+  log: string
+}
+
+/** A failed build stays on the page until dismissed, with its log to copy into a report. */
+export function BuildFailure(props: { failure: Failure; onCopy: () => void; onDismiss: () => void }) {
+  return (
+    <div className="build-failure ink-frame" role="alert">
+      <p className="build-failure-message">{props.failure.message}</p>
+      {props.failure.advice && <p className="build-failure-advice">{props.failure.advice}</p>}
+      <details className="build-log">
+        <summary>Log</summary>
+        <pre>{props.failure.log}</pre>
+      </details>
+      <div className="build-failure-actions">
+        <button type="button" className="ink-frame copy-log" onClick={props.onCopy}>
+          Copy log
+        </button>
+        <button type="button" className="link" onClick={props.onDismiss}>
+          Dismiss
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Asked at Build .zip or Copy station.json while auto level is off and songs are unmeasured. */
+export function LevelQuestion(props: {
+  songs: number
+  megabytes: number
+  action: 'build' | 'copy'
+  onLevel: () => void
+  onSkip: () => void
+  onCancel: () => void
+}) {
+  const songs = `${props.songs} ${props.songs === 1 ? 'song' : 'songs'}`
+  return (
+    <div className="level-question ink-frame" role="dialog" aria-labelledby="level-question-title">
+      <p id="level-question-title" className="level-question-title">
+        Level the songs first?
+      </p>
+      <p>
+        Auto level measures each song and sets its level to match the game&apos;s own stations. Measuring {songs} (
+        {Math.round(props.megabytes)} MB) can take a few minutes. The page shows the progress.
+      </p>
+      <div className="level-question-actions">
+        <button type="button" className="ink-frame level-question-yes" onClick={props.onLevel}>
+          Level them
+        </button>
+        <button type="button" className="ink-frame level-question-no" onClick={props.onSkip}>
+          {props.action === 'build' ? 'Build without' : 'Copy without'}
+        </button>
+        <button type="button" className="link" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * items_update.inkwidget Item_Received_SMALL: plays its whole life, in, hold and out, then ends.
+ * The game's own sequence runs 5.8 s, which is long for a page, so it plays at TOAST_RATE.
+ */
+const TOAST_RATE = 1.75
+
+export function ToastView(props: { toast: Toast; animate: boolean; onDone: () => void }) {
+  const widget = useRef<InkWidgetHandle>(null)
+  const { animate, onDone } = props
+  useEffect(() => {
+    let cancelled = false
+    const ready = animate ? widget.current?.play('Item_Received_SMALL', TOAST_RATE) : new Promise((r) => setTimeout(r, 2200))
+    ready?.then(() => !cancelled && onDone())
+    return () => {
+      cancelled = true
+    }
+  }, [animate, onDone])
+  return (
+    <div className="toast" role="status" aria-live="polite">
+      <InkWidget
+        ref={widget}
+        data={TOAST}
+        scale={Math.min(0.7, (window.innerWidth - 32) / 900)}
+        animate={animate}
+        texts={{ [TOAST_TITLE]: props.toast.title }}
+        // The page fade behind every notification replaces the widget's shadow blob, which would draw
+        // a darker ring on top of it.
+        styles={{ [TOAST_SHADOW]: { display: 'none' } }}
+        slots={{
+          [TOAST_ICON]: (
+            <div className="toast-item">
+              <span className="toast-glyph" style={{ maskImage: `url(${glyph})` }} />
+              <span className="toast-message">{props.toast.message}</span>
+            </div>
+          ),
+        }}
+      />
+      <span className="visually-hidden">{`${props.toast.title}: ${props.toast.message}`}</span>
+    </div>
+  )
+}

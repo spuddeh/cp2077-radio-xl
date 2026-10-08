@@ -1,0 +1,947 @@
+// ======================================================================================
+// Mod Name: RadioXL
+// Author: Spuddeh
+// Description: The settings panel, through the Redscript Configuration Framework, and the
+//              "Mute the radio when..." switches it started with. RCF owns the panel and the
+//              saved values (r6/storages/RedscriptConfigFramework/RadioXL.json); this provider
+//              bridges its Get*/Set* to RadioXLConfig, RadioXLControls and RadioXLState. The
+//              whole panel compiles to nothing when RCF is absent, and the mod then runs on its
+//              defaults with no way to change them.
+//
+//              THIS IS THE ONLY SETTINGS UI. Mirroring a setting into Mod Settings is forbidden:
+//              ModSettings.AcceptChanges() is global and applies every other mod's pending
+//              changes as a side effect.
+//
+//              FOUR TABS. Controls holds the keys and the two notifications; My station the
+//              remembered station; Stations one section per station from the catalog, each with
+//              its step-over switch and its songs; Mute the station talk and the twelve
+//              situation switches. Rows behind a switch (modifiers, the Radioport keys) exist
+//              only while the switch is on: RCF rebuilds the panel the moment such a switch flips.
+//
+//              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
+//              plugin, because this mod matches the key itself on Codeware's Input/Key event.
+// File Version: 0.8.0
+// Credits: Redscript Configuration Framework by DigitalVixen.
+// ======================================================================================
+//
+// A custom station is a real station, so every rule that silences the pocket radio silences it
+// too: a scene, a phone call, a club, fast travel and the rest, exactly as they silence a vanilla
+// station. The situation switches let the player keep the Radioport playing through a situation
+// the game would silence it in, on every station. Every switch is on by default, which is the
+// game's own behaviour.
+//
+// **Combat and police heat are not here.** The game ducks and stops the radio in those through
+// the Wwise mix state on the radio buses, which a station on the game's own radio route cannot
+// opt out of.
+
+module RadioXL
+
+@if(ModuleExists("RedscriptConfigFramework"))
+import RedscriptConfigFramework.*
+
+@if(ModuleExists("RedFunctions.Json"))
+import RedFunctions.Json.*
+
+// The second half of RadioXLConfig.RestartRadioport: back on the station it left, if nothing changed it.
+public class RadioXLRadioportRetune extends DelayCallback {
+  public let station: Int32;
+
+  public func Call() -> Void {
+    let player = GameInstance.GetPlayerSystem(GetGameInstance()).GetLocalPlayerMainGameObject() as PlayerPuppet;
+    if !IsDefined(player) || IsDefined(player.GetMountedVehicle()) { return; }
+    let pocket = player.GetPocketRadio();
+    if !IsDefined(pocket) || !pocket.IsActive() || pocket.GetStation() != this.station { return; }
+    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(this.station), n"pocket_radio_emitter");
+  }
+}
+
+// The mute switches the plugin applies in the mix, in RadioXL_SetMixSwitch order.
+public enum RadioXLMix {
+  CombatMusic = 0,
+  PoliceMusic = 1,
+  Voices = 2,
+  Megabuilding = 3,
+  Menus = 4
+}
+
+public class RadioXLConfig extends ScriptableSystem {
+  public static func Get() -> ref<RadioXLConfig> {
+    return GameInstance.GetScriptableSystemsContainer(GetGameInstance())
+      .Get(n"RadioXL.RadioXLConfig") as RadioXLConfig;
+  }
+
+  // One per RadioXLSituation member, in enum order.
+  public let muteCalls: Bool = true;
+  public let muteScenes: Bool = true;
+  public let muteDrivingScenes: Bool = true;
+  public let muteClubs: Bool = true;
+  public let muteSafeAreas: Bool = true;
+  public let muteQuests: Bool = true;
+  // The mix switches, applied by the plugin.
+  public let muteCombatMusic: Bool = true;
+  public let mutePoliceMusic: Bool = true;
+  public let muteVoices: Bool = true;
+  public let muteMegabuilding: Bool = true;
+  public let muteMenus: Bool = true;
+  // On: the Radioport on foot plays at the car's level with no filters. Off is the game's own sound.
+  public let radioportLikeCar: Bool = false;
+  // dB above the game's own level on the car radio and the Radioport, 0 to RadioXL_MaxBoost().
+  public let boostDb: Int32 = 0;
+  // Processing: 0 off, 1 Broadcast (every stage), 2 custom (each stage's own switch).
+  public let processingMode: Int32 = 0;
+  public let processAgc: Bool = false;
+  public let processPeak: Bool = false;
+  public let processLimiter: Bool = false;
+
+  public func ApplyMix() -> Void {
+    RadioXL_SetMixSwitch(0, this.muteCombatMusic);
+    RadioXL_SetMixSwitch(1, this.mutePoliceMusic);
+    RadioXL_SetMixSwitch(2, this.muteVoices);
+    RadioXL_SetMixSwitch(3, this.muteMegabuilding);
+    RadioXL_SetMixSwitch(4, this.muteMenus);
+    RadioXL_SetMixSwitch(5, !this.radioportLikeCar);
+    RadioXL_SetMixBoost(Cast<Float>(this.boostDb));
+    RadioXLEqualiser.Apply();
+  }
+
+  // A playing Radioport voice takes the rewritten tier curves only when its tier next changes, and a
+  // new voice reads them as it starts. So a playing Radioport is switched off its station and back on.
+  public static func RestartRadioport() -> Void {
+    let gi = GetGameInstance();
+    let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
+    if !IsDefined(player) || IsDefined(player.GetMountedVehicle()) { return; }
+    let pocket = player.GetPocketRadio();
+    if !IsDefined(pocket) || !pocket.IsActive() || pocket.IsRestricted() { return; }
+    let delay = GameInstance.GetDelaySystem(gi);
+    if !IsDefined(delay) { return; }
+    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(-1, true), n"pocket_radio_emitter");
+    let tick = new RadioXLRadioportRetune();
+    tick.station = pocket.GetStation();
+    delay.DelayCallback(tick, 0.1);
+  }
+
+  // The dropdown's option index: 0 most cars, 1 every car, 2 off.
+  public let trafficStations: Int32 = 0;
+  public let randomWorldRadios: Bool = true;
+  public let randomStreams: Bool = false;
+
+  private func TrafficMode() -> RadioXLTrafficMode {
+    if this.trafficStations == 1 { return RadioXLTrafficMode.All; }
+    if this.trafficStations == 2 { return RadioXLTrafficMode.Off; }
+    return RadioXLTrafficMode.Shared;
+  }
+
+  public func ApplyTraffic() -> Void {
+    let traffic = RadioXLTraffic.Get();
+    if IsDefined(traffic) {
+      traffic.Set(this.TrafficMode(), this.randomWorldRadios, this.randomStreams);
+    }
+  }
+
+  // Whether the game's own lowering of the radio in this mix situation is kept.
+  public func MixMutes(mix: RadioXLMix) -> Bool {
+    switch mix {
+      case RadioXLMix.CombatMusic: return this.muteCombatMusic;
+      case RadioXLMix.PoliceMusic: return this.mutePoliceMusic;
+      case RadioXLMix.Voices: return this.muteVoices;
+      case RadioXLMix.Megabuilding: return this.muteMegabuilding;
+      case RadioXLMix.Menus: return this.muteMenus;
+    }
+    return true;
+  }
+
+  // Whether the game's own silence in this situation is kept.
+  public func Mutes(situation: RadioXLSituation) -> Bool {
+    switch situation {
+      case RadioXLSituation.Calls: return this.muteCalls;
+      case RadioXLSituation.Scenes: return this.muteScenes;
+      case RadioXLSituation.DrivingScenes: return this.muteDrivingScenes;
+      case RadioXLSituation.Clubs: return this.muteClubs;
+      case RadioXLSituation.SafeAreas: return this.muteSafeAreas;
+      case RadioXLSituation.Quests: return this.muteQuests;
+    }
+    return true;
+  }
+
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private let m_provider: ref<RadioXLConfigProvider>;
+
+  // The saved values are restored at attach, before any session, so the situation switches are
+  // in force from the first PocketRadio wrap. The panel is registered at every Session/Ready,
+  // the main menu's included, with the catalog built first so the Stations tab lists what the
+  // save has.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private func OnAttach() -> Void {
+    let gi: GameInstance = this.GetGameInstance();
+    this.m_provider = new RadioXLConfigProvider();
+    this.m_provider.Init(this);
+    RadioXLConfig.MigrateSongKeys(gi);
+    RadioXLConfig.MigrateMuteKeys(gi);
+    this.m_provider.BeginRestore();
+    DVRCF_Store.RestoreInto(gi, "RadioXL", this.m_provider, this.m_provider.BuildSchema());
+    this.m_provider.EndRestore();
+    this.ApplyMix();
+    GameInstance.GetCallbackSystem()
+      .RegisterCallback(n"Session/Ready", this, n"OnSessionReady")
+      .SetLifetime(CallbackLifetime.Forever);
+  }
+
+  // Writes the current values into RCF's file. A value changed anywhere but the panel (a key, the
+  // script API) is otherwise restored over at the next start.
+  // A song's setting is stored under its event name, and RCF restores only the keys the schema
+  // holds. A key under the position-based name is moved to the file-based one before the restore,
+  // and dropped; a key already under the new name wins.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private static func MigrateSongKeys(gi: GameInstance) -> Void {
+    let obj = DVRCF_Store.LoadModObject(gi, "RadioXL");
+    if !IsDefined(obj) { return; }
+    let moved: Int32 = 0;
+    let station: Int32 = 0;
+    while station < RadioXL_StationCount() {
+      let t: Int32 = 0;
+      while t < RadioXL_StationTrackCount(station) {
+        let legacy: String = RadioXL_SongPrefix() + NameToString(RadioXL_StationTrackLegacy(station, t));
+        let current: String = RadioXL_SongPrefix() + NameToString(RadioXL_StationTrack(station, t));
+        if obj.Contains(legacy) {
+          if !obj.Contains(current) {
+            obj.PutInt(current, obj.Int(legacy, RadioXL_SongOn()));
+          }
+          obj.Drop(legacy);
+          moved += 1;
+        }
+        t += 1;
+      }
+      station += 1;
+    }
+    if moved > 0 {
+      DVRCF_Store.WriteModObject(gi, "RadioXL", obj);
+      RadioXLLog(s"moved \(moved) song setting(s) from position-based names to file-based ones");
+    }
+  }
+
+  // The situation switches replace one switch per restriction. Each situation takes the value of
+  // the restriction it is named for, and the twelve old keys are dropped; a key already under the
+  // new name wins.
+  @if(ModuleExists("RedscriptConfigFramework"))
+  private static func MigrateMuteKeys(gi: GameInstance) -> Void {
+    let obj = DVRCF_Store.LoadModObject(gi, "RadioXL");
+    if !IsDefined(obj) { return; }
+    let moves: array<String> = ["mutePhoneCall", "muteCalls", "muteSceneTier", "muteScenes",
+                                "muteVehicleScene", "muteDrivingScenes", "muteInDaClub", "muteClubs",
+                                "muteUpperBodyState", "muteSafeAreas", "muteQuestContentLock", "muteQuests"];
+    let dropped: array<String> = ["muteBlockFastTravel", "muteVehicleBlockPocketRadio", "mutePhoneNoTexting",
+                                  "mutePhoneNoCalling", "muteFastForward", "muteFastForwardHintActive"];
+    let moved: Int32 = 0;
+    let i: Int32 = 0;
+    while i < ArraySize(moves) {
+      let legacy: String = moves[i];
+      let current: String = moves[i + 1];
+      if obj.Contains(legacy) {
+        if !obj.Contains(current) {
+          obj.PutBool(current, obj.Bool(legacy, true));
+        }
+        obj.Drop(legacy);
+        moved += 1;
+      }
+      i += 2;
+    }
+    for key in dropped {
+      if obj.Contains(key) {
+        obj.Drop(key);
+        moved += 1;
+      }
+    }
+    if moved > 0 {
+      DVRCF_Store.WriteModObject(gi, "RadioXL", obj);
+      RadioXLLog(s"moved \(moved) mute setting(s) to the situation switches");
+    }
+  }
+
+  @if(ModuleExists("RedscriptConfigFramework"))
+  public static func Persist() -> Void {
+    let self = RadioXLConfig.Get();
+    if !IsDefined(self) || !IsDefined(self.m_provider) { return; }
+    DVRCF_Store.PersistFrom(self.GetGameInstance(), "RadioXL", self.m_provider, self.m_provider.BuildSchema());
+  }
+
+  @if(!ModuleExists("RedscriptConfigFramework"))
+  public static func Persist() -> Void {}
+
+  @if(ModuleExists("RedscriptConfigFramework"))
+  protected cb func OnSessionReady(event: ref<GameSessionEvent>) -> Void {
+    if !IsDefined(this.m_provider) { return; }
+    let catalog = RadioXLCatalog.Get();
+    if IsDefined(catalog) { catalog.Build(); }
+    this.m_provider.BeginRestore();
+    DVRCF.Register(this.GetGameInstance(), "RadioXL", "RadioXL.modName", "RadioXL.modDesc", this.m_provider);
+    this.m_provider.EndRestore();
+  }
+}
+
+// Row keys. One set of constants so the schema and the Get/Set switches cannot drift apart.
+// Renaming one orphans every player's saved value for it.
+public func RadioXL_KeyUseModifiers() -> String { return "useModifiers"; }
+public func RadioXL_KeySeparateRadioport() -> String { return "separateRadioportKeys"; }
+// A key row's own id is the bind id, from RadioXLControls. Its modifier rides a second row whose
+// key is the bind id behind a fixed prefix, so the two can never be confused for each other or
+// for a setting above.
+public func RadioXL_ModifierPrefix() -> String { return "mod:"; }
+public func RadioXL_KeyNotifyRadioport() -> String { return "notifyRadioport"; }
+public func RadioXL_KeyNotifyOnscreen() -> String { return "notifyOnscreen"; }
+public func RadioXL_KeyRememberEnabled() -> String { return "rememberEnabled"; }
+public func RadioXL_KeyRememberStation() -> String { return "rememberStation"; }
+public func RadioXL_KeyPlayOnEnter() -> String { return "playOnEnter"; }
+public func RadioXL_KeyPlayOnVehiclePowerOn() -> String { return "playOnVehiclePowerOn"; }
+public func RadioXL_KeyPlayOnPocketPowerOn() -> String { return "playOnPocketPowerOn"; }
+public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio"; }
+public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
+public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
+public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
+public func RadioXL_MaxBoost() -> Int32 { return 12; }
+public func RadioXL_StationEqPrefix() -> String { return "eq:"; }
+// A station's own band: "stationBand:<station>/<band>".
+public func RadioXL_StationBandPrefix() -> String { return "stationBand:"; }
+public func RadioXL_KeyRandomWorldRadios() -> String { return "randomWorldRadios"; }
+public func RadioXL_KeyRandomStreams() -> String { return "randomStreams"; }
+// A song row's key is the event name behind a fixed prefix; a station's step-over row is its
+// event name behind another. The name comes back out of each unchanged.
+public func RadioXL_SongPrefix() -> String { return "song:"; }
+public func RadioXL_SkipPrefix() -> String { return "skip:"; }
+
+@if(ModuleExists("RedscriptConfigFramework"))
+public class RadioXLConfigProvider extends DVRCF_Provider {
+  private let m_cfg: wref<RadioXLConfig>;
+  private let m_restoring: Bool;
+
+  public func Init(cfg: ref<RadioXLConfig>) -> Void {
+    this.m_cfg = cfg;
+  }
+
+  // RCF restores every saved row through Set* at registration. Three rows ignore that restore:
+  // the remembered station and the two mutes live in the mod's own file, read before RCF has
+  // anything, and a stale copy in RCF's JSON must not overwrite them.
+  public func BeginRestore() -> Void { this.m_restoring = true; }
+  public func EndRestore() -> Void { this.m_restoring = false; }
+
+  // Rebuilt on every panel open and on every switch marked Rebuilds, so a station mod installed
+  // since the last open is listed and an unfolded station shows its songs.
+  public func BuildSchema() -> ref<DVRCF_Schema> {
+    let b: ref<DVRCF_SchemaBuilder> = DVRCF_SchemaBuilder.New("RadioXL.modName");
+    let controls = RadioXLControls.Get();
+
+    // --- Controls ---
+    b.Tab("RadioXL.tabControls");
+    b.Section("RadioXL.secKeys");
+    b.Label("RadioXL.labKeys1");
+    b.Label("RadioXL.labKeys2");
+    b.Label("RadioXL.labKeys3");
+    b.Label("RadioXL.labKeys4");
+    b.Label("RadioXL.labKeys5");
+    this.AddKeys(b, controls, RadioXLBindSet.Main);
+    b.Toggle(RadioXL_KeyUseModifiers(), "RadioXL.optUseModifiers").Rebuilds();
+    b.Tip("RadioXL.tipUseModifiers");
+    if IsDefined(controls) && controls.useModifiers {
+      b.Group("RadioXL.grpModifiers");
+      this.AddModifiers(b, controls, RadioXLBindSet.Main);
+    }
+    b.Group("RadioXL.grpRadioport");
+    b.Label("RadioXL.labRadioport");
+    b.Toggle(RadioXL_KeySeparateRadioport(), "RadioXL.optSeparateRadioport").Rebuilds();
+    b.Tip("RadioXL.tipSeparateRadioport");
+    if IsDefined(controls) && controls.separateRadioportKeys {
+      this.AddKeys(b, controls, RadioXLBindSet.Radioport);
+      if controls.useModifiers {
+        b.Group("RadioXL.grpRadioportModifiers");
+        this.AddModifiers(b, controls, RadioXLBindSet.Radioport);
+      }
+    }
+    b.Section("RadioXL.secOnScreen");
+    b.Toggle(RadioXL_KeyNotifyRadioport(), "RadioXL.optNotifyRadioport");
+    b.Tip("RadioXL.tipNotifyRadioport");
+    b.Toggle(RadioXL_KeyNotifyOnscreen(), "RadioXL.optNotifyOnscreen");
+    b.Tip("RadioXL.tipNotifyOnscreen");
+
+    // --- My station ---
+    b.Tab("RadioXL.tabMyStation");
+    b.Section("RadioXL.secMyStation");
+    b.Toggle(RadioXL_KeyRememberEnabled(), "RadioXL.optRemember");
+    b.Tip("RadioXL.tipRemember");
+    b.Dropdown(RadioXL_KeyRememberStation(), "RadioXL.optStation", this.StationOptions());
+    b.Tip("RadioXL.tipStation");
+    b.Toggle(RadioXL_KeyPlayOnEnter(), "RadioXL.optPlayOnEnter");
+    b.Tip("RadioXL.tipPlayOnEnter");
+    b.Toggle(RadioXL_KeyPlayOnVehiclePowerOn(), "RadioXL.optPlayOnVehiclePowerOn");
+    b.Tip("RadioXL.tipPlayOnVehiclePowerOn");
+    b.Toggle(RadioXL_KeyPlayOnPocketPowerOn(), "RadioXL.optPlayOnPocketPowerOn");
+    b.Tip("RadioXL.tipPlayOnPocketPowerOn");
+    b.Toggle(RadioXL_KeyIgnorePocketRadio(), "RadioXL.optIgnorePocket");
+    b.Tip("RadioXL.tipIgnorePocket");
+
+    // --- Stations ---
+    b.Tab("RadioXL.tabStations");
+    this.AddStations(b, controls);
+
+    // --- Sound ---
+    b.Tab("RadioXL.tabSound");
+    b.Section("RadioXL.secSound");
+    b.Toggle("radioportLikeCar", "RadioXL.optRadioportLikeCar");
+    b.Tip("RadioXL.tipRadioportLikeCar");
+    b.Slider("boostDb", "RadioXL.optBoost", 0.0, Cast<Float>(RadioXL_MaxBoost()), 1.0, true);
+    b.Tip("RadioXL.tipBoost");
+    b.Section("RadioXL.secEqualiser");
+    b.Dropdown("eqPreset", "RadioXL.optEqPreset", this.GlobalEqOptions()).Rebuilds();
+    b.Tip("RadioXL.tipEqPreset");
+    if Equals(RadioXLState.Get().eqPreset, RadioXL_EqCustom()) {
+      let band: Int32 = 0;
+      while band < RadioXL_EqBandCount() {
+        b.Slider(s"eqBand\(band)", s"RadioXL.eqBand\(band)", -12.0, 12.0, 1.0, true);
+        band += 1;
+      }
+    }
+    b.Section("RadioXL.secProcessing");
+    b.Dropdown("processing", "RadioXL.optProcessing", this.ProcessingOptions()).Rebuilds();
+    b.Tip("RadioXL.tipProcessing");
+    if IsDefined(this.m_cfg) && this.m_cfg.processingMode == 2 {
+      b.Toggle("procAgc", "RadioXL.optProcAgc");
+      b.Tip("RadioXL.tipProcAgc");
+      b.Toggle("procPeak", "RadioXL.optProcPeak");
+      b.Tip("RadioXL.tipProcPeak");
+      b.Toggle("procLimiter", "RadioXL.optProcLimiter");
+      b.Tip("RadioXL.tipProcLimiter");
+    }
+
+    // --- Mute ---
+    b.Tab("RadioXL.tabMute");
+    b.Section("RadioXL.secTalk");
+    b.Toggle(RadioXL_KeyMuteIdents(), "RadioXL.optMuteIdents");
+    b.Tip("RadioXL.tipMuteIdents");
+    b.Toggle(RadioXL_KeyMuteNews(), "RadioXL.optMuteNews");
+    b.Tip("RadioXL.tipMuteNews");
+    b.Section("RadioXL.secMuteWhen");
+    // **A Tip attaches to the LAST row built, whatever it is.** Text that belongs to a section
+    // is a Label.
+    b.Label("RadioXL.labMuteWhen1");
+    b.Label("RadioXL.labMuteWhen2");
+    b.Label("RadioXL.labMuteWhen3");
+    b.Toggle("muteCalls", "RadioXL.muteCalls");
+    b.Tip("RadioXL.tipMuteCalls");
+    b.Toggle("muteScenes", "RadioXL.muteScenes");
+    b.Tip("RadioXL.tipMuteScenes");
+    b.Toggle("muteDrivingScenes", "RadioXL.muteDrivingScenes");
+    b.Tip("RadioXL.tipMuteDrivingScenes");
+    b.Toggle("muteClubs", "RadioXL.muteClubs");
+    b.Tip("RadioXL.tipMuteClubs");
+    b.Toggle("muteSafeAreas", "RadioXL.muteSafeAreas");
+    b.Tip("RadioXL.tipMuteSafeAreas");
+    b.Toggle("muteQuests", "RadioXL.muteQuests");
+    b.Tip("RadioXL.tipMuteQuests");
+    b.Toggle("muteCombatMusic", "RadioXL.muteCombatMusic");
+    b.Tip("RadioXL.tipMuteCombatMusic");
+    b.Toggle("mutePoliceMusic", "RadioXL.mutePoliceMusic");
+    b.Tip("RadioXL.tipMutePoliceMusic");
+    b.Toggle("muteVoices", "RadioXL.muteVoices");
+    b.Tip("RadioXL.tipMuteVoices");
+    b.Toggle("muteMegabuilding", "RadioXL.muteMegabuilding");
+    b.Tip("RadioXL.tipMuteMegabuilding");
+    b.Toggle("muteMenus", "RadioXL.muteMenus");
+    b.Tip("RadioXL.tipMuteMenus");
+
+    return b.Build();
+  }
+
+  // --- the key rows ------------------------------------------------------------------------------
+
+  private func AddKeys(b: ref<DVRCF_SchemaBuilder>, controls: ref<RadioXLControls>, set: RadioXLBindSet) -> Void {
+    if !IsDefined(controls) { return; }
+    let binds = controls.Binds();
+    let i: Int32 = 0;
+    while i < ArraySize(binds) {
+      let bind = binds[i];
+      i += 1;
+      if Equals(bind.set, set) {
+        b.ModifierKeybind(bind.id, this.ActionLabel(bind.action));
+        let tip: String = this.ActionTip(bind.action);
+        if StrLen(tip) > 0 { b.Tip(tip); }
+      }
+    }
+  }
+
+  private func AddModifiers(b: ref<DVRCF_SchemaBuilder>, controls: ref<RadioXLControls>, set: RadioXLBindSet) -> Void {
+    let binds = controls.Binds();
+    let i: Int32 = 0;
+    while i < ArraySize(binds) {
+      let bind = binds[i];
+      i += 1;
+      if Equals(bind.set, set) {
+        b.ModifierKeybind(RadioXL_ModifierPrefix() + bind.id, this.ModifierLabel(bind.action));
+        b.Tip("RadioXL.tipModifier");
+      }
+    }
+  }
+
+  private func ActionLabel(action: RadioXLAction) -> String {
+    if Equals(action, RadioXLAction.NextSong) { return "RadioXL.keyNext"; }
+    if Equals(action, RadioXLAction.PreviousSong) { return "RadioXL.keyPrevious"; }
+    if Equals(action, RadioXLAction.NextStation) { return "RadioXL.keyNextStation"; }
+    if Equals(action, RadioXLAction.PreviousStation) { return "RadioXL.keyPreviousStation"; }
+    if Equals(action, RadioXLAction.NeverAgain) { return "RadioXL.keyNever"; }
+    if Equals(action, RadioXLAction.MyStation) { return "RadioXL.keyMyStation"; }
+    return "RadioXL.keyShowPopup";
+  }
+
+  private func ModifierLabel(action: RadioXLAction) -> String {
+    if Equals(action, RadioXLAction.NextSong) { return "RadioXL.modNext"; }
+    if Equals(action, RadioXLAction.PreviousSong) { return "RadioXL.modPrevious"; }
+    if Equals(action, RadioXLAction.NextStation) { return "RadioXL.modNextStation"; }
+    if Equals(action, RadioXLAction.PreviousStation) { return "RadioXL.modPreviousStation"; }
+    if Equals(action, RadioXLAction.NeverAgain) { return "RadioXL.modNever"; }
+    if Equals(action, RadioXLAction.MyStation) { return "RadioXL.modMyStation"; }
+    return "RadioXL.modShowPopup";
+  }
+
+  private func ActionTip(action: RadioXLAction) -> String {
+    if Equals(action, RadioXLAction.NextStation) || Equals(action, RadioXLAction.PreviousStation) {
+      return "RadioXL.tipStationKeys";
+    }
+    if Equals(action, RadioXLAction.ShowPopup) { return "RadioXL.tipShowPopup"; }
+    if Equals(action, RadioXLAction.NeverAgain) { return "RadioXL.tipNever"; }
+    if Equals(action, RadioXLAction.MyStation) { return "RadioXL.tipMyStation"; }
+    return "";
+  }
+
+  // --- the station dropdown ---------------------------------------------------------------------
+  // Option 0 is "none"; the rest are the dial in order. The stored value is the station's event
+  // name, so the index is derived on every read and survives the dial changing between sessions.
+  // Dropdown options are the one place RCF takes text rather than a key, so they are resolved here.
+
+  private func StationOptions() -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.dropNone"));
+    let count: Int32 = RadioStationDataProvider.GetStationsCount();
+    let position: Int32 = 0;
+    while position < count {
+      ArrayPush(options, this.StationLabel(RadioStationDataProvider.GetRadioStationByUIIndex(position)));
+      position += 1;
+    }
+    return options;
+  }
+
+  // The random picks follow the Stations section's text, behind a divider; each station's own
+  // section comes after them.
+  private func AddRandom(b: ref<DVRCF_SchemaBuilder>) -> Void {
+    b.Divider();
+    b.Dropdown(RadioXL_KeyTrafficStations(), "RadioXL.optTrafficStations", this.TrafficOptions());
+    b.Tip("RadioXL.tipTrafficStations");
+    b.Label("RadioXL.labTrafficMost");
+    b.Toggle(RadioXL_KeyRandomWorldRadios(), "RadioXL.optRandomWorldRadios");
+    b.Tip("RadioXL.tipRandomWorldRadios");
+    b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
+    b.Tip("RadioXL.tipRandomStreams");
+  }
+
+  private func TrafficOptions() -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.trafficMost"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficAll"));
+    ArrayPush(options, RadioXLText("RadioXL.trafficOff"));
+    return options;
+  }
+
+  // The global equaliser: every preset, then Custom. Stored by name, so adding a preset file moves no choice.
+  private func GlobalEqOptions() -> array<String> {
+    let options: array<String> = RadioXLEqualiser.PresetNames();
+    ArrayPush(options, RadioXLText("RadioXL.eqCustom"));
+    return options;
+  }
+
+  private func GlobalEqOption() -> Int32 {
+    let name: String = RadioXLState.Get().eqPreset;
+    if Equals(name, RadioXL_EqCustom()) { return RadioXL_EqPresetCount(); }
+    return Max(RadioXLEqualiser.PresetIndex(name), 0);
+  }
+
+  // A station's own equaliser: Global (follow the global one), every preset, then Custom (the
+  // station's own bands). The preset RadioXL suggests for the station is marked; it is never chosen
+  // for the player.
+  private func StationEqOptions(station: CName) -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.eqGlobal"));
+    let suggested: String = StrLower(RadioXLEqualiser.Suggested(station));
+    for name in RadioXLEqualiser.PresetNames() {
+      ArrayPush(options, StrLen(suggested) > 0 && Equals(StrLower(name), suggested)
+        ? StrReplace(RadioXLText("RadioXL.eqSuggested"), "{preset}", name) : name);
+    }
+    ArrayPush(options, RadioXLText("RadioXL.eqCustom"));
+    return options;
+  }
+
+  // The station and band a station band row's key names, or false for any other key.
+  private func StationBandKey(key: String, out station: CName, out band: Int32) -> Bool {
+    if !StrBeginsWith(key, RadioXL_StationBandPrefix()) { return false; }
+    let rest: String = StrMid(key, StrLen(RadioXL_StationBandPrefix()));
+    let slash: Int32 = StrFindLast(rest, "/");
+    if slash < 0 { return false; }
+    station = StringToName(StrLeft(rest, slash));
+    band = StringToInt(StrMid(rest, slash + 1));
+    return band >= 0 && band < RadioXL_EqBandCount();
+  }
+
+  private func ProcessingOptions() -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.procOff"));
+    ArrayPush(options, RadioXLText("RadioXL.procBroadcast"));
+    ArrayPush(options, RadioXLText("RadioXL.procCustom"));
+    return options;
+  }
+
+  private func StationAtOption(option: Int32) -> CName {
+    let position: Int32 = option - 1;
+    if position < 0 || position >= RadioStationDataProvider.GetStationsCount() { return n"None"; }
+    return RadioStationDataProvider.GetStationName(RadioStationDataProvider.GetRadioStationByUIIndex(position));
+  }
+
+  private func OptionOfStation(station: CName) -> Int32 {
+    if !IsNameValid(station) { return 0; }
+    let count: Int32 = RadioStationDataProvider.GetStationsCount();
+    let position: Int32 = 0;
+    while position < count {
+      if Equals(this.StationAtOption(position + 1), station) { return position + 1; }
+      position += 1;
+    }
+    return 0;
+  }
+
+  // --- the Stations tab -------------------------------------------------------------------------
+  // One section per station, in dial order: the step-over switch, then a dropdown per song keyed
+  // by the song's event name. Section and song labels are the
+  // game's own resolved text: RCF runs every label through its localizer and keeps a string it
+  // cannot resolve, so resolved text passes through unchanged.
+
+  private func AddStations(b: ref<DVRCF_SchemaBuilder>, controls: ref<RadioXLControls>) -> Void {
+    let catalog = RadioXLCatalog.Get();
+    if !IsDefined(catalog) || !catalog.IsBuilt() || !IsDefined(controls) {
+      b.Section("RadioXL.tabStations");
+      b.Label("RadioXL.noteNoCatalog");
+      this.AddRandom(b);
+      return;
+    }
+    // The schema is rebuilt on every panel open, so this is where a track a quest added since
+    // the catalog was built gets its row.
+    catalog.RefreshAll();
+    b.Section("RadioXL.tabStations");
+    b.Label("RadioXL.labStations1");
+    b.Label("RadioXL.labStations2");
+    b.Label("RadioXL.labStations3");
+    b.Label("RadioXL.labStations4");
+    b.Label("RadioXL.labStations5");
+    b.Label(this.IsStreamerMode() ? "RadioXL.noteStreamerOn" : "RadioXL.noteStreamerOff");
+    this.AddRandom(b);
+    let options: array<String> = this.SongOptions();
+    let count: Int32 = RadioStationDataProvider.GetStationsCount();
+    let position: Int32 = 0;
+    while position < count {
+      let enumValue: ERadioStationList = RadioStationDataProvider.GetRadioStationByUIIndex(position);
+      let name: CName = RadioStationDataProvider.GetStationName(enumValue);
+      position += 1;
+      if IsNameValid(name) {
+        let station = catalog.Station(name);
+        b.Section(this.StationLabel(enumValue));
+        b.Toggle(RadioXL_SkipPrefix() + NameToString(name), "RadioXL.optSkipStation");
+        b.Tip("RadioXL.tipSkipStation");
+        b.Dropdown(RadioXL_StationEqPrefix() + NameToString(name), "RadioXL.optStationEq", this.StationEqOptions(name)).Rebuilds();
+        b.Tip("RadioXL.tipStationEq");
+        if Equals(RadioXLState.Get().StationEq(name), RadioXL_EqCustom()) {
+          let band: Int32 = 0;
+          while band < RadioXL_EqBandCount() {
+            b.Slider(RadioXL_StationBandPrefix() + NameToString(name) + "/" + IntToString(band), s"RadioXL.eqBand\(band)",
+                     -12.0, 12.0, 1.0, true);
+            band += 1;
+          }
+        }
+        if IsDefined(station) && ArraySize(station.tracks) > 0 {
+          b.Divider();
+          let i: Int32 = 0;
+          while i < ArraySize(station.tracks) {
+            let track = station.tracks[i];
+            b.Dropdown(RadioXL_SongPrefix() + NameToString(track.event), this.SongLabel(track), options);
+            i += 1;
+          }
+        }
+      }
+    }
+  }
+
+  // RCF has no greyed-out row, so a song the game is hiding right now says so in its own label.
+  private func SongLabel(track: ref<RadioXLCatalogTrack>) -> String {
+    let controls = RadioXLControls.Get();
+    let label: String = this.TrackLabel(track);
+    if this.IsStreamerMode() && IsDefined(controls) && controls.IsStreamerHidden(track.event) {
+      return label + "  - " + RadioXLText("RadioXL.noteHidden");
+    }
+    return label;
+  }
+
+  private func SongOptions() -> array<String> {
+    let options: array<String>;
+    ArrayPush(options, RadioXLText("RadioXL.songOn"));
+    ArrayPush(options, RadioXLText("RadioXL.songOff"));
+    ArrayPush(options, RadioXLText("RadioXL.songStreamerOff"));
+    return options;
+  }
+
+  private func IsStreamerMode() -> Bool {
+    let settings = GameInstance.GetSettingsSystem(GetGameInstance());
+    if !IsDefined(settings) { return false; }
+    let variable = settings.GetVar(n"/audio/misc", n"StreamerMode") as ConfigVarBool;
+    return IsDefined(variable) && variable.GetValue();
+  }
+
+  private func StationLabel(enumValue: ERadioStationList) -> String {
+    let text = GetLocalizedText(RadioStationDataProvider.GetChannelName(enumValue));
+    return StrLen(text) > 0 ? text : NameToString(RadioStationDataProvider.GetStationName(enumValue));
+  }
+
+  // The same lookup the radio popup and the station selector make: the receiver reports the
+  // track as a CName built from primaryLocKey, and GetLocalizedTextByKey resolves that name. The
+  // row's string key is the fallback, then the event name.
+  private func TrackLabel(track: ref<RadioXLCatalogTrack>) -> String {
+    let text: String = track.key != 0ul ? GetLocalizedTextByKey(HashToName(track.key)) : "";
+    if StrLen(text) == 0 && IsNameValid(track.title) {
+      text = GetLocalizedText(NameToString(track.title));
+    }
+    return StrLen(text) > 0 ? text : NameToString(track.event);
+  }
+
+  // --- values --------------------------------------------------------------------------------
+
+  public func GetBool(key: String) -> Bool {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) {
+      if Equals(key, "muteCalls") { return c.muteCalls; }
+      if Equals(key, "muteScenes") { return c.muteScenes; }
+      if Equals(key, "muteDrivingScenes") { return c.muteDrivingScenes; }
+      if Equals(key, "muteClubs") { return c.muteClubs; }
+      if Equals(key, "muteSafeAreas") { return c.muteSafeAreas; }
+      if Equals(key, "muteQuests") { return c.muteQuests; }
+      if Equals(key, "muteCombatMusic") { return c.muteCombatMusic; }
+      if Equals(key, "mutePoliceMusic") { return c.mutePoliceMusic; }
+      if Equals(key, "muteVoices") { return c.muteVoices; }
+      if Equals(key, "muteMegabuilding") { return c.muteMegabuilding; }
+      if Equals(key, "muteMenus") { return c.muteMenus; }
+      if Equals(key, "radioportLikeCar") { return c.radioportLikeCar; }
+      if Equals(key, "procAgc") { return c.processAgc; }
+      if Equals(key, "procPeak") { return c.processPeak; }
+      if Equals(key, "procLimiter") { return c.processLimiter; }
+      if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
+      if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
+    }
+    let s = RadioXLControls.Get();
+    if !IsDefined(s) { return false; }
+    if StrBeginsWith(key, RadioXL_SkipPrefix()) {
+      return s.IsStationSkipped(StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix()))));
+    }
+    if Equals(key, RadioXL_KeyUseModifiers()) { return s.useModifiers; }
+    if Equals(key, RadioXL_KeySeparateRadioport()) { return s.separateRadioportKeys; }
+    if Equals(key, RadioXL_KeyNotifyRadioport()) { return s.notifyRadioport; }
+    if Equals(key, RadioXL_KeyNotifyOnscreen()) { return s.notifyOnscreen; }
+    if Equals(key, RadioXL_KeyRememberEnabled()) { return s.rememberEnabled; }
+    if Equals(key, RadioXL_KeyPlayOnEnter()) { return s.playOnEnter; }
+    if Equals(key, RadioXL_KeyPlayOnVehiclePowerOn()) { return s.playOnVehiclePowerOn; }
+    if Equals(key, RadioXL_KeyPlayOnPocketPowerOn()) { return s.playOnPocketPowerOn; }
+    if Equals(key, RadioXL_KeyIgnorePocketRadio()) { return s.ignorePocketRadio; }
+    if Equals(key, RadioXL_KeyMuteIdents()) { return RadioXLState.Get().muteIdents; }
+    if Equals(key, RadioXL_KeyMuteNews()) { return RadioXLState.Get().muteNews; }
+    return false;
+  }
+
+  // Called live per click, and again on load through RCF's restore, before anything else has
+  // run; it only touches the settings services.
+  public func SetBool(key: String, value: Bool) -> Void {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyRandomWorldRadios()) {
+      c.randomWorldRadios = value;
+      c.ApplyTraffic();
+      return;
+    }
+    if IsDefined(c) && Equals(key, RadioXL_KeyRandomStreams()) {
+      c.randomStreams = value;
+      c.ApplyTraffic();
+      return;
+    }
+    if IsDefined(c) && (Equals(key, "procAgc") || Equals(key, "procPeak") || Equals(key, "procLimiter")) {
+      if Equals(key, "procAgc") { c.processAgc = value; }
+      if Equals(key, "procPeak") { c.processPeak = value; }
+      if Equals(key, "procLimiter") { c.processLimiter = value; }
+      RadioXLEqualiser.ApplyProcessing();
+      return;
+    }
+    if IsDefined(c) && Equals(key, "radioportLikeCar") {
+      c.radioportLikeCar = value;
+      c.ApplyMix();
+      if !this.m_restoring { RadioXLConfig.RestartRadioport(); }
+      return;
+    }
+    if IsDefined(c) && StrBeginsWith(key, "mute") && !Equals(key, RadioXL_KeyMuteIdents()) && !Equals(key, RadioXL_KeyMuteNews()) {
+      if Equals(key, "muteCalls") { c.muteCalls = value; }
+      if Equals(key, "muteScenes") { c.muteScenes = value; }
+      if Equals(key, "muteDrivingScenes") { c.muteDrivingScenes = value; }
+      if Equals(key, "muteClubs") { c.muteClubs = value; }
+      if Equals(key, "muteSafeAreas") { c.muteSafeAreas = value; }
+      if Equals(key, "muteQuests") { c.muteQuests = value; }
+      if Equals(key, "muteCombatMusic") { c.muteCombatMusic = value; }
+      if Equals(key, "mutePoliceMusic") { c.mutePoliceMusic = value; }
+      if Equals(key, "muteVoices") { c.muteVoices = value; }
+      if Equals(key, "muteMegabuilding") { c.muteMegabuilding = value; }
+      if Equals(key, "muteMenus") { c.muteMenus = value; }
+      c.ApplyMix();
+      // A switch changed while a restriction is in force takes effect now, not at the next scene.
+      RadioXLRestrictions.Refresh();
+      return;
+    }
+    let s = RadioXLControls.Get();
+    if !IsDefined(s) { return; }
+    if StrBeginsWith(key, RadioXL_SkipPrefix()) {
+      let station: CName = StringToName(StrMid(key, StrLen(RadioXL_SkipPrefix())));
+      if s.SetStationSkipped(station, value) && !this.m_restoring {
+        RadioXLEvents.StationSkipChanged(station, value);
+      }
+      return;
+    }
+    if Equals(key, RadioXL_KeyUseModifiers()) { s.useModifiers = value; }
+    else if Equals(key, RadioXL_KeySeparateRadioport()) { s.separateRadioportKeys = value; }
+    else if Equals(key, RadioXL_KeyNotifyRadioport()) { s.notifyRadioport = value; }
+    else if Equals(key, RadioXL_KeyNotifyOnscreen()) { s.notifyOnscreen = value; }
+    else if Equals(key, RadioXL_KeyRememberEnabled()) { s.rememberEnabled = value; }
+    else if Equals(key, RadioXL_KeyPlayOnEnter()) { s.playOnEnter = value; }
+    else if Equals(key, RadioXL_KeyPlayOnVehiclePowerOn()) { s.playOnVehiclePowerOn = value; }
+    else if Equals(key, RadioXL_KeyPlayOnPocketPowerOn()) { s.playOnPocketPowerOn = value; }
+    else if Equals(key, RadioXL_KeyIgnorePocketRadio()) { s.ignorePocketRadio = value; }
+    // The two mutes live in the mod's own file, read before RCF restores anything. RCF's restore
+    // of them is ignored so a stale copy in its JSON cannot overwrite the file.
+    else if Equals(key, RadioXL_KeyMuteIdents()) { if !this.m_restoring { RadioXLState.Get().SetMuteIdents(value); } }
+    else if Equals(key, RadioXL_KeyMuteNews()) { if !this.m_restoring { RadioXLState.Get().SetMuteNews(value); } }
+  }
+
+  // Key rows travel on the Int channel as an EInputKey cast to Int32. 0 is IK_None: a key not
+  // bound, which is a valid state for most of them.
+  public func GetInt(key: String) -> Int32 {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStations()) { return c.trafficStations; }
+    if IsDefined(c) && Equals(key, "boostDb") { return c.boostDb; }
+    if IsDefined(c) && Equals(key, "processing") { return c.processingMode; }
+    if Equals(key, "eqPreset") { return this.GlobalEqOption(); }
+    if StrBeginsWith(key, "eqBand") { return RadioXLState.Get().EqBand(StringToInt(StrMid(key, 6))); }
+    if StrBeginsWith(key, RadioXL_StationEqPrefix()) {
+      let own: String = RadioXLState.Get().StationEq(StringToName(StrMid(key, StrLen(RadioXL_StationEqPrefix()))));
+      if Equals(own, RadioXL_EqCustom()) { return RadioXL_EqPresetCount() + 1; }
+      return StrLen(own) == 0 ? 0 : Max(RadioXLEqualiser.PresetIndex(own) + 1, 0);
+    }
+    let bandStation: CName;
+    let bandIndex: Int32;
+    if this.StationBandKey(key, bandStation, bandIndex) { return RadioXLState.Get().StationBand(bandStation, bandIndex); }
+    let s = RadioXLControls.Get();
+    if !IsDefined(s) { return 0; }
+    if StrBeginsWith(key, RadioXL_SongPrefix()) {
+      return s.SongState(this.SongEvent(key));
+    }
+    if StrBeginsWith(key, RadioXL_ModifierPrefix()) {
+      let modified = s.Bind(StrMid(key, StrLen(RadioXL_ModifierPrefix())));
+      return IsDefined(modified) ? EnumInt(modified.modifier) : 0;
+    }
+    let bind = s.Bind(key);
+    if IsDefined(bind) { return EnumInt(bind.key); }
+    // A Dropdown rides the Int channel; the value is the selected option's index.
+    if Equals(key, RadioXL_KeyRememberStation()) { return this.OptionOfStation(RadioXLState.Get().rememberStation); }
+    return 0;
+  }
+
+  public func SetInt(key: String, value: Int32) -> Void {
+    let c: wref<RadioXLConfig> = this.m_cfg;
+    if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStations()) {
+      c.trafficStations = Clamp(value, 0, 2);
+      c.ApplyTraffic();
+      return;
+    }
+    // RCF writes every slider row back each time it refreshes, so a write only acts when the value changed.
+    if IsDefined(c) && Equals(key, "boostDb") {
+      let boost: Int32 = Clamp(value, 0, RadioXL_MaxBoost());
+      if c.boostDb == boost { return; }
+      c.boostDb = boost;
+      c.ApplyMix();
+      return;
+    }
+    if IsDefined(c) && Equals(key, "processing") {
+      c.processingMode = Clamp(value, 0, 2);
+      RadioXLEqualiser.ApplyProcessing();
+      return;
+    }
+    // The equaliser's choices are names in state.json, the truth: RCF's restore of an option index or
+    // a band is ignored, and only a change made in the panel writes.
+    if Equals(key, "eqPreset") || StrBeginsWith(key, "eqBand") || StrBeginsWith(key, RadioXL_StationEqPrefix())
+       || StrBeginsWith(key, RadioXL_StationBandPrefix()) {
+      if this.m_restoring { return; }
+      let state = RadioXLState.Get();
+      let bandStation: CName;
+      let bandIndex: Int32;
+      // RCF writes every slider row back each time it refreshes: each branch acts only on a change.
+      if Equals(key, "eqPreset") {
+        let wanted: String = value >= RadioXL_EqPresetCount() ? RadioXL_EqCustom() : RadioXL_EqPresetName(value);
+        if Equals(state.eqPreset, wanted) { return; }
+        state.SetEqPreset(wanted);
+      } else if StrBeginsWith(key, "eqBand") {
+        let band: Int32 = StringToInt(StrMid(key, 6));
+        if state.EqBand(band) == Clamp(value, -12, 12) { return; }
+        state.SetEqBand(band, Clamp(value, -12, 12));
+      } else if this.StationBandKey(key, bandStation, bandIndex) {
+        // A band row exists only while its station is on Custom, but the refresh can still write it once the
+        // station has been switched to a preset, and that write must not switch the station back.
+        if Equals(state.StationEq(bandStation), RadioXL_EqCustom()) {
+          RadioXLAPI.SetStationEqBand(bandStation, bandIndex, value);
+        }
+        return;
+      } else {
+        let station: CName = StringToName(StrMid(key, StrLen(RadioXL_StationEqPrefix())));
+        let wantedOwn: String = value > RadioXL_EqPresetCount() ? RadioXL_EqCustom() : (value <= 0 ? "" : RadioXL_EqPresetName(value - 1));
+        if Equals(state.StationEq(station), wantedOwn) { return; }
+        if Equals(wantedOwn, RadioXL_EqCustom()) {
+          RadioXLAPI.SetStationEqPreset(station, wantedOwn);
+        } else {
+          state.SetStationEq(station, wantedOwn);
+        }
+      }
+      RadioXLEqualiser.Apply();
+      return;
+    }
+    let s = RadioXLControls.Get();
+    if !IsDefined(s) { return; }
+    if StrBeginsWith(key, RadioXL_SongPrefix()) {
+      let event: CName = this.SongEvent(key);
+      if s.SetSongState(event, value) && !this.m_restoring {
+        RadioXLEvents.SongStateChanged(event, value);
+      }
+      return;
+    }
+    if StrBeginsWith(key, RadioXL_ModifierPrefix()) {
+      let modified = s.Bind(StrMid(key, StrLen(RadioXL_ModifierPrefix())));
+      if IsDefined(modified) { modified.modifier = IntEnum<EInputKey>(value); }
+      return;
+    }
+    let bind = s.Bind(key);
+    if IsDefined(bind) {
+      bind.key = IntEnum<EInputKey>(value);
+      return;
+    }
+    // RCF restores the saved option INDEX at registration, and that index points at a different
+    // station once the dial has changed. The name in the store is the truth, so the restore is
+    // ignored and only a pick made in the panel writes the name.
+    if Equals(key, RadioXL_KeyRememberStation()) {
+      if !this.m_restoring {
+        RadioXLState.Get().SetRememberStation(this.StationAtOption(value));
+      }
+    }
+  }
+
+  private func SongEvent(key: String) -> CName {
+    return StringToName(StrMid(key, StrLen(RadioXL_SongPrefix())));
+  }
+}

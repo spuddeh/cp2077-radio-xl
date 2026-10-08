@@ -1,0 +1,81 @@
+# Station builder changelog
+
+One entry per builder version. The version is in package.json and printed at the foot of the page.
+scripts/nexus-builder-file.py turns the newest entry into the Nexus misc file's description.
+
+## 0.4.0
+- The page's small text (row notes, hints, counts, the key labels) is drawn at its own small size;
+  it was falling back to the size of the text around it.
+- An "Add songs I drop into this folder later" switch, off by default. On, RadioXL adds audio files
+  put in the station's folder at each launch and drops listed ones that are gone (#67).
+- Opening a station offers what its folder and its track list disagree on: audio files no track
+  names, to add as tracks (measured like any song added), and tracks with no audio file, to remove.
+  Each is a checklist, and a file left unticked stays as it was (#67).
+
+## 0.3.0
+- A level can be typed beside its slider, as a percentage (133%) or in dB (+2.5 dB), on the
+  station Volume and on every track. The sliders step in 1 % instead of 5 % (#53).
+- A stream track has a play button, to hear that the address is the station meant. An http://
+  stream cannot play from this page, which is served over https: the row links to it instead.
+- The stream notice is steps for the station's page, with the AudioXL.ini lines in a box that
+  copies them. The page follows the stream, and when it moves on to another host that host is listed
+  too; a stream the page cannot follow says so (#55).
+- A measured song's line says what was done in plain words, Matched to the game (+2.2 dB). The
+  measurement itself shows on hover.
+- Auto level starts off. Build .zip and Copy station.json ask whether to level the songs first,
+  and say how many there are to measure: a big station takes minutes.
+- On / Off switches sit on the row with no box behind them, as the game draws them.
+- Build .zip waits until every file has been measured, and the footer says how many are still
+  measuring. A build started before that wrote the unmeasured tracks at 100 %.
+- A Description field, for other mods to read, with a count against its 1000-character limit.
+  RadioXL shows the text nowhere.
+- Opening a station keeps what it carries for other mods (extensions), and a description written
+  in more than one language keeps its other languages; the field edits the en-us text.
+- A build that stops on a file the browser cannot open says why. A track name long enough to carry
+  most of a 260-character Windows path is named with its length and what to do about it; a shorter
+  one is told the file has been moved, renamed or deleted since it was added. The browser reports
+  both as a bare TypeError: network error, which names nothing a person can act on (#45).
+
+## 0.2.1
+- A RadioExt station comes across with its Volume at 100 %. RadioExt's own volume was set against
+  RadioExt's player, and with Auto level putting each track on the game's level it moved the whole
+  station off target. The note says what the value was.
+
+## 0.2.0
+
+- Each track has its own level, 0 to 400 % with the dB shown, written to the manifest as the track's
+  gain and multiplied with the station's Volume. A track at 100 % writes nothing.
+- Auto level, on by default: every file is measured as it is added (integrated loudness and true
+  peak, EBU R128) and its level set so it plays at the level of the game's own stations, as far as
+  the file's peak allows. Off, the sliders are yours, starting from where they are; the page still
+  shows each track's suggestion, with "use it" per track and "Use suggested levels" for all.
+  Opening a station that already carries a track level opens with auto level off.
+- A play button on each track hears it at the level set, live as the slider moves.
+- A stream is not measured and keeps a manual level. A file the browser cannot decode says so and
+  gets no suggestion.
+- Opening a station reads each track's gain back.
+- The builder's version is printed at the foot of the page.
+- Show frequency, on by default: off, the label is the name alone and the frequency only places
+  the station on the dial (RadioXL 0.4.0 reads the field). A RadioExt station whose name carried
+  no number comes across with it off.
+- A stream track has a title field; the URL sits under it.
+- Choosing an image after opening or converting a station takes the station's own atlas path
+  instead of the one the station carried.
+- Own atlas takes the .archive: Build .zip puts it in the package, and the page checks that the
+  archive's index lists the atlas path typed. An archive that stores its icon raw shows it in the
+  previews.
+- A build that fails stays on the page: which step and which file, with a log to copy into a
+  report. Every file is checked as readable before the zip starts, so a file moved or deleted
+  after it was picked is named rather than breaking the zip halfway.
+- A station name with no Latin letter or digit in it (CJK, Cyrillic, symbols) gets a station ID
+  and a mod folder from a hash of the name, instead of none.
+- A large station in a browser with no save dialog gets a notice that the zip is built in memory,
+  and that Chrome and Edge write it straight to disk.
+- The footer links to RadioXL's current Nexus page.
+
+## 0.1.0
+
+- New station, Edit a RadioXL station, From RadioExt, Build .zip, and the Radioport and world
+  radio previews drawn from the game's own ink files.
+- Build .zip writes an icon's texture, atlas and archive from an image.
+- The station Volume runs 0 to 400 %.

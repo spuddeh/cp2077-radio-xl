@@ -1,0 +1,55 @@
+name: Station builder on GitHub Pages
+
+# Runs in both repos. The private repo builds and tests on push and never deploys; the public repo
+# has no site/tests, so it builds and deploys.
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm test
+        if: hashFiles('site/tests/**') != ''
+      - run: npm run build
+      # The runner image carries Google Chrome; the browser tests skip where it is missing.
+      - run: npm run test:browser
+        if: hashFiles('site/tests/**') != ''
+      - uses: actions/upload-pages-artifact@v5
+        if: ${{ !github.event.repository.private }}
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

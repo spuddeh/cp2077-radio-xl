@@ -1,0 +1,181 @@
+import { defaultIconTarget, type Track } from './store'
+
+export interface ManifestInput {
+  frequency: string
+  showFrequency: boolean
+  stationName: string
+  cname: string
+  news: boolean
+  /** Written only when on: the plugin then adds songs dropped into the station's folder at each launch. */
+  addUnlistedFiles: boolean
+  gain: number
+  /** The description in every language, or the `en-us` one when others are carried. */
+  description: string
+  /** Other languages' descriptions from an opened station, written back unchanged. */
+  descriptionLanguages: Record<string, string>
+  /** An opened station's `extensions`, written back unchanged. */
+  extensions: Record<string, unknown> | null
+  iconMode: 'glyph' | 'record' | 'image' | 'atlas'
+  iconChoice: string
+  iconRecord: string
+  iconPart: string
+  iconAtlas: string
+  /** In image mode, Build .zip writes the icon's archive from it. In atlas mode it is for the preview only. */
+  iconImage: string | null
+  iconImageSize: [number, number] | null
+  iconImageHasPixels: boolean
+  /** Own atlas: the archive chosen, if any, and whether its index lists the atlas path. */
+  iconArchive: { name: string } | null
+  iconArchiveHasAtlas: boolean | null
+  tracks: Track[]
+}
+
+/** The most a description may hold, in characters (`kMaxDescription` in Manifest.hpp). */
+export const DESCRIPTION_MAX = 1000
+
+/** Characters as the plugin counts them: code points, not UTF-16 units. */
+export function characters(text: string): number {
+  return [...text].length
+}
+
+/** The largest icon worth making, per side. PHONKWAVE Radio's is exactly this. */
+export const ICON_IMAGE_RECOMMENDED = 500
+
+/** Whether Build .zip writes the icon's texture, atlas and archive. */
+export function generatesIcon(s: Pick<ManifestInput, 'iconMode' | 'iconImage'>): boolean {
+  return s.iconMode === 'image' && s.iconImage !== null
+}
+
+/**
+ * The part and atlas the manifest names. A generated icon fills an empty field from the station ID
+ * and writes the path in lowercase, so the manifest and the archive name the same resource.
+ */
+export function iconTarget(s: Pick<ManifestInput, 'iconMode' | 'iconImage' | 'iconPart' | 'iconAtlas' | 'cname'>): { part: string; atlas: string } {
+  const part = s.iconPart.trim()
+  const atlas = s.iconAtlas.trim().replace(/\//g, '\\')
+  if (!generatesIcon(s)) return { part, atlas }
+  const fallback = defaultIconTarget(s.cname)
+  return { part: part || fallback.part, atlas: (atlas || fallback.atlas).toLowerCase() }
+}
+
+/**
+ * An `icon` the plugin reads as a TweakDB record rather than an atlas part: `UIIcon.` and at least
+ * one character after it (`IsIconRecord` in Manifest.hpp). Anything else is a part, which needs an atlas.
+ */
+export function isIconRecord(icon: string): boolean {
+  return /^UIIcon\..+/.test(icon.trim())
+}
+
+export interface Fault {
+  field: string
+  message: string
+}
+
+/** The label the game shows: the frequency, then the name, as the plugin composes it; the name alone when the frequency is hidden. */
+export function displayName(s: Pick<ManifestInput, 'frequency' | 'showFrequency' | 'stationName'>): string {
+  return [s.showFrequency ? s.frequency.trim() : '', s.stationName.trim()].filter(Boolean).join(' ')
+}
+
+/** The station.json the plugin reads. Keys at their defaults are left out. */
+export function buildManifest(s: ManifestInput): Record<string, unknown> {
+  const m: Record<string, unknown> = { name: s.cname }
+  const frequency = Number.parseFloat(s.frequency.trim())
+  if (Number.isFinite(frequency)) m.frequency = frequency
+  const name = s.stationName.trim().replace(/\s+/g, ' ')
+  if (name) m.displayName = name
+  if (!s.showFrequency) m.showFrequency = false
+  if (s.news) m.news = true
+  if (s.addUnlistedFiles) m.addUnlistedFiles = true
+  if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
+  const description = s.description.trim()
+  if (Object.keys(s.descriptionLanguages).length > 0) {
+    m.description = { ...(description ? { 'en-us': description } : {}), ...s.descriptionLanguages }
+  } else if (description) {
+    m.description = description
+  }
+  if (s.extensions && Object.keys(s.extensions).length > 0) m.extensions = s.extensions
+  if (s.iconMode === 'record') {
+    const record = s.iconChoice === 'other' ? s.iconRecord.trim() : s.iconChoice
+    if (record) m.icon = record
+  }
+  if (s.iconMode === 'atlas' || s.iconMode === 'image') {
+    const target = iconTarget(s)
+    m.icon = target.part
+    m.atlas = target.atlas
+  }
+  m.tracks = s.tracks.map((t) => {
+    const out: Record<string, unknown> = t.url ? { url: t.url } : { file: t.file }
+    if (t.ident) out.ident = true
+    else if (t.title) out.title = t.title
+    if (Math.abs(t.gain - 1) >= 0.005) out.gain = Math.round(t.gain * 100) / 100
+    return out
+  })
+  return m
+}
+
+/** The refusals in plugin/src/Manifest.hpp that a form can reach. */
+export function checkManifest(s: ManifestInput): Fault[] {
+  const faults: Fault[] = []
+  if (!s.cname) faults.push({ field: 'cname', message: 'A station needs an ID.' })
+  else if (!/^[A-Za-z0-9_]+$/.test(s.cname))
+    faults.push({ field: 'cname', message: 'Letters, digits and underscores only.' })
+  const frequency = s.frequency.trim()
+  if (!/^\d{2,3}(\.\d{1,2})?$/.test(frequency) || Number.parseFloat(frequency) < 10)
+    faults.push({ field: 'frequency', message: 'A station needs a frequency from 10 to 999, such as 90.5. It decides the place on the dial, and RadioXL refuses a station without one.' })
+  // The label is "<frequency> <name>", the same for every station, so the name is the name alone.
+  const name = s.stationName.trim().replace(/\s+/g, ' ')
+  if (!name) faults.push({ field: 'stationName', message: 'A station needs a name. The game shows it after the frequency.' })
+  else if (/^\d{2,3}(\.\d+)?(\s|$)/.test(name))
+    faults.push({ field: 'stationName', message: 'The name starts with a number. The frequency has its own field; the name is the name alone.' })
+  else if (/(^|\s)\d{2,3}(\.\d+)?$/.test(name))
+    faults.push({ field: 'stationName', message: 'The name ends with a number. The frequency has its own field.' })
+  else if (frequency && name.includes(frequency))
+    faults.push({ field: 'stationName', message: 'The name contains the frequency. The label shows it in front already.' })
+  if (s.tracks.length === 0) faults.push({ field: 'tracks', message: 'A station needs at least one song.' })
+  if (characters(s.description.trim()) > DESCRIPTION_MAX)
+    faults.push({ field: 'description', message: `The description is past ${DESCRIPTION_MAX} characters. RadioXL leaves out a longer one.` })
+  else if (s.tracks.every((t) => t.ident))
+    faults.push({ field: 'tracks', message: 'Every track is an ident. A station needs at least one song.' })
+  const missing = s.tracks.filter((t) => !t.url && !t.source)
+  if (missing.length)
+    faults.push({ field: 'tracks', message: `No audio for ${missing.map((t) => t.file).join(', ')}. Remove the track or open the station with its files.` })
+  if (s.tracks.some((t) => t.url) && s.tracks.length > 1)
+    faults.push({ field: 'tracks', message: 'A station with a stream plays that stream only; remove the other tracks.' })
+  // A station opened or converted can carry a track the form would not have made.
+  const badUrl = s.tracks.filter((t) => t.url && !/^https?:\/\//i.test(t.url))
+  if (badUrl.length)
+    faults.push({ field: 'tracks', message: `A stream URL starts with http:// or https://: ${badUrl.map((t) => t.url).join(', ')}` })
+  if (s.tracks.some((t) => t.url && t.ident))
+    faults.push({ field: 'tracks', message: 'A stream cannot be an ident. An ident is a file that plays between songs.' })
+  if (s.tracks.some((t) => !t.url && !t.file.trim()))
+    faults.push({ field: 'tracks', message: 'A track has no file name.' })
+  if (s.iconMode === 'record' && s.iconChoice === 'other' && !s.iconRecord.trim())
+    faults.push({ field: 'icon', message: 'Name the icon record, or pick a station.' })
+  else if (s.iconMode === 'record' && s.iconChoice === 'other' && !isIconRecord(s.iconRecord))
+    faults.push({ field: 'icon', message: 'An icon record starts with UIIcon. and a name. RadioXL reads anything else as an atlas part, which needs its atlas.' })
+  if (s.iconMode === 'atlas' && (!s.iconPart.trim() || !s.iconAtlas.trim()))
+    faults.push({ field: 'icon', message: 'An atlas part needs both the part name and the atlas path.' })
+  else if (s.iconMode === 'atlas' && s.iconArchive && s.iconArchiveHasAtlas === null)
+    faults.push({ field: 'icon', message: `${s.iconArchive.name} is not a game archive. Choose the .archive WolvenKit packed.` })
+  else if (s.iconMode === 'atlas' && s.iconArchive && s.iconArchiveHasAtlas === false)
+    faults.push({ field: 'icon', message: `${s.iconArchive.name} does not hold ${s.iconAtlas.trim()}. Check the path, or choose the archive that has it.` })
+  if (s.iconMode === 'image' && !s.iconImage)
+    faults.push({ field: 'icon', message: 'Choose the image to make the icon from.' })
+  if (generatesIcon(s)) {
+    const { part, atlas } = iconTarget(s)
+    // An empty field with no station ID yet names nothing; the station ID's own fault reports that.
+    const named = s.cname !== '' || (s.iconPart.trim() !== '' && s.iconAtlas.trim() !== '')
+    if (named && !/^[\x21-\x7e]+$/.test(part))
+      faults.push({ field: 'icon', message: 'The part name is plain letters, digits and punctuation, with no spaces.' })
+    if (named && !/^[a-z0-9_\-.]+(\\[a-z0-9_\-.]+)*\.inkatlas$/.test(atlas))
+      faults.push({ field: 'icon', message: 'The atlas path is folders of letters, digits and underscores, ending in .inkatlas. Clear the field to use the station\'s own path.' })
+    else if (named && /^(base|ep1)\\/.test(atlas))
+      faults.push({ field: 'icon', message: 'The atlas path must not start with base\\ or ep1\\. A path there can replace a file of the game. Clear the field to use the station\'s own path.' })
+    const size = s.iconImageSize
+    if (size && (size[0] === 0 || size[1] === 0))
+      faults.push({ field: 'icon', message: 'The icon image has no size. An SVG needs a width and height.' })
+    if (!s.iconImageHasPixels)
+      faults.push({ field: 'icon', message: 'Every pixel of the icon image is transparent, so nothing would show.' })
+  }
+  return faults
+}

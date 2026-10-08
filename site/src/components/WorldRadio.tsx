@@ -1,0 +1,257 @@
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import layouts from '../world/layouts.json'
+import glyph from '../assets/radioxl-glyph.png'
+import { tintedIcon } from './tint'
+
+export type WorldLayout = Exclude<keyof typeof layouts, 'equaliser'>
+
+export const WORLD_LAYOUTS: { value: WorldLayout; label: string }[] = [
+  { value: 'square', label: 'Square' },
+  { value: 'long', label: 'Wide' },
+  { value: 'tall', label: 'Tall' },
+  { value: 'boombox', label: 'Boombox' },
+]
+
+interface InkNode {
+  kind: string
+  name: string
+  x: number
+  y: number
+  w: number
+  h: number
+  scale?: number[]
+  rotation?: number
+  opacity?: number
+  color?: string
+  part?: string
+  role?: string
+  text?: string
+  fontSize?: number
+  weight?: string
+  upper?: boolean
+  align?: string
+  fit?: boolean
+  restY?: number
+  scroll?: { speed: number; delay: number }
+  children?: InkNode[]
+}
+
+const PARTS = import.meta.glob<string>('../assets/world/*.png', { eager: true, import: 'default' })
+const partUrl = (part: string) => PARTS[`../assets/world/${part.replace(/ /g, '_')}.png`]
+
+/** Each column's loop from radio_ui_animations.inkanim: a period and its bar's Y keyframes. */
+const EQUALISER = layouts.equaliser as { sequence: string; period: number; frames: number[][] }[]
+
+const EQ_KEYFRAMES = EQUALISER.map(
+  (c, i) =>
+    `@keyframes wr-eq-${i} {${c.frames.map(([t, y]) => `${(t * 100).toFixed(2)}% { transform: translateY(${y}px) }`).join(' ')}}`,
+).join(' ')
+
+const WEIGHTS: Record<string, number> = { Regular: 400, Medium: 500, 'Semi-Bold': 600, Bold: 700 }
+
+/** The tall radio's screen is the wide layout turned on its side. */
+const ROTATED: WorldLayout[] = ['tall']
+
+const MAX_HEIGHT = 520
+
+/**
+ * radioLogo fits its texture, so a logo draws at its image's own size and the preview draws it the
+ * same way. These are the largest of the game's own station logos in radiostations_icons, which the
+ * page states as the sizes to aim at.
+ */
+export const LOGO_MAX = { w: 400, h: 328 }
+
+/*
+ * Every world radio screen is common_holograms_transparent_a_w500_h150 with
+ * parallaxscreen_transparent_ui at its defaults: the UI is drawn as four layers LayersSeparation
+ * (0.1) apart in depth, at IntensityPerLayer 1, 0.1, 0.075 and 0.05. Head-on the layers overlap;
+ * at an angle the deeper ones show as echoes. The preview holds one fixed angle, so each deeper
+ * layer sits further up and to the right.
+ */
+const LAYER_INTENSITY = [1, 0.1, 0.075, 0.05]
+const SEPARATION = 0.1
+/** The viewing direction, -1 to 1 on each axis; 0, 0 is head-on. Up and to the right. */
+const VIEW = { x: 0.7, y: -0.7 }
+/** How far a full-angle view moves one layer, in authored pixels, the same on every screen. */
+const VIEW_REACH = 400
+
+/**
+ * A world radio's screen, drawn from the widget tree of its radio_ui inkwidget. Positions are
+ * computed at build time by scripts/world-radios.py; this only draws them.
+ */
+export function WorldRadio(props: { layout: WorldLayout; name: string; logo?: string; animate: boolean; echoes: boolean }) {
+  const frame = useRef<HTMLDivElement>(null)
+  const width = useWidth(frame)
+  const root = layouts[props.layout] as InkNode
+  const logoUrl = props.logo ?? glyph
+  const logoSize = useImageSize(logoUrl)
+  const rotated = ROTATED.includes(props.layout)
+  const boxW = rotated ? root.h : root.w
+  const boxH = rotated ? root.w : root.h
+  const scale = Math.min(width / boxW, MAX_HEIGHT / boxH)
+
+  const draw = (n: InkNode, eqIndex?: number): React.ReactNode => {
+    const style: CSSProperties = { left: n.x, top: n.y, width: n.w, height: n.h }
+    const transforms = []
+    if (n.rotation) transforms.push(`rotate(${n.rotation}deg)`)
+    if (n.scale) transforms.push(`scale(${n.scale[0]}, ${n.scale[1]})`)
+    if (transforms.length) style.transform = transforms.join(' ')
+    if (n.opacity !== undefined) style.opacity = n.opacity
+
+    if (n.kind === 'canvas') {
+      const eq = /^eq\d\d$/.test(n.name) ? Number(n.name.slice(2)) - 1 : undefined
+      return (
+        <div key={n.name + n.x + n.y} className={eq === undefined ? 'wr-node' : 'wr-node wr-eq'} style={style}>
+          {n.children?.map((c) => draw(c, eq))}
+        </div>
+      )
+    }
+    if (n.kind === 'image' && n.role === 'logo') {
+      const [lw, lh] = logoSize
+      return (
+        <span
+          key="logo"
+          className="wr-node wr-image"
+          style={{
+            ...style,
+            left: n.x + n.w / 2 - lw / 2,
+            top: n.y + n.h / 2 - lh / 2,
+            width: lw,
+            height: lh,
+            color: n.color,
+            ...tintedIcon(logoUrl),
+          }}
+        />
+      )
+    }
+    if (n.kind === 'image' && n.part) {
+      if (eqIndex !== undefined && n.restY !== undefined) {
+        // The bar is authored out of sight below its column; the loop moves it up into view.
+        const loop = EQUALISER[eqIndex]
+        style.top = n.restY
+        style.transform = `translateY(${loop.frames[0][1]}px)`
+        if (props.animate) style.animation = `wr-eq-${eqIndex} ${loop.period}s linear infinite`
+      }
+      return (
+        <span
+          key={n.name + n.x + n.y}
+          className="wr-node wr-image"
+          style={{ ...style, background: n.color, maskImage: `url(${partUrl(n.part)})` }}
+        />
+      )
+    }
+    if (n.kind === 'text') {
+      const text = n.role === 'name' ? props.name : (n.text ?? '')
+      return (
+        <ScrollText
+          key={n.name + n.x + n.y}
+          scroll={props.animate ? n.scroll : undefined}
+          className={n.fit ? 'wr-node wr-text fit' : 'wr-node wr-text'}
+          style={{
+            ...style,
+            ...(n.fit ? { width: 'auto', height: 'auto' } : {}),
+            color: n.color,
+            fontSize: n.fontSize,
+            fontWeight: WEIGHTS[n.weight ?? 'Medium'] ?? 500,
+            textTransform: n.upper ? 'uppercase' : undefined,
+            textAlign: (n.align ?? 'Left').toLowerCase() as CSSProperties['textAlign'],
+          }}
+          text={text}
+        />
+      )
+    }
+    return null
+  }
+
+  return (
+    <div ref={frame} className="world-radio-frame">
+    <style>{EQ_KEYFRAMES}</style>
+    <div className="world-radio" style={{ width: boxW * scale, height: boxH * scale }}>
+      {(props.echoes ? [3, 2, 1, 0] : [0]).map((layer) => {
+        // Offsets are in page space, so the tall radio's rotated screen echoes the same way.
+        const dx = VIEW.x * layer * SEPARATION * VIEW_REACH * scale
+        const dy = VIEW.y * layer * SEPARATION * VIEW_REACH * scale
+        const place = rotated
+          ? `translate(${boxW * scale + dx}px, ${dy}px) rotate(90deg) scale(${scale})`
+          : `translate(${dx}px, ${dy}px) scale(${scale})`
+        return (
+          <div
+            key={layer}
+            className={layer ? 'wr-screen wr-echo' : 'wr-screen'}
+            aria-hidden={layer ? true : undefined}
+            style={{ width: root.w, height: root.h, transform: place, opacity: LAYER_INTENSITY[layer] }}
+          >
+            {root.children?.map((c) => draw(c))}
+          </div>
+        )
+      })}
+      <span className="wr-scanlines" aria-hidden />
+    </div>
+    </div>
+  )
+}
+
+/**
+ * A text widget with textOverflowPolicy AutoScroll: when the text is wider than its box it moves
+ * across and back. The engine's scrollTextSpeed and scrollDelay are read as pixels per frame and
+ * frames at 60 fps; the units are not documented, so the pace is an approximation.
+ */
+function ScrollText(props: {
+  text: string
+  className: string
+  style: CSSProperties
+  scroll?: { speed: number; delay: number }
+}) {
+  const box = useRef<HTMLSpanElement>(null)
+  const inner = useRef<HTMLSpanElement>(null)
+  const [overflow, setOverflow] = useState(0)
+  useEffect(() => {
+    if (box.current && inner.current) setOverflow(Math.max(0, inner.current.offsetWidth - box.current.clientWidth))
+  }, [props.text, props.style.width])
+
+  let animation: CSSProperties = {}
+  if (props.scroll && overflow > 0) {
+    const pause = props.scroll.delay / 60
+    const travel = overflow / (props.scroll.speed * 60)
+    const total = 2 * (pause + travel)
+    const pct = (s: number) => `${((s / total) * 100).toFixed(2)}%`
+    const name = `wr-scroll-${Math.round(overflow)}-${Math.round(total * 100)}`
+    animation = { animation: `${name} ${total}s linear infinite` }
+    return (
+      <span ref={box} className={props.className} style={props.style}>
+        <style>{`@keyframes ${name} { 0%, ${pct(pause)} { transform: translateX(0) } ${pct(pause + travel)}, ${pct(2 * pause + travel)} { transform: translateX(-${overflow}px) } 100% { transform: translateX(0) } }`}</style>
+        <span ref={inner} className="wr-text-inner" style={animation}>
+          {props.text}
+        </span>
+      </span>
+    )
+  }
+  return (
+    <span ref={box} className={props.className} style={props.style}>
+      <span ref={inner} className="wr-text-inner">
+        {props.text}
+      </span>
+    </span>
+  )
+}
+
+function useWidth(ref: React.RefObject<HTMLDivElement | null>): number {
+  const [width, setWidth] = useState(480)
+  useEffect(() => {
+    if (!ref.current) return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
+
+function useImageSize(url: string): [number, number] {
+  const [size, setSize] = useState<[number, number]>([256, 256])
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => setSize([img.naturalWidth, img.naturalHeight])
+    img.src = url
+  }, [url])
+  return size
+}

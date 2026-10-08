@@ -1,0 +1,2238 @@
+{
+ "square": {
+  "name": "radio_ui",
+  "x": 0,
+  "y": 0,
+  "w": 800,
+  "h": 600,
+  "kind": "canvas",
+  "children": [
+   {
+    "name": "frame",
+    "x": 15.0,
+    "y": 263.0,
+    "w": 398.0,
+    "h": 179.0,
+    "restY": 293.0,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "frame"
+   },
+   {
+    "name": "EQ",
+    "x": 0.0,
+    "y": -30.0,
+    "w": 800,
+    "h": 600,
+    "restY": -0.0,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "eq01",
+      "x": 33.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq01",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms01",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq02",
+      "x": 66.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq02",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms02",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq03",
+      "x": 99.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq03",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms03",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq04",
+      "x": 132.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq04",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms04",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq05",
+      "x": 165.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq05",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms05",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq06",
+      "x": 198.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq06",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms06",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq07",
+      "x": 231.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq07",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms07",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq08",
+      "x": 264.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq08",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms08",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq09",
+      "x": 297.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq09",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms09",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq10",
+      "x": 330.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq10",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms10",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq11",
+      "x": 363.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq11",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms11",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "powerSwitch",
+    "x": 0,
+    "y": 0,
+    "w": 550,
+    "h": 400,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "nowPlayingOn",
+      "x": -85,
+      "y": 120,
+      "w": 420,
+      "h": 70,
+      "restY": 180,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "NOW PLAYING",
+      "fontSize": 30,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false
+     }
+    ]
+   },
+   {
+    "name": "radioName",
+    "x": 0,
+    "y": 0,
+    "w": 550,
+    "h": 400,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "radioName",
+      "x": 20,
+      "y": 150,
+      "w": 315,
+      "h": 70,
+      "restY": 180,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "[Radio station]",
+      "fontSize": 60,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Left",
+      "fit": false,
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
+     },
+     {
+      "name": "radioLogo",
+      "x": 566.0,
+      "y": 333.0,
+      "w": 32,
+      "h": 32,
+      "scale": [
+       0.61,
+       0.61
+      ],
+      "color": "var(--blue)",
+      "kind": "image",
+      "role": "logo"
+     }
+    ]
+   },
+   {
+    "name": "fluffBottom2",
+    "x": 125.0,
+    "y": 168.0,
+    "w": 234.0,
+    "h": 33.0,
+    "opacity": 0.217,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "fluff_code4_1"
+   },
+   {
+    "name": "inkTextWidget12",
+    "x": 476.0,
+    "y": 194.0,
+    "w": 100,
+    "h": 32,
+    "color": "var(--blue)",
+    "kind": "text",
+    "text": "IMAGE NAME:   SILVERBIRCH-3.10.10\nIMAGE TYPE:   ROOT AV92 KERNEL IMAGE\n(LZO COMPRESSED)\nLOAD ADDRESS: 00008000",
+    "fontSize": 12,
+    "weight": "Regular",
+    "upper": false,
+    "align": "Left",
+    "fit": true
+   }
+  ]
+ },
+ "long": {
+  "name": "radio_ui",
+  "x": 0,
+  "y": 0,
+  "w": 1230,
+  "h": 300,
+  "kind": "canvas",
+  "children": [
+   {
+    "name": "frame",
+    "x": 51.0,
+    "y": 68.0,
+    "w": 398.0,
+    "h": 179.0,
+    "restY": 98.0,
+    "scale": [
+     0.8,
+     0.8
+    ],
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "frame"
+   },
+   {
+    "name": "EQ",
+    "x": -1.0,
+    "y": -211.0,
+    "w": 800,
+    "h": 600,
+    "restY": -181.0,
+    "scale": [
+     0.8,
+     0.8
+    ],
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "eq01",
+      "x": 33.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq01",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms01",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq02",
+      "x": 66.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq02",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms02",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq03",
+      "x": 99.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq03",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms03",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq04",
+      "x": 132.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq04",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms04",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq05",
+      "x": 165.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq05",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms05",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq06",
+      "x": 198.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq06",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms06",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq07",
+      "x": 231.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq07",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms07",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq08",
+      "x": 264.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq08",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms08",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq09",
+      "x": 297.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq09",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms09",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq10",
+      "x": 330.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq10",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms10",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq11",
+      "x": 363.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq11",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms11",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "powerSwitch",
+    "x": 511.0,
+    "y": -88.0,
+    "w": 550,
+    "h": 400,
+    "restY": -133.0,
+    "scale": [
+     0.8,
+     0.8
+    ],
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "nowPlayingOn",
+      "x": -78.75,
+      "y": 230,
+      "w": 420,
+      "h": 70,
+      "restY": 290,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "NOW PLAYING",
+      "fontSize": 30,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false
+     }
+    ]
+   },
+   {
+    "name": "radioName",
+    "x": 136.0,
+    "y": -161.0,
+    "w": 550,
+    "h": 400,
+    "scale": [
+     0.8,
+     0.8
+    ],
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "radioName",
+      "x": 360.0,
+      "y": 361.25,
+      "w": 450,
+      "h": 70,
+      "restY": 281.25,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "[Radio station]",
+      "fontSize": 60,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false,
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
+     },
+     {
+      "name": "radioLogo",
+      "x": 989.75,
+      "y": 320.5,
+      "w": 32,
+      "h": 32,
+      "scale": [
+       0.61,
+       0.61
+      ],
+      "color": "var(--blue)",
+      "kind": "image",
+      "role": "logo"
+     }
+    ]
+   },
+   {
+    "name": "fluffBottom2",
+    "x": 460.0,
+    "y": 78.0,
+    "w": 234.0,
+    "h": 33.0,
+    "restY": 108.0,
+    "scale": [
+     0.8,
+     0.8
+    ],
+    "opacity": 0.217,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "fluff_code4_1"
+   }
+  ]
+ },
+ "tall": {
+  "name": "radio_ui",
+  "x": 0,
+  "y": 0,
+  "w": 1230,
+  "h": 300,
+  "kind": "canvas",
+  "children": [
+   {
+    "name": "frame",
+    "x": 958.0,
+    "y": 60.0,
+    "w": 398.0,
+    "h": 179.0,
+    "restY": 90.0,
+    "scale": [
+     0.6,
+     0.6
+    ],
+    "rotation": -90,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "frame"
+   },
+   {
+    "name": "EQ",
+    "x": 703.0,
+    "y": -260.0,
+    "w": 800,
+    "h": 600,
+    "restY": -100.0,
+    "scale": [
+     0.6,
+     0.6
+    ],
+    "rotation": -90,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "eq01",
+      "x": 33.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq01",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms01",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq02",
+      "x": 66.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq02",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms02",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq03",
+      "x": 99.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq03",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms03",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq04",
+      "x": 132.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq04",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms04",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq05",
+      "x": 165.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq05",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms05",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq06",
+      "x": 198.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq06",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms06",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq07",
+      "x": 231.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq07",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms07",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq08",
+      "x": 264.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq08",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms08",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq09",
+      "x": 297.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq09",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms09",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq10",
+      "x": 330.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq10",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms10",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq11",
+      "x": 363.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq11",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms11",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "powerSwitch",
+    "x": 114.0,
+    "y": -99.0,
+    "w": 550,
+    "h": 400,
+    "restY": -144.0,
+    "scale": [
+     0.7,
+     0.7
+    ],
+    "rotation": -90,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "nowPlayingOn",
+      "x": -55.57,
+      "y": -213.14,
+      "w": 420,
+      "h": 70,
+      "restY": -153.14,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "NOW PLAYING",
+      "fontSize": 30,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false
+     }
+    ]
+   },
+   {
+    "name": "radioName",
+    "x": -65.0,
+    "y": -195.0,
+    "w": 550,
+    "h": 400,
+    "scale": [
+     0.7,
+     0.7
+    ],
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "radioName",
+      "x": 60.14,
+      "y": 368.14,
+      "w": 315,
+      "h": 70,
+      "restY": 323.14,
+      "rotation": -90,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "[Radio station]",
+      "fontSize": 60,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false,
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
+     },
+     {
+      "name": "radioLogo",
+      "x": 823.86,
+      "y": 397.29,
+      "w": 32,
+      "h": 32,
+      "scale": [
+       0.8,
+       0.8
+      ],
+      "rotation": -90,
+      "color": "var(--blue)",
+      "kind": "image",
+      "role": "logo"
+     }
+    ]
+   },
+   {
+    "name": "fluffBottom2",
+    "x": -62.0,
+    "y": 155.0,
+    "w": 234.0,
+    "h": 33.0,
+    "scale": [
+     0.7,
+     0.7
+    ],
+    "rotation": -90,
+    "opacity": 0.217,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "fluff_code4_1"
+   },
+   {
+    "name": "inkTextWidget12",
+    "x": 932,
+    "y": 175.0,
+    "w": 100,
+    "h": 32,
+    "scale": [
+     0.7,
+     0.7
+    ],
+    "rotation": -90,
+    "color": "var(--blue)",
+    "kind": "text",
+    "text": "IMAGE NAME:   SILVERBIRCH-3.10.10\nIMAGE TYPE:   ROOT AV92 KERNEL IMAGE\n(LZO COMPRESSED)\nLOAD ADDRESS: 00008000",
+    "fontSize": 12,
+    "weight": "Medium",
+    "upper": false,
+    "align": "Left",
+    "fit": true
+   }
+  ]
+ },
+ "boombox": {
+  "name": "radio_ui",
+  "x": 0,
+  "y": 0,
+  "w": 1550,
+  "h": 474,
+  "kind": "canvas",
+  "children": [
+   {
+    "name": "frame",
+    "x": 106.0,
+    "y": 159.0,
+    "w": 398.0,
+    "h": 179.0,
+    "restY": 189.0,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "frame"
+   },
+   {
+    "name": "EQ",
+    "x": 91.0,
+    "y": -139.0,
+    "w": 800,
+    "h": 600,
+    "restY": -109.0,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "eq01",
+      "x": 33.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq01",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms01",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq02",
+      "x": 66.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq02",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms02",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq03",
+      "x": 99.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq03",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms03",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq04",
+      "x": 132.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq04",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms04",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq05",
+      "x": 165.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq05",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms05",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq06",
+      "x": 198.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq06",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms06",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq07",
+      "x": 231.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq07",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms07",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq08",
+      "x": 264.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq08",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms08",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq09",
+      "x": 297.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq09",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms09",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq10",
+      "x": 330.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq10",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms10",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     },
+     {
+      "name": "eq11",
+      "x": 363.5,
+      "y": 286.0,
+      "w": 33,
+      "h": 172,
+      "restY": 214.0,
+      "kind": "canvas",
+      "children": [
+       {
+        "name": "eq11",
+        "x": 1.0,
+        "y": 202.0,
+        "w": 31.0,
+        "h": 168.0,
+        "restY": 2.0,
+        "color": "#5ef6ff",
+        "kind": "image",
+        "part": "eq_bar"
+       },
+       {
+        "name": "ms11",
+        "x": 0.0,
+        "y": 0.0,
+        "w": 33.0,
+        "h": 172.0,
+        "opacity": 0.01,
+        "color": "#ffffff",
+        "kind": "mask"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "powerSwitch",
+    "x": 677,
+    "y": -25.0,
+    "w": 550,
+    "h": 400,
+    "restY": -70.0,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "nowPlayingOn",
+      "x": -75,
+      "y": 268,
+      "w": 420,
+      "h": 70,
+      "restY": 328,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "NOW PLAYING",
+      "fontSize": 30,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false
+     }
+    ]
+   },
+   {
+    "name": "radioName",
+    "x": 398,
+    "y": 53.0,
+    "w": 550,
+    "h": 400,
+    "kind": "canvas",
+    "children": [
+     {
+      "name": "radioName",
+      "x": 230,
+      "y": 225,
+      "w": 400,
+      "h": 70,
+      "restY": 180,
+      "color": "var(--blue)",
+      "kind": "text",
+      "text": "[Radio station]",
+      "fontSize": 60,
+      "weight": "Medium",
+      "upper": true,
+      "align": "Right",
+      "fit": false,
+      "role": "name",
+      "scroll": {
+       "speed": 1.20000005,
+       "delay": 30
+      }
+     },
+     {
+      "name": "radioLogo",
+      "x": 814.0,
+      "y": 145.0,
+      "w": 32,
+      "h": 32,
+      "scale": [
+       0.61,
+       0.61
+      ],
+      "color": "var(--blue)",
+      "kind": "image",
+      "role": "logo"
+     }
+    ]
+   },
+   {
+    "name": "fluffBottom2",
+    "x": 107.0,
+    "y": 87.0,
+    "w": 234.0,
+    "h": 33.0,
+    "opacity": 0.217,
+    "color": "var(--blue)",
+    "kind": "image",
+    "part": "fluff_code4_1"
+   },
+   {
+    "name": "inkTextWidget12",
+    "x": 632.0,
+    "y": 111.0,
+    "w": 100,
+    "h": 32,
+    "color": "var(--blue)",
+    "kind": "text",
+    "text": "IMAGE NAME:   SILVERBIRCH-3.10.10\nIMAGE TYPE:   ROOT AV92 KERNEL IMAGE\n(LZO COMPRESSED)\nLOAD ADDRESS: 00008000",
+    "fontSize": 12,
+    "weight": "Medium",
+    "upper": false,
+    "align": "Left",
+    "fit": true
+   }
+  ]
+ },
+ "equaliser": [
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     79
+    ],
+    [
+     0.747,
+     47
+    ],
+    [
+     0.8866,
+     47
+    ],
+    [
+     1.0,
+     79
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     47
+    ],
+    [
+     0.6587,
+     32
+    ],
+    [
+     0.8324,
+     32
+    ],
+    [
+     1.0,
+     47
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.3986,
+     0
+    ],
+    [
+     0.9027,
+     0
+    ],
+    [
+     0.9958,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop7",
+   "period": 0.6927,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.4745,
+     0
+    ],
+    [
+     0.7206,
+     0
+    ],
+    [
+     0.7901,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     16
+    ],
+    [
+     0.3271,
+     0
+    ],
+    [
+     0.7537,
+     0
+    ],
+    [
+     0.9937,
+     16
+    ],
+    [
+     1,
+     16
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     32
+    ],
+    [
+     0.331,
+     16
+    ],
+    [
+     0.9035,
+     16
+    ],
+    [
+     0.9954,
+     32
+    ],
+    [
+     1,
+     32
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     47
+    ],
+    [
+     0.5952,
+     32
+    ],
+    [
+     0.7191,
+     32
+    ],
+    [
+     0.9898,
+     47
+    ],
+    [
+     1,
+     47
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop7",
+   "period": 0.6927,
+   "frames": [
+    [
+     0.0,
+     79
+    ],
+    [
+     0.5737,
+     47
+    ],
+    [
+     0.7275,
+     47
+    ],
+    [
+     1.0,
+     79
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop2",
+   "period": 0.1995,
+   "frames": [
+    [
+     0.0,
+     126
+    ],
+    [
+     0.737,
+     74
+    ],
+    [
+     0.8978,
+     74
+    ],
+    [
+     0.9962,
+     126
+    ],
+    [
+     1,
+     126
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop3",
+   "period": 0.3006,
+   "frames": [
+    [
+     0.0,
+     142
+    ],
+    [
+     0.6512,
+     74
+    ],
+    [
+     0.8411,
+     74
+    ],
+    [
+     0.9921,
+     142
+    ],
+    [
+     1,
+     142
+    ]
+   ]
+  },
+  {
+   "sequence": "eqLoop5",
+   "period": 0.5011,
+   "frames": [
+    [
+     0.0,
+     157
+    ],
+    [
+     0.5937,
+     47
+    ],
+    [
+     0.7293,
+     47
+    ],
+    [
+     1.0,
+     157
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,183 @@
+[color=#e06666][size=6][b]- Introduction -[/b][/size][/color]
+
+RadioXL adds radio stations to Cyberpunk 2077 as real stations of the game's own radio. A station built on it plays on the Radioport, in every vehicle and on the radios placed around Night City, with its own name, icon and song titles, and the dial, the radio hotkey, the equaliser and the dashboard treat it exactly as they treat the stations the game ships. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
+
+A station mod is one small file and a folder of audio. RadioXL reads the rest from the files.
+
+[i]TL;DR - your music, on every radio in the game, through the game's own radio.[/i]
+
+
+[color=#e06666][size=6][b]- For Players -[/b][/size][/color]
+
+RadioXL is a framework. Install it, then install stations built on it, or build one yourself in the time it takes to copy a folder of songs.
+
+[b]Requirements[/b]
+[list]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/2380]RED4ext[/url][/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/1511]redscript[/url][/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url][/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/4197]TweakXL[/url][/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.4.3 or later[/*]
+[*]Game version 2.31.[/*]
+[/list]
+Optional:
+[url=https://www.nexusmods.com/cyberpunk2077/mods/30726]Redscript Configuration Framework[/url] - the settings panel below, and the keys.
+[url=https://www.nexusmods.com/cyberpunk2077/mods/32312]RedFunctions[/url] 0.13.0 or later - keeps My station and the two mutes across launches.
+[url=https://www.nexusmods.com/cyberpunk2077/mods/31920]RedLogger[/url] - a log of what was registered, in r6\logs\mods\.
+
+[b]Install[/b]
+Drop the archive into your mod manager. The plugin and the scripts always travel together: installed apart, the scripts fail to compile.
+
+[b]Uninstall[/b]
+Remove RadioXL and every station built on it. RadioXL writes no data of its own into your saves. A radio in the world left on a custom station keeps that station's place in the list, so it can come back on another station.
+
+[b]Coming from RadioXL 0.1.0[/b]
+A station written for 0.1.0 (a yaml, a script and an AudioXL sounds.json) does not play on this release. Its script still compiles, and the log says the station was seen. The station's author writes the manifest below instead; the songs and the icon are reused as they are. Remove Simple Radio Control if you had it: its keys and settings are part of RadioXL now.
+
+
+[color=#e06666][size=6][b]- Adding a station -[/b][/size][/color]
+
+A station is one folder under
+[code]red4ext\plugins\RadioXL\stations\<YourMod>\[/code]
+holding a [b]station.json[/b] and the audio files it names.
+
+[quote][code]{
+  "name": "radio_station_yourstation",
+  "frequency": 104.9,
+  "displayName": "Your Station",
+  "icon": "yourstation",
+  "atlas": "yourmod\\gui\\yourstation.inkatlas",
+  "tracks": [
+    { "file": "audio/first.mp3",   "title": "Artist - First Song" },
+    { "file": "audio/second.flac", "title": "Artist - Second Song" }
+  ]
+}[/code][/quote]
+
+[list]
+[*][b]name[/b] is the station's identity: letters, digits and underscores, unique among installed stations.[/*]
+[*][b]frequency[/b] is where the station sits on the dial, as a number from 10 to 999. The dial is sorted by it, as it is for the game's own stations, so 104.9 lands between 103.5 and 106.9. Taken: 88.9, 89.3, 89.7, 91.9, 92.9, 95.2, 96.1, 98.7, 99.9, 101.9, 103.5, 106.9, 107.3 and 107.5.[/*]
+[*][b]displayName[/b] is the station's name, without the frequency: the game shows the two together, [b]104.9 Your Station[/b]. A name that starts or ends with a number, or contains the frequency, is refused, and so is a missing one.[/*]
+[*][b]showFrequency[/b] is optional. false shows the name alone as the label; the frequency still places the station on the dial.[/*]
+[*][b]gain[/b] is optional, on the station and on each track: a level multiplier, 1 as recorded, 0.5 half, 2 double, up to 4. A track's own gain and the station's multiply. A raised level must leave the loudest sample under full scale or it crackles; the station builder measures each file and sets a track's level within that limit.[/*]
+[*][b]icon[/b] and [b]atlas[/b] are optional: an inkatlas part and the atlas holding it, shipped in an archive of your own. [b]icon[/b] can instead name an icon record the game or another mod already has, such as [b]UIIcon.RadioHipHop[/b], with no atlas and no archive. Leave both out and the station shows the RadioXL glyph.[/*]
+[*][b]tracks[/b] play in a random order, each song once before any repeats, the way a vanilla station plays. MP3, OGG, FLAC, and WAV as plain PCM at 16 or 24 bits: a 32-bit float WAV, which some editors export by default, is left out of the station, and RadioXL's log names it. A track can be a [b]url[/b] instead of a [b]file[/b]: a live MP3 stream, as the station's only track.[/*]
+[*][b]title[/b] is optional on a track. It is the song name in the Radioport's radio popup; an untitled song plays everywhere a titled one does and its name reads blank. World radios and the car dashboard show no song names for any station.[/*]
+[*][b]ident[/b] is optional on a track. true marks a station ident, jingle or ad: one plays after every third song and shows no title, exactly as the game's own station idents do.[/*]
+[*][b]news[/b] is optional. true lets the news reach the station - Stanley's bulletins and greetings, and N54 News - the same way it reaches the game's own stations.[/*]
+[*][b]description[/b] is optional: a few sentences about the station, up to 1000 characters, in one language or several. RadioXL shows it nowhere; it is for other mods to read.[/*]
+[*][b]extensions[/b] is optional: data for another mod, under that mod's name. RadioXL passes it on and reads none of it.[/*]
+[*][b]addUnlistedFiles[/b] is optional. true keeps the track list in step with the folder: at each launch an audio file in the station's folder that no track names is added, titled from its file name, a listed file that is gone is taken off, and station.json is rewritten to match. An added song plays at the level it was recorded at; open the station in the station builder to level it. A stream station is left as it is.[/*]
+[/list]
+
+The station builder at https://spuddeh.github.io/cp2077-radio-xl/ makes a station from a form: songs, levels, an icon from a picture, and the zip.
+
+No durations, event names, indices, records, yaml or script. RadioXL reads each track's length from the file and builds everything else at load. A manifest with a mistake in it is skipped, and the log names the file and the line.
+
+
+[color=#e06666][size=6][b]- Stations that stream -[/b][/size][/color]
+
+A station can play a live internet radio stream instead of music files. AudioXL fetches nothing from the internet until you allow it, in [b]red4ext\plugins\AudioXL\AudioXL.ini[/b]:
+[quote][code][Network]
+allowHttpConnections = true
+allowedHost = ice1.somafm.com[/code][/quote]
+Use the hosts the station's own page names; one [b]allowedHost[/b] line per host. A [b]*.somafm.com[/b] line covers every host under that domain, but not [b]somafm.com[/b] itself: a bare domain needs its own line.
+
+[b]A stream URL may redirect, and AudioXL checks every host it is sent to.[/b] So a station can stay silent with the host from its URL already allowed, because the host it ended up at is a different one. AudioXL's own log, [b]red4ext\logs\audioxl-<date>.log[/b], names the host that was refused, without saying it came from a redirect:
+[quote][code][AudioXL] Register 'radio_station_example_01' (script): 'regiocast.streamabc.net' is not in the allowedHost list in AudioXL.ini[/code][/quote]
+Add that host and start the game again. AudioXL reads the file once, at startup, so each host costs a restart until the station plays.
+
+[b]AudioXL creates AudioXL.ini on its first start[/b], with everything off, and an update leaves it alone. Under Mod Organizer 2 the file is in Overwrite.
+
+A stream station joins the broadcast live when you tune in, after a second or two of buffering, and shows the station's own title rather than the song playing.
+
+When a stream station cannot play, RadioXL shows a red warning in game a few seconds after loading, naming what to change: switching streams on, or the host to allow.
+
+
+[color=#e06666][size=6][b]- Settings -[/b][/size][/color]
+
+Five tabs in the Redscript Configuration Framework panel. Every station and every song on them is read from the game when a save loads, so a song added by any radio mod is listed with nothing extra to install.
+
+[b]Controls[/b]
+[*][b]Next song / Previous song.[/b] Next draws a song the way the station itself does, every song once before any repeats, and a song you skip to leaves the station's own rotation and counts toward its next ident, the same as one the station picked itself. Previous goes back through what played, and next after that goes forward again through the same songs before drawing a new one. One set of keys for both radios: in a vehicle they act on the vehicle radio, the metro's included, and on foot on the Radioport. F3 and F2 out of the box. Press a keyboard key or a controller button to bind one; Escape clears it. A key bound in the game's own settings still does what the game says, so pick one the game does not use.[/*]
+[*][b]Next station / Previous station.[/b] Move along the dial in the same order the radio does, skipping the stations set aside on the Stations tab. Unbound by default.[/*]
+[*][b]Show what's playing.[/b] Puts the radio popup on screen for the song playing now. Unbound by default.[/*]
+[*][b]Never play this song again.[/b] Switches the song that is playing off and moves on, and says so on screen. Unbound by default.[/*]
+[*][b]Jump to my station.[/b] Tunes straight to the station set on the My station tab, whether or not the automatic tuning is switched on. Unbound by default.[/*]
+[*][b]Hold a modifier with the keys.[/b] Gives every key a second row: a key that must be held down with it. A key with its modifier held wins over the same key bound on its own, so F3 can be the next song and Shift+F3 the next station.[/*]
+[*][b]Separate keys for the Radioport.[/b] Off, the keys above serve the Radioport too. On, the Radioport gets its own set, used on foot instead.[/*]
+[*][b]Show the song on the Radioport.[/b] The vehicle radio's song popup, shown for the Radioport as well: when a song changes, and the moment the Radioport comes on.[/*]
+[*][b]Show the song as an on-screen message.[/b] The station and the song at the left of the screen when a song changes. Off by default.[/*]
+
+[b]My station[/b]
+[*][b]Tune to my station.[/b] The switch for this tab.[/*]
+[*][b]Station.[/b] The station to tune to. It is remembered by name, so it stays the same station after you add or remove station mods. If that station is not installed, nothing is tuned.[/*]
+[*][b]When getting into a car / When the car radio is switched on / When the Radioport is switched on.[/b] The three moments the radio is tuned. Getting into a car also switches the car radio on if it is off.[/*]
+[*][b]Even if the Radioport is on.[/b] Tunes the car radio even when the Radioport is already playing another station. Off leaves the Radioport's station alone.[/*]
+Nothing is tuned while the game blocks radio input: in a police vehicle, during a scripted drive, as Johnny, and before the car radio is unlocked.
+
+[b]Stations[/b]
+One section per station, in dial order.
+[*][b]Keys step over this station.[/b] The next and previous station keys skip it. It can still be picked from the radio itself.[/*]
+[*][b]Equaliser.[/b] Global plays the Sound tab's equaliser. A preset here plays on this station only. Custom gives the station nine bands of its own, starting from what it plays now; they stay with the station when it is switched to a preset and back. For the game's stations, one preset is marked as suggested; Growl FM, a mix of everything, has none.[/*]
+[*][b]Its songs.[/b] One row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one. A setting follows the song's file: adding, removing or reordering a station's songs leaves it in place, and a song whose file is renamed starts On again.[/*]
+The top of the tab says whether Streamer Mode is on right now, and while it is, every song being skipped for it is marked in its own row. If every song on a station is set to Off, the station plays as normal, and the next and previous keys step through them.
+Above the stations, three settings decide where a station picked at random can come from:
+[*][b]Custom stations on traffic cars.[/b] Which passing cars can be tuned to a custom station: [b]Most cars[/b] (the default), [b]Every car[/b] or [b]Off[/b]. Most cars are the ones that play the same nine of the game's stations. A few cars are set to a genre of their own and keep it; Every car adds custom stations to those too. Police cars keep the scanner either way. The game keeps a passing car's radio quiet; this setting decides which stations those radios are on, so with a mod that makes traffic radios heard, you hear custom stations from passing cars.[/*]
+[*][b]World radios can start on a custom station.[/b] On by default. Radios and jukeboxes around the city that start on a random station can land on a custom one. A radio picks once, the first time it is set up, and keeps that station in your save, so one already set up keeps the station it has. A jukebox picks again each time it loads.[/*]
+[*][b]Include stations that stream.[/b] Off by default. On, traffic cars and world radios can pick a station that streams, and while one plays it, that station's connection stays open.[/*]
+
+[b]Sound[/b]
+[*][b]Sound like a car radio.[/b] On foot the Radioport plays quieter than a car's radio, with its lows and highs cut like a small speaker. On, it plays at a car radio's level with nothing cut. In a vehicle the car's radio plays as before. Off by default.[/*]
+[*][b]Volume boost.[/b] Turns the car radio and the Radioport up by as much as 12 dB past the game's own maximum, on top of the Car Radio and Radioport volume settings. 0 by default.[/*]
+[*][b]Equaliser.[/b] Nine bands, 63 Hz to 16 kHz, on the car radio, the Radioport and the metro. Pick a preset, or Custom for a slider per band. Flat by default, the game's own sound. A preset changes the tone, not the volume.[/*]
+[*][b]Presets.[/b] Files in [b]red4ext\plugins\RadioXL\presets[/b], read when the game starts. Make your own by copying one and changing its [b]name[/b] and its nine [b]bands[/b], each a number of dB from -24 to 24, lowest band first. A file with a mistake is left out, and RadioXL's log says why.[/*]
+[*][b]Processing.[/b] What a radio station does to its sound before it goes out: [b]Even out loudness[/b], [b]Soften peaks[/b] and a [b]Limiter[/b]. Broadcast turns all three on; Custom switches each on its own. Off by default.[/*]
+
+[b]Mute[/b]
+[*][b]Mute station idents.[/b] The station's own spot between songs: its name, its frequency and whatever its host says over them. Each station keeps its own, so this is what silences Pacific Dreams' host. Applies from the next song.[/*]
+[*][b]Mute DJ announcements.[/b] Everything that takes a slot between your songs: Stanley's news bulletins, Maximum Mike's song intros and Growl FM's Ash. Kurt Hansen is left alone: he broadcasts over Dogtown rather than through your radio. A station's own spot is the setting above, not this one, and songs are never affected.[/*]
+Both are off by default. Announcements stop straight away and idents from the next song, and switching either back puts the sound in place exactly as it was.
+[*][b]Mute the radio when...[/b] Eleven switches, all on by default, which is exactly what the game does. Turn one off and the radio keeps playing through that situation, on every station, the game's own included.[/*]
+[*]On the Radioport: [b]a call[/b], [b]a scene[/b] (conversations, cutscenes, sleeping), [b]a driving scene[/b], [b]a club[/b], [b]a weapons-free area[/b] such as your apartments, and [b]a quest blocking the radio[/b]. When two situations happen at once, the radio plays only when both are off. V's apartment in Megabuilding H10 is staged as a scene, so A scene is playing covers it.[/*]
+[*]In the car and on the Radioport: [b]combat music[/b], [b]police chase music[/b], [b]someone speaking[/b] (conversations, calls and the police scanner turn the radio down), and [b]an open menu[/b] (the inventory, map and hub). Combat and police changed during a fight or chase apply from the next one.[/*]
+[*]On the Radioport only: [b]Megabuilding H10's music[/b], which turns the Radioport down in H10's halls and lifts.[/*]
+[*]The Escape menu still pauses the radio.[/*]
+
+
+[color=#e06666][size=6][b]- A song cuts off early or is followed by silence -[/b][/size][/color]
+
+RadioXL reads each song's length once and remembers it in [i]red4ext\plugins\RadioXL\cache.json[/i] (under MO2, in Overwrite), reading a song again only when its file's size or date changes. A file swapped for another with the same size and date keeps the old length. Delete cache.json and launch again: every song is read afresh. Deleting it is always safe; it only makes the next launch read every file.
+
+
+[color=#e06666][size=6][b]- A radio in the world is silent -[/b][/size][/color]
+
+A radio placed in the world follows the game's sound effects volume, not the music volume. With sound effects turned down they go quiet while the Radioport still plays. This is the game's own mix and the same for its stations.
+
+
+[color=#e06666][size=6][b]- A key does nothing -[/b][/size][/color]
+
+Keys are ignored in menus and in photo mode, and the song and station keys only work with a radio on. Check the key is bound on the Controls tab and not only in the game's own settings, and that its modifier, if you use them, is held down. A station key does nothing while the radio plays through another mod's own player rather than the game's, which is how RadioExt stations work: pick a station from the radio itself and the keys work again. If the Stations tab says the station list has not been read, load a save and open the panel again; the list is read when a game loads, not at the main menu.
+
+
+[color=#e06666][size=6][b]- A station is not showing up -[/b][/size][/color]
+
+Read red4ext\logs\radioxl-<date>.log after a launch. Every manifest fault is reported as [i]YourMod/station.json:<line>: what is wrong[/i], and a station with a fault is skipped whole. A station with no line in the log at all was not found: check the folder path above.
+
+If a station appears but sorts oddly against another one, check its frequency: two stations on the same number sit next to each other, the game's own first, and the log says which two.
+
+
+[color=#e06666][size=6][b]- Known Limits -[/b][/size][/color]
+
+[list]
+[*]On a news station, Stanley's greetings reach the station you are listening to. A news bulletin goes to one station at a time, between songs, chosen by the game from every news station with a radio nearby, switched on or not: in the city a nearby station of the game's often takes it, so news is dependable only away from other radios. The game's own stations follow the same rule.[/*]
+[*]Up to 101 custom stations.[/*]
+[*]A radio placed in the world, your apartment's included, saves the station it is on by its place in the station list. Add or remove a station mod, or update RadioXL, and a radio that was on a custom station can come back on a different one: tune it again. Car radios and the Radioport remember a station by name and are not affected.[/*]
+[*]RadioXL replaces the game's station cycling, so it cannot be installed beside RadioExt or RadioXL 0.1.0.[/*]
+[/list]
+
+
+[color=#e06666][size=6][b]- Credits -[/b][/size][/color]
+
+DigitalVixen, for AudioXL, for RadioXL 0.1.0 and for the name.
+RED4ext by WopsS. Codeware and TweakXL by psiberx.
+RadioExt, for getting there first and showing that people want their own stations.

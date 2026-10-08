@@ -1,0 +1,834 @@
+/* Page layout, and the Radioport popup recipe from vehicles_radio.inkwidget. */
+
+.shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* --- masthead and tabs ------------------------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 24px;
+  padding: 28px 0 18px;
+}
+.masthead h1 {
+  margin: 0;
+  font-size: var(--font-title-header);
+  font-weight: var(--weight-header);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--red);
+}
+.masthead h1 span { margin-left: 10px; font-size: var(--font-readable-small); color: var(--blue); }
+.masthead p { margin: 0; font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.6; }
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 28px;
+  border-bottom: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
+}
+.tabs button {
+  position: relative;
+  padding: 10px 0 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-readable-font-size);
+  font-weight: var(--weight-header);
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0.5;
+}
+.tabs button:hover { opacity: 1; }
+.tabs button[aria-current='true'] { color: var(--blue); opacity: 1; }
+.tabs button[aria-current='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(-1 * var(--divider));
+  height: 3px;
+  background: var(--blue);
+}
+
+/* --- workspace --------------------------------------------------------------------------- */
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  gap: 48px;
+  align-items: start;
+  padding: 8px 0 40px;
+}
+@media (max-width: 1100px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .side { order: -1; }
+}
+.side { position: sticky; top: 24px; padding-top: 26px; min-width: 0; }
+
+.pending { margin: 26px 0; color: var(--neutral); opacity: 0.7; }
+
+.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --- drop zone and track list ----------------------------------------------------------- */
+
+.drop {
+  --edge: var(--red);
+  --edge-opacity: 0.22;
+  --fill: var(--black);
+  --fill-opacity: 0.22;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  padding: 22px 20px;
+}
+.drop.over { --edge: var(--blue); --edge-opacity: 1; --fill: var(--faint-blue); --fill-opacity: 0.6; }
+.drop-formats { margin-left: auto; font-size: var(--font-readable-xsmall); opacity: 0.5; }
+
+.track-stream { padding: 2px 0; word-break: break-all; }
+.stream-add { margin-top: 10px; display: grid; gap: 6px; }
+.stream-add label { font-size: var(--font-readable-xsmall); opacity: 0.6; }
+.stream-row { display: flex; gap: 10px; align-items: stretch; }
+.stream-row .cell { flex: 1; }
+.stream-button {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.4;
+  border: 0;
+  background: none;
+  padding: 4px 14px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.stream-button:hover:enabled { --edge-opacity: 1; }
+.stream-button:disabled { cursor: default; opacity: 0.35; }
+
+.tracks { list-style: none; margin: 14px 0 0; padding: 0; }
+.tracks-head,
+.track {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 16px;
+  gap: 12px;
+  align-items: center;
+}
+.tracks-head {
+  padding-bottom: 4px;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+.track + .track { margin-top: 6px; }
+.track-no {
+  border: 0;
+  background: none;
+  padding: 10px 0;
+  cursor: grab;
+  touch-action: none;
+  color: var(--red);
+  font-size: var(--font-readable-xsmall);
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+.track-no:hover, .track-no:focus-visible { opacity: 1; color: var(--blue); }
+.track.dragging { position: relative; z-index: 5; cursor: grabbing; }
+.track.dragging .track-title { --edge: var(--blue); --edge-opacity: 1; --fill: var(--faint-blue); --fill-opacity: 0.9; }
+.track-title { flex-direction: column; align-items: stretch; justify-content: center; padding-block: 4px; }
+.track-title input { padding: 2px 0 0 !important; }
+.track-file { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-ident { padding: 2px 0 0; color: var(--grey); }
+.track-ident-toggle {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.3;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0.6;
+}
+.track-ident-toggle:hover { --edge-opacity: 1; opacity: 1; }
+.track-ident-toggle[aria-pressed='true'] {
+  --edge: var(--blue);
+  --edge-opacity: 1;
+  --fill: var(--blue);
+  --fill-opacity: 0.18;
+  color: var(--blue);
+  opacity: 1;
+}
+.track-remove {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: var(--red);
+  opacity: 0.4;
+  clip-path: polygon(0 12%, 12% 0, 50% 38%, 88% 0, 100% 12%, 62% 50%, 100% 88%, 88% 100%, 50% 62%, 12% 100%, 0 88%, 38% 50%);
+}
+.track-remove:hover { opacity: 1; }
+
+/* --- Radioport popup ------------------------------------------------------------------- */
+
+/*
+ * Colours and tints are the widget tree's. Opacities are matched to an in-game screenshot
+ * instead: ink blends in linear light, so a stroke authored at 0.22 reads about twice as
+ * strong on screen as the same opacity blended by a browser.
+ */
+.radioport {
+  --rp-line: color-mix(in srgb, var(--red) 45%, transparent);
+  margin: 0;
+  text-transform: uppercase;
+}
+.rp-fluff { font-size: 10px; color: var(--red); opacity: 0.45; }
+.rp-fluff-top { display: block; margin: 0 0 3px 2px; }
+
+.rp-bar { display: flex; gap: 3px; align-items: stretch; }
+
+/*
+ * atlas_shapes_sync notification_bracket (20x65 at 4K): a tab with a step down at the top, a cut
+ * at the bottom left, and a shallow notch in its right edge at mid-height.
+ */
+.rp-bracket {
+  flex: none;
+  width: 10px;
+  background: var(--red);
+  opacity: 0.6;
+  clip-path: polygon(
+    0 1.5px, 75% 1.5px, 88% 0, 100% 0,
+    100% calc(50% - 7px), 80% calc(50% - 4.5px), 80% calc(50% + 4.5px), 100% calc(50% + 7px),
+    100% 100%, 32% 100%, 0 calc(100% - 3px)
+  );
+}
+
+/* bg_topBar + frame_topBar */
+.rp-top {
+  --cut: var(--cut-plate);
+  --edge: var(--red);
+  --edge-opacity: 0.5;
+  --fill: var(--fs-primary-background-darkest);
+  --fill-opacity: 0.61;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+}
+.rp-title { font-size: var(--font-readable-font-size); color: var(--blue); }
+
+.rp-now {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 18px;
+  margin-top: 22px;
+}
+.rp-image {
+  --cut: var(--cut-plate);
+  --edge: var(--red);
+  --edge-opacity: 0.3;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 6px;
+  color: var(--blue); /* radioIcon: PanelBlue */
+}
+.rp-icon { /* the station's atlas part, tinted like radioIcon */
+  width: 88%;
+  height: 88%;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.rp-kernel {
+  position: absolute;
+  left: 10px;
+  bottom: 6px;
+  margin: 0;
+  font: 600 6px/1.25 var(--font-ui);
+  color: var(--red);
+  opacity: 0.45;
+}
+
+.rp-details { display: flex; flex-direction: column; min-width: 0; }
+.rp-details .rp-fluff { padding-bottom: 5px; border-bottom: var(--divider) solid var(--rp-line); }
+.rp-track {
+  margin-top: 16px;
+  font-size: var(--font-readable-font-size);
+  color: var(--red);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-bottom: 8px;
+  border-bottom: var(--divider) solid var(--rp-line);
+  font-size: var(--font-readable-medium);
+  color: var(--red);
+}
+.rp-volume > span:first-child { margin-right: auto; }
+.rp-volume-value { color: var(--blue); font-weight: 700; }
+.radioport kbd {
+  --cut: 4px;
+  --edge: var(--blue);
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  font: var(--weight-header) 14px var(--font-ui);
+  color: var(--blue);
+}
+
+.rp-listwrap { position: relative; margin-top: 14px; padding-right: 22px; }
+.rp-list { list-style: none; margin: 0; padding: 0; }
+.rp-list li {
+  --cut: var(--cut-plate);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 12px 0 8px;
+  font-size: var(--font-readable-medium);
+  color: var(--blue);
+  opacity: 0.75; /* ContactListItem.ItemOpacity Default, as it reads in game */
+}
+.rp-list li + li { margin-top: 3px; }
+.rp-list li.active {
+  --edge: var(--active-blue);
+  --edge-opacity: 1;
+  --fill: var(--blue);
+  --fill-opacity: 0.17;
+  color: var(--active-blue);
+  opacity: 1;
+}
+.rp-code { /* Code_TL */
+  width: 20px;
+  white-space: pre;
+  font: 600 4.5px/1.15 var(--font-ui);
+  opacity: 0.8;
+}
+.rp-eq { display: inline-flex; align-items: flex-end; gap: 2px; width: 20px; height: 12px; }
+.rp-eq i { width: 2px; background: currentColor; }
+.rp-eq i:nth-child(1) { height: 60%; }
+.rp-eq i:nth-child(2) { height: 100%; }
+.rp-eq i:nth-child(3) { height: 40%; }
+.rp-eq i:nth-child(4) { height: 80%; }
+
+/* scrollbar: slidingArea, handle in MainColors.Red */
+.rp-scroll { position: absolute; top: 0; bottom: 0; right: 4px; width: 3px; }
+.rp-scroll span { position: absolute; left: 0; right: 0; background: var(--red); }
+
+.rp-foot {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: var(--divider) solid var(--rp-line);
+}
+.rp-fluff-legal { max-width: 150px; margin-right: auto; font-size: 6px; line-height: 1.3; }
+.rp-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-readable-small);
+  font-weight: 700;
+  color: var(--red);
+}
+.rp-mouse { width: 12px; height: 18px; color: var(--blue); }
+
+.rp-caption {
+  margin: 12px 0 0;
+  font-size: var(--font-readable-xsmall);
+  color: var(--neutral);
+  opacity: 0.6;
+}
+
+/* --- Radioport animations: vehicles_radio_animations.inkanim ----------------------------- */
+
+/*
+ * fadeIn plays as the popup opens (and again when the station changes, as the image remounts)
+ * and equlizer loops on the playing row (LoopAnimationLogicController). Times, values and easings are the sequences' own;
+ * translations are halved with the rest of the layout.
+ */
+.rp-animate { animation: rp-drop 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-top-holder,
+.rp-animate .rp-fluff-top { animation: rp-top-in 0.333s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-title { animation: rp-fade 0.25s 0.167s linear both; }
+.rp-animate .rp-image { animation: rp-grow 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-icon { animation: rp-fade 0.167s 0.2s linear both; }
+.rp-animate .rp-grow-down,
+.rp-animate .rp-details { animation: rp-grow-down 0.333s 0.1s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-track { animation: rp-fade 0.1s 0.2s linear both; }
+.rp-animate .rp-now-label { animation: rp-slide-in 0.233s 0.233s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rp-animate .rp-volume { animation: rp-fade 0.1s 0.4s linear both; }
+.rp-animate .rp-listwrap,
+.rp-animate .rp-foot { animation: rp-rise 0.367s 0.2s cubic-bezier(0.25, 1, 0.5, 1) both; }
+.rp-animate .rp-fluff-top.rp-flicker,
+.rp-animate .rp-kernel { animation: rp-flicker 0.366s 0.3s steps(1, end) both; }
+.rp-animate .rp-fluff-legal { animation: rp-flicker 0.366s 0.4s steps(1, end) both; }
+/* Longhand: a shorthand with no name is minified to animation: none, losing the loop. */
+.rp-animate .rp-eq i {
+  transform-origin: bottom;
+  animation-duration: 1.6s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
+}
+.rp-animate .rp-eq i:nth-child(1) { animation-name: rp-eq-0; }
+.rp-animate .rp-eq i:nth-child(2) { animation-name: rp-eq-1; }
+.rp-animate .rp-eq i:nth-child(3) { animation-name: rp-eq-2; }
+.rp-animate .rp-eq i:nth-child(4) { animation-name: rp-eq-3; }
+
+@keyframes rp-drop { from { transform: translateY(-100px); } to { transform: none; } }
+@keyframes rp-top-in { from { transform: translateY(-50px); opacity: 0; } 75% { opacity: 1; } to { transform: none; } }
+@keyframes rp-fade { from { opacity: 0; } }
+@keyframes rp-grow { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
+@keyframes rp-grow-down { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -20px 0); } }
+@keyframes rp-slide-in { from { transform: translateX(100px); opacity: 0; } 43% { opacity: 0.45; } }
+@keyframes rp-rise { from { transform: translateY(100px); opacity: 0; } 27% { opacity: 1; } to { transform: none; } }
+/* Stepped on and off at 0.067 s, the way fadeIn toggles the fluff text before it settles. */
+@keyframes rp-flicker { 0% { opacity: 0; } 18% { opacity: 0.45; } 36% { opacity: 0; } 55% { opacity: 0.45; } 73% { opacity: 0; } 91% { opacity: 0.45; } }
+
+@keyframes rp-eq-0 { 0% { transform: scaleY(0.1) } 12.5% { transform: scaleY(0.5) } 25% { transform: scaleY(1) } 37.5% { transform: scaleY(0.5) } 50% { transform: scaleY(0.1) } 62.5% { transform: scaleY(0.5) } 75% { transform: scaleY(1) } 87.5% { transform: scaleY(0.5) } 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-1 { 0%, 12.5% { transform: scaleY(0.1) } 25% { transform: scaleY(0.5) } 37.5% { transform: scaleY(1) } 50% { transform: scaleY(0.5) } 62.5%, 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-2 { 0%, 25% { transform: scaleY(0.1) } 37.5% { transform: scaleY(0.5) } 50% { transform: scaleY(1) } 62.5% { transform: scaleY(0.5) } 75%, 100% { transform: scaleY(0.1) } }
+@keyframes rp-eq-3 { 0%, 37.5% { transform: scaleY(0.1) } 50% { transform: scaleY(0.5) } 62.5% { transform: scaleY(1) } 75% { transform: scaleY(0.5) } 87.5%, 100% { transform: scaleY(0.1) } }
+
+/* --- preview switch and world radios ---------------------------------------------------- */
+
+.preview-tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 14px; }
+.preview-tabs button {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-size: var(--font-readable-small);
+  font-weight: var(--weight-header);
+  text-transform: uppercase;
+  color: var(--red);
+  opacity: 0.5;
+}
+.preview-tabs button:hover { opacity: 1; }
+.preview-tabs button[aria-current='true'] { color: var(--blue); opacity: 1; box-shadow: 0 2px 0 var(--blue); }
+.preview-tabs .sub { font-size: var(--font-readable-xsmall); }
+
+.world-radio-frame { width: 100%; }
+.preview-switches { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+.animate-toggle {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.4;
+  padding: 4px 12px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--red);
+}
+.animate-toggle:hover { --edge-opacity: 1; }
+.animate-toggle[aria-pressed='true'] { --edge: var(--blue); --edge-opacity: 1; --fill: var(--blue); --fill-opacity: 0.15; color: var(--blue); }
+.world-radio {
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+  background: #050708;
+  outline: 1px solid color-mix(in srgb, var(--blue) 12%, transparent);
+}
+/* The screen is a render texture, so nothing outside its bounds reaches the radio. */
+.wr-screen { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+/* World screens are emissive: the game's bloom is approximated with a glow. */
+.wr-screen { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 55%, transparent)); }
+.wr-echo { filter: none; }
+/* ScanlinesDensity 125: horizontal lines across the screen */
+.wr-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(100% / 125 - 1px), rgb(0 0 0 / 0.35) calc(100% / 125 - 1px), rgb(0 0 0 / 0.35) calc(100% / 125));
+}
+.wr-node { position: absolute; transform-origin: 50% 50%; }
+.wr-eq { overflow: hidden; }
+.wr-image { display: block; mask-size: 100% 100%; mask-repeat: no-repeat; }
+.wr-text { overflow: hidden; white-space: nowrap; line-height: 1; font-family: var(--font-ui); }
+.wr-text-inner { display: inline-block; }
+.wr-text.fit { overflow: visible; white-space: pre; line-height: 1.2; }
+
+.json { margin-top: 22px; }
+.json summary {
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.json pre {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  max-height: 320px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--black) 40%, transparent);
+  border-left: var(--divider) solid var(--mild-blue);
+  font: 13px/1.45 'Cascadia Mono', Consolas, monospace;
+  color: var(--neutral);
+}
+
+/* --- footer: inputHints ---------------------------------------------------------------- */
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  padding: 14px 0 18px;
+  background: var(--bg);
+  border-top: var(--divider) solid color-mix(in srgb, var(--red) 13%, transparent);
+}
+.footer-state { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.7; }
+
+.file-pick { cursor: pointer; color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+.file-pick:hover { color: var(--active-blue); }
+.file-clear { margin-left: auto; }
+
+/* --- open a station ----------------------------------------------------------------------- */
+
+.open-station { margin-top: 22px; }
+.open-station .drop { padding-block: 14px; }
+.open-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; color: var(--neutral); }
+.open-notes { margin: 10px 0 0; padding-left: 18px; color: var(--neutral); font-size: var(--font-readable-xsmall); opacity: 0.8; }
+.open-notes li + li { margin-top: 3px; }
+.track-file.missing { color: var(--red); opacity: 1; }
+
+/* --- tracks tools --------------------------------------------------------------------------- */
+
+.tracks-tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 14px 0 8px; }
+.tracks-hint { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.5; }
+.remove-all {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.4;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--red);
+}
+.remove-all:hover { --edge-opacity: 1; }
+.remove-all.confirm { --edge-opacity: 1; --fill: var(--mild-red); --fill-opacity: 0.3; color: var(--active-red); }
+
+/* --- build progress and notifications --------------------------------------------------------- */
+
+/* Behind the progress bar and a notification: the page fades back so they read clearly. */
+.feedback-fade {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: rgb(3 3 7 / 0.92);
+}
+.feedback-fade.animate { animation: feedback-fade-in 0.2s linear both; }
+@keyframes feedback-fade-in { from { opacity: 0; } }
+.build-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+/* The widget is authored on a 2000x600 canvas; only its middle holds the bar. */
+.build-progress { margin-top: -60px; }
+.toast {
+  position: fixed;
+  left: calc(50% - min(320px, 45vw));
+  top: 38%;
+  z-index: 50;
+  pointer-events: none;
+}
+.toast-item { display: flex; align-items: center; gap: 28px; width: 740px; height: 100%; }
+.toast-glyph {
+  flex: none;
+  width: 72px;
+  height: 72px;
+  background: var(--blue);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+.toast-message {
+  font: 500 38px/1.1 var(--font-ui);
+  color: var(--white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- about ------------------------------------------------------------------------------------ */
+
+.tabs .tab-about { margin-left: auto; }
+.about { max-width: 820px; padding: 8px 0 40px; }
+.about p, .about dd { color: var(--neutral); font-size: var(--font-readable-small); line-height: 1.45; }
+.about a { color: var(--blue); }
+.about code { color: var(--blue); font-family: var(--font-ui); }
+.about-list dt { margin-top: 14px; color: var(--red); font-size: var(--font-readable-medium); }
+.about-list dd { margin: 4px 0 0; }
+
+/* --- tooltip: tooltipslibrary_4k simpleTooltip ------------------------------------------------ */
+
+.tooltip-anchor { position: relative; display: inline-flex; }
+.tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 30;
+  display: none;
+  width: max-content;
+  max-width: 260px;
+  text-transform: none;
+  pointer-events: none;
+}
+.tooltip.open { display: flex; }
+.tooltip-tab { /* color_flip_bg / _fg: MainColors.FaintRed under a MildRed frame, cut at the bottom left */
+  --edge: var(--mild-red);
+  --fill: var(--faint-red);
+  --cut: 7px;
+  flex: none;
+  width: 10px;
+  margin-right: 2px;
+}
+.tooltip-body { /* cell_bg / cell_fg: Tooltip.backgroundColor under Tooltip.frameColor */
+  --edge: var(--mild-red);
+  --fill: var(--fs-primary-background-darkest);
+  --cut: 8px;
+  display: flex;
+  flex-direction: column;
+  padding: 7px 14px 9px 12px;
+}
+.tooltip-title { /* nameLabel: Tooltip.textColor at ReadableMedium */
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--dark-red); /* description line: Tooltip.separatorLineColor */
+  color: var(--sup-red);
+  font-size: var(--font-readable-medium);
+  text-transform: uppercase;
+}
+.tooltip-text { /* value: ReadableXSmall */
+  padding-top: 6px;
+  color: var(--sup-red);
+  font-size: var(--font-readable-xsmall);
+  line-height: 1.3;
+}
+
+/* --- colophon ---------------------------------------------------------------------------- */
+
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 18px 0 28px;
+  font-size: var(--font-readable-xsmall);
+  color: var(--neutral);
+}
+.colophon nav { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.colophon a { color: var(--blue); text-decoration: none; opacity: 0.8; }
+.colophon a:hover { opacity: 1; text-decoration: underline; text-underline-offset: 3px; }
+.colophon p { margin: 0; max-width: 46em; opacity: 0.55; }
+
+@media (max-width: 640px) {
+  .shell { padding: 0 16px; }
+  .row { grid-template-columns: 1fr; }
+  .row-label { padding-block: 6px; }
+  .rp-now { grid-template-columns: 150px 1fr; gap: 12px; }
+  .tracks-head, .track { grid-template-columns: 24px minmax(0, 1fr) 16px; }
+  .track-ident-toggle { grid-column: 2; justify-self: start; }
+  .track-remove { grid-row: 1; grid-column: 3; }
+  .side { order: 0; position: static; }
+}
+
+/* --- track level ---------------------------------------------------------------------------- */
+
+.tracks-buttons { display: flex; gap: 10px; align-items: center; }
+.use-suggested {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.5;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.use-suggested:hover:not(:disabled) { --edge-opacity: 1; }
+.use-suggested:disabled { opacity: 0.4; cursor: default; }
+.track-level {
+  grid-column: 2 / 4;
+  display: grid;
+  grid-template-columns: 24px minmax(120px, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: center;
+  padding: 2px 0 4px;
+}
+.track-level .slider { gap: 10px; }
+.track-level .slider output { font-size: var(--font-readable-xsmall); }
+.track-play {
+  --cut: 5px;
+  --edge: var(--blue);
+  --edge-opacity: 0.4;
+  width: 24px;
+  height: 22px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+.track-play::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 10px;
+  background: var(--blue);
+  opacity: 0.7;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.track-play[aria-pressed='true']::after { width: 8px; height: 8px; clip-path: none; }
+.track-play:hover:not(:disabled) { --edge-opacity: 1; }
+.track-play:hover:not(:disabled)::after { opacity: 1; }
+.track-play:disabled { opacity: 0.3; cursor: default; }
+.track-reading { font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.7; line-height: 1.35; }
+.track-suggested { color: var(--blue); }
+.track-use { font-size: inherit; }
+@media (max-width: 720px) {
+  .track-level { grid-template-columns: 24px minmax(0, 1fr); }
+  .track-reading { grid-column: 1 / 3; }
+}
+.builder-version { font-variant-numeric: tabular-nums; opacity: 0.6; }
+
+.auto-level { display: flex; align-items: center; gap: 10px; }
+.auto-level-label { font-size: var(--font-readable-xsmall); text-transform: uppercase; color: var(--neutral); opacity: 0.7; }
+.slider input[type='range']:disabled { cursor: default; opacity: 0.45; }
+
+/* --- the auto level question -------------------------------------------------------------- */
+
+.level-question {
+  --cut: 8px;
+  --edge: var(--blue);
+  --edge-opacity: 0.8;
+  --fill: #0c1014;
+  --fill-opacity: 0.97;
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(560px, calc(100vw - 32px));
+  padding: 14px 18px;
+  display: grid;
+  gap: 8px;
+}
+.level-question p { margin: 0; font-size: var(--font-readable-small); }
+.level-question-title { color: var(--blue); text-transform: uppercase; }
+.level-question-actions { display: flex; gap: 14px; align-items: center; margin-top: 4px; }
+.level-question-yes,
+.level-question-no {
+  --cut: 6px;
+  --edge: var(--blue);
+  --edge-opacity: 0.6;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--blue);
+}
+.level-question-yes { --edge-opacity: 1; }
+.level-question-yes:hover,
+.level-question-no:hover { --edge-opacity: 1; }
+
+/* --- build failure ------------------------------------------------------------------------- */
+
+.build-failure {
+  --cut: 8px;
+  --edge: var(--red);
+  --edge-opacity: 0.8;
+  --fill: var(--red);
+  --fill-opacity: 0.08;
+  margin: 12px 16px 0;
+  padding: 12px 16px;
+  display: grid;
+  gap: 8px;
+}
+.build-failure-message { margin: 0; color: var(--red); }
+.build-failure-advice { margin: 6px 0 0; font-size: var(--font-readable-xsmall); opacity: 0.85; }
+.build-log summary { cursor: pointer; font-size: var(--font-readable-xsmall); text-transform: uppercase; opacity: 0.7; }
+.build-log pre { margin: 6px 0 0; max-height: 14em; overflow: auto; font-size: var(--font-readable-xsmall); white-space: pre-wrap; word-break: break-all; }
+.build-failure-actions { display: flex; gap: 14px; align-items: center; }
+.copy-log {
+  --cut: 6px;
+  --edge: var(--red);
+  --edge-opacity: 0.6;
+  border: 0;
+  background: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--font-readable-xsmall);
+  text-transform: uppercase;
+  color: var(--red);
+}
+.copy-log:hover { --edge-opacity: 1; }
+
+/* --- import offers: unlisted audio to add, tracks with no file to remove ------------------------ */
+
+.import-offer { margin: 12px 0 0; padding: 10px 12px; border-left: 2px solid var(--neutral); }
+.import-offer-heading { font-size: var(--font-readable-small); }
+.import-offer-note { margin-top: 3px; font-size: var(--font-readable-xsmall); color: var(--neutral); opacity: 0.8; }
+.import-offer-list { margin: 8px 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; }
+.import-offer-list li + li { margin-top: 3px; }
+.import-offer-list label { display: flex; gap: 8px; align-items: center; font-size: var(--font-readable-xsmall); overflow-wrap: anywhere; cursor: pointer; }
+.import-offer-apply { padding: 4px 12px; }
+.import-offer-apply:disabled { opacity: 0.4; cursor: default; }

@@ -1,0 +1,10 @@
+{
+  "name": "radio_station_example",
+  "frequency": 102.7,
+  "displayName": "Example Radio",
+  "tracks": [
+    { "file": "audio/track_01.mp3", "title": "Example Radio - First Song" },
+    { "file": "audio/track_02.mp3", "title": "Example Radio - Second Song" },
+    { "file": "audio/ident.mp3", "ident": true }
+  ]
+}
