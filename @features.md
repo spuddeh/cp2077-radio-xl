@@ -26,21 +26,34 @@
   mix switches in the plugin lift Wwise rules (combat music, police music, voices, H10's building
   music, menus). Verified in game: apartment, club, scene, combat, wanted star, voices, H10 and the
   inventory, map and hub. RCF is optional.
-- Equaliser (Sound tab, #70): nine bands, a preset or Custom, global and per station (Stations
-  tab, with a suggested preset for 13 game stations), on the car, Radioport and metro radio buses.
+- Equaliser (#70): nine bands, a preset or Custom, on the car, Radioport and metro radio buses.
   Presets are JSON files in `red4ext/plugins/RadioXL/presets`, 16 shipped, level-trimmed. Verified
   in game: heard switching; probe bands match every station's preset across 19 stations.
-- Processing (Sound tab, #70, #52): AGC, peak compressor and limiter; Off, Broadcast or Custom.
-  Verified in game: level-matched with the probe, heard.
+- The equaliser panel (#70), beside the Radioport's station list and the only place the equaliser is
+  set; RCF has no equaliser rows. Built from the game's own widgets (`eq_panel.inkwidget`, composed
+  by `tools/eq-panel-ink.py`, spawned by `EqPanel.reds`). Top to bottom: the playing station's name
+  ("Radio off" with none), the Per-station EQ switch, the preset selector, nine band faders with up
+  and down arrows, the three processing switches, Volume boost, the Reset hint. Reset is the popup's
+  `showAll` action (Z, pad Y). Picking a station redraws it at once. Verified in game.
+- The panel with keys and the pad (#70): R / pad X moves between the station list and the panel; the
+  arrows or d-pad move the game's cursor between its controls, Enter / A press them. The popup opens
+  on the station list. Verified in game with the keyboard, the mouse and a pad.
+- The station selection UI with the mouse (#70): wheel scrolls, hover selects, click plays, volume
+  arrows click. Rows take the pointer only after the mouse or stick moves, so a key step is one row.
+  Verified in game.
+- Per-station EQ (#70): one switch, saved as `perStationEq`, off by default. On, every station plays
+  its saved choice, else its suggested preset (13 game stations; none for Growl FM or custom
+  stations), else Flat; off, every station plays the global equaliser and each saved choice is kept.
+  Reset clears the station's choice (on) or sets the global equaliser to Flat (off). Verified in game.
+- Processing (#70, #52): AGC, peak compressor and limiter, three switches with no mode selector;
+  none on is Off, all three Broadcast, any mix Custom. Applies to the radio as a whole, not per
+  station. On the Sound tab under a Processing heading and in the panel. Verified in game:
+  level-matched with the probe, heard.
 - Script API version 2: Sound, mute situations, mix switches and traffic settings, `RadioXL/EqChanged`.
-  Verified in game by `tests/api`: 97 of 97 on foot and in a car.
+  Verified in game by `tests/api`: 103 of 103 on foot and in a car.
 - Volume boost (Sound tab, #70): 0 to 12 dB on the two player radio buses, after both game sliders; the
   car's cabin reverb send takes the boost and the Car Radio slider too. Verified in game: +13 dB at the
   output at +18, silent at slider 0 with +18, nothing clipped (the game's own output limiter).
-- "Sound like a car radio" (Sound tab, #70): the Radioport on foot plays at a car radio's level
-  with no low- or high-pass, by flattening its mixer's `veh_radio_tier` curves below tier 2, and
-  retunes a playing Radioport so the change is heard at once. Verified in game: level with the car
-  on the same station, no Radioport under the car radio, and switching back restores the game's sound.
 - `RadioXLAPI.RegisterStation(name)`: a RadioXL 0.1.0 station's script compiles and is logged; the
   station is not created (#10).
 - The script API (#39): `RadioXLAPI` reads, deck-backed acts and ten events, reachable from CET as

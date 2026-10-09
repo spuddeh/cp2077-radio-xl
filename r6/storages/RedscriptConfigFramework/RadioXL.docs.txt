@@ -1,6 +1,6 @@
 [color=#e06666][size=6][b]- Introduction -[/b][/size][/color]
 
-RadioXL adds radio stations to Cyberpunk 2077 as real stations of the game's own radio. A station built on it plays on the Radioport, in every vehicle and on the radios placed around Night City, with its own name, icon and song titles, and the dial, the radio hotkey, the equaliser and the dashboard treat it exactly as they treat the stations the game ships. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
+RadioXL adds radio stations to Cyberpunk 2077 as real stations of the game's own radio. A station built on it plays on the Radioport, in every vehicle and on the radios placed around Night City, with its own name, icon and song titles, and the dial, the radio hotkey, the equalizer and the dashboard treat it exactly as they treat the stations the game ships. Tune away from a station and back, and it picks the song up where the station has got to, the way the game's own do.
 
 A station mod is one small file and a folder of audio. RadioXL reads the rest from the files.
 
@@ -118,7 +118,6 @@ Nothing is tuned while the game blocks radio input: in a police vehicle, during 
 [b]Stations[/b]
 One section per station, in dial order.
 [*][b]Keys step over this station.[/b] The next and previous station keys skip it. It can still be picked from the radio itself.[/*]
-[*][b]Equaliser.[/b] Global plays the Sound tab's equaliser. A preset here plays on this station only. Custom gives the station nine bands of its own, starting from what it plays now; they stay with the station when it is switched to a preset and back. For the game's stations, one preset is marked as suggested; Growl FM, a mix of everything, has none.[/*]
 [*][b]Its songs.[/b] One row each, with three settings: [b]On[/b] plays as normal; [b]Off[/b] is skipped whenever it comes up, and the next song on that station plays instead; [b]Off while streaming[/b] plays as normal and is skipped whenever the game's Streamer Mode setting is on. Songs the game marks as not streamer friendly start there. A song added by a station mod carries no such mark and starts On, so this is where you set one. A setting follows the song's file: adding, removing or reordering a station's songs leaves it in place, and a song whose file is renamed starts On again.[/*]
 The top of the tab says whether Streamer Mode is on right now, and while it is, every song being skipped for it is marked in its own row. If every song on a station is set to Off, the station plays as normal, and the next and previous keys step through them.
 Above the stations, three settings decide where a station picked at random can come from:
@@ -127,11 +126,10 @@ Above the stations, three settings decide where a station picked at random can c
 [*][b]Include stations that stream.[/b] Off by default. On, traffic cars and world radios can pick a station that streams, and while one plays it, that station's connection stays open.[/*]
 
 [b]Sound[/b]
-[*][b]Sound like a car radio.[/b] On foot the Radioport plays quieter than a car's radio, with its lows and highs cut like a small speaker. On, it plays at a car radio's level with nothing cut. In a vehicle the car's radio plays as before. Off by default.[/*]
 [*][b]Volume boost.[/b] Turns the car radio and the Radioport up by as much as 12 dB past the game's own maximum, on top of the Car Radio and Radioport volume settings. 0 by default.[/*]
-[*][b]Equaliser.[/b] Nine bands, 63 Hz to 16 kHz, on the car radio, the Radioport and the metro. Pick a preset, or Custom for a slider per band. Flat by default, the game's own sound. A preset changes the tone, not the volume.[/*]
+[*][b]Equalizer.[/b] Not on this tab: it opens in its own panel beside the Radioport's station list. Use it with the mouse, or press R (X on a controller) to move between the station list and the panel, the arrow keys or d-pad to move between its controls, and Enter or A to press one. Nine bands, 63 Hz to 16 kHz, on the car radio, the Radioport and the metro. With [b]Per-station EQ[/b] on, every station plays its own equalizer, and the panel sets the one for the station playing; off, every station plays the global equalizer. Pick a preset, or move a band for your own; a station's own bands stay with it when it is switched to a preset and back. A station you have not set plays its suggested preset: one is marked for each of the game's stations, and Growl FM, a mix of everything, has none and plays Flat. Reset puts a station back on its suggestion, and the global equalizer back on Flat. Flat by default, the game's own sound. A preset changes the tone, not the volume.[/*]
 [*][b]Presets.[/b] Files in [b]red4ext\plugins\RadioXL\presets[/b], read when the game starts. Make your own by copying one and changing its [b]name[/b] and its nine [b]bands[/b], each a number of dB from -24 to 24, lowest band first. A file with a mistake is left out, and RadioXL's log says why.[/*]
-[*][b]Processing.[/b] What a radio station does to its sound before it goes out: [b]Even out loudness[/b], [b]Soften peaks[/b] and a [b]Limiter[/b]. Broadcast turns all three on; Custom switches each on its own. Off by default.[/*]
+[*][b]Processing.[/b] What a radio station does to its sound before it goes out: [b]Even out loudness[/b], [b]Soften peaks[/b] and a [b]Limiter[/b]. Each has its own switch, here and in the equalizer panel. All three are off by default.[/*]
 
 [b]Mute[/b]
 [*][b]Mute station idents.[/b] The station's own spot between songs: its name, its frequency and whatever its host says over them. Each station keeps its own, so this is what silences Pacific Dreams' host. Applies from the next song.[/*]

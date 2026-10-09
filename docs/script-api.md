@@ -100,15 +100,15 @@ global equaliser's nine custom bands.
 | --- | --- |
 | `EqPresets()` | `array<String>`, every loaded preset, Flat first |
 | `EqPreset()` | `String`, the global equaliser: a preset's name or `"Custom"` |
-| `StationEqPreset(station)` | `String`, the station's own choice: a preset's name, `"Custom"` for its own bands, `""` when it follows the global equaliser |
+| `PerStationEq()` | `Bool`, on: every station plays its own equaliser; off: every station plays the global one |
+| `StationEqPreset(station)` | `String`, the choice saved for the station: a preset's name, `"Custom"` for its own bands, `""` for none, in which case it plays RadioXL's suggestion, else Flat, while `PerStationEq()` is on |
 | `StationEqBand(station, band)` | `Int32`, one of the station's own bands in dB, heard while it is on `"Custom"` |
 | `SuggestedEqPreset(station)` | `String`, RadioXL's suggestion for one of the game's stations, `""` for none or when that preset is not loaded |
-| `ActiveEqPreset()` | `String`, the preset the radio playing now uses: its station's own, else the global one |
+| `ActiveEqPreset()` | `String`, the preset the radio playing now uses: its station's own while `PerStationEq()` is on, else the global one |
 | `EqBand(band)` | `Int32`, a custom band's gain in dB, -12 to 12. Bands 0 to 8 are 63, 125, 250, 500 Hz, 1, 2, 4, 8 and 16 kHz |
 | `Processing()` | `RadioXLProcessing`: `Off`, `Broadcast` (every stage), `Custom` (each stage's own switch) |
 | `ProcessingStage(stage)` | `Bool`, a `RadioXLProcessingStage` (`Agc`, `PeakCompressor`, `Limiter`) switch, used while `Processing()` is `Custom` |
 | `Boost()` | `Int32`, dB above the game's own level, 0 to 12 |
-| `RadioportLikeCar()` | `Bool`, the "Sound like a car radio" switch |
 
 ### Mute switches and traffic
 
@@ -151,13 +151,13 @@ schedule, its idents and the history stay right.
 | `SetIdentsMuted(muted)`, `SetNewsMuted(muted)` | saved |
 | `ShowNowPlaying(popup)` | the radio popup when `popup` is true, else the on-screen line |
 | `SetEqPreset(name)` | a preset's name or `"Custom"`. Refused for a name not loaded. Saved |
-| `SetStationEqPreset(station, name)` | `""` sets the station back to the global equaliser; `"Custom"` to its own bands, which start from what it plays the first time. Refused for an unknown station or preset. Saved |
+| `SetPerStationEq(on)` | every station on its own equaliser (on) or on the global one (off). Saved |
+| `SetStationEqPreset(station, name)` | `""` clears the station's saved choice; `"Custom"` sets its own bands, which start from what it plays the first time. Heard while `PerStationEq()` is on. Refused for an unknown station or preset. Saved |
 | `SaveEqPreset(name, bands)` | writes the nine gains (dB, -24 to 24) as a new preset file in `red4ext/plugins/RadioXL/presets` and loads it. Returns `RadioXLPresetSave`: `Saved`, `BadName` (empty, over 40 characters, a space at an end, or `"Custom"`), `NameTaken` (ignoring case) or `WriteFailed` |
 | `SetStationEqBand(station, band, db)` | clamped to -12 to 12. Puts the station on `"Custom"`, its other bands starting from what it played. Saved |
 | `SetEqBand(band, db)` | a custom band, clamped to -12 to 12; heard while the global equaliser is `"Custom"`. Saved |
 | `SetProcessing(mode)`, `SetProcessingStage(stage, on)` | saved |
 | `SetBoost(db)` | clamped to 0 to 12. Saved |
-| `SetRadioportLikeCar(on)` | a Radioport that is playing is retuned to its station so the change is heard at once. Saved |
 | `SetSituationMuted(situation, muted)` | a restriction in force takes the change at once. Saved |
 | `SetMixMuted(mix, muted)` | saved |
 | `SetTrafficStations(mode)`, `SetRandomWorldRadios(on)`, `SetRandomStreams(on)` | saved |
@@ -248,4 +248,4 @@ Listen for `RadioXL/SongStateChanged` to drop a song the moment the player switc
 | Version | RadioXL | Changes |
 | --- | --- | --- |
 | 1 | 0.6.0 | First release |
-| 2 | 0.8.0 | Sound: the equaliser, its presets and each station's own preset or bands, processing, the volume boost and the Radioport switch, and `RadioXL/EqChanged`. The mute situations and mix switches. The traffic and random-pick settings (0.7.0) |
+| 2 | 0.8.0 | Sound: the equaliser, its presets and each station's own preset or bands, processing and the volume boost, and `RadioXL/EqChanged`. The mute situations and mix switches. The traffic and random-pick settings (0.7.0) |

@@ -1666,8 +1666,7 @@ void PoolNames()
 }
 
 // A switch that lives in Wwise's mix: the "Mute the radio when..." switches 0 combat music, 1 police music,
-// 2 voices, 3 megabuilding music, 4 menus, and 5 the Radioport's tier filter. `mute` true is the game's own
-// behaviour.
+// 2 voices, 3 megabuilding music and 4 menus. `mute` true is the game's own behaviour.
 void RadioXL_SetMixSwitch(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
 {
     int32_t which = -1;

@@ -1,11 +1,11 @@
 # Changelog - RadioXL
 
-## [Unreleased]
+## [0.8.0] - 2026-10-09
 
 ### Added
 - Script API version 2 (`RadioXLAPI.Version()` returns 2). Reads and setters for the Sound tab (`EqPresets`,
-  `EqPreset`, `StationEqPreset`, `SuggestedEqPreset`, `ActiveEqPreset`, `EqBand`, `Processing`,
-  `ProcessingStage`, `Boost`, `RadioportLikeCar`), the mute situations (`SituationMuted`, by
+  `EqPreset`, `PerStationEq`, `StationEqPreset`, `SuggestedEqPreset`, `ActiveEqPreset`, `EqBand`,
+  `Processing`, `ProcessingStage`, `Boost`), the mute situations (`SituationMuted`, by
   `RadioXLSituation`), the mix switches (`MixMuted`, by the new enum `RadioXLMix`) and the 0.7.0 traffic
   settings (`TrafficStations`, `RandomWorldRadios`, `RandomStreams`). A setter for an RCF-held value calls
   `RadioXLConfig.Persist()`. New event `RadioXL/EqChanged` (`RadioXLEqChangedEvent`: `Station()`,
@@ -23,12 +23,53 @@
   Flat first. Each plays `-10*log10(mean(10^(g/10)))` dB down so a preset changes tone, not level.
   Sixteen ship: Flat, Bass boost, Treble boost, Vocal, Loudness and eleven genre presets.
   `RadioXL_EqPresetCount/Name/Band`.
-- Per-station preset and suggestions (#70). `State.reds` saves `eqPreset`, `eqBands` and `stationEq`
-  in state.json; `RadioXLEqualiser.Apply` runs on every station change. The Stations tab has an
-  Equaliser dropdown per station (keys `eq:<station>`) with RadioXL's suggestion marked
-  "(suggested)": a table in `Eq.reds` for the 13 game stations, none for Growl FM. Suggestions never
-  live in the preset files, which players edit and share. RCF's restore of the equaliser rows is ignored.
-- Processing, Off / Broadcast / Custom, off by default (#70, #52). Three more ShareSets in the same bank:
+- The equaliser panel (#70), the only place the equaliser is set. It opens beside the Radioport's
+  station list (`VehicleRadioPopupGameController`) and closes with it: `EqPanel.reds` spawns item
+  `panel` of `radioxl\gui\eq_panel.inkwidget` inside the popup's root and moves it to child 0
+  (`ReorderChild(panel, 0)`; the root draws its children last to first) so it draws over the popup's
+  full-screen vignette, as the popup's own frame does. The widget is built
+  by `tools/eq-panel-ink.py` from copies of the game's own widgets (the popup's title bar, fluff and
+  hints from `vehicles_radio.inkwidget`; the list selector, slider and switch from
+  `settings_main.inkwidget`), packed into `RadioXL.archive` from `tools/wolvenkit/source/`. Top to
+  bottom: a Station caption, divider and the playing station's name ("Radio off" with none), level
+  with the popup's NOW PLAYING; the Per-station EQ switch; the preset selector; nine band faders
+  (63 Hz to 16 kHz, sliders stood on end) with up and down arrows; the three processing switches;
+  the Volume boost slider; a footer level with the popup's footer; the Reset hint. Every control
+  writes through `RadioXLAPI`; the panel redraws on `RadioXL/EqChanged` and `RadioXL/StationChanged`,
+  so picking a station redraws it at once. Reset is the popup's `showAll` action (keyboard Z, pad
+  Y), registered as an input listener while the popup is open.
+- The equaliser panel with keys and the pad (#70). Keys and the d-pad move the game's own cursor, as
+  its menus do: `SetCursorOverWidget(target, 0.0, true)` snaps it onto a control and it draws as the
+  d-pad outline; A / Enter press what it is on through the pointer's `click`. R / pad X
+  (`secondaryAction`, free in `UINotifications`) moves the focus between the station list and the
+  panel; its hint takes the hidden Save slot (`SetInputAction`). On the panel, up and down move between
+  rows (the faders are two rows, their up arrows and their down arrows), left and right between faders
+  or change a row's value. A row under the cursor takes the focus; a station row gives it back to the
+  list. While the list has the focus the panel ignores clicks and proceed is the list's, since on the
+  pad a snap away from where the stick left the cursor does not move it. A fader has no hover look of
+  its own, so the focused fader draws its frame (`bk`) at full opacity.
+- The station selection UI with the mouse (#70, `StationListMouse.reds`): `SpawnVehicleRadioPopup`
+  replaced to set `isBlocking` and `useCursor`; the wheel scrolls the list (its notches arrive as
+  `popup_moveUp/Down` and are taken before the game's own handler), hovering a station selects it,
+  clicking plays it, the volume arrows take a click. The left stick moves the cursor, so its scroll
+  actions (`popup_moveUp_left_stick_*`) are dropped. Pointer mode (`RadioXLPointer`): station rows are
+  interactive, and the panel follows the cursor, only after `mouse_x/y` or `popup_axisX/Y` (above 0.1)
+  moves the cursor, and not after a key or d-pad step, R / X, or at open. An interactive row selects
+  itself under a resting cursor, which turned one key step into two as the list scrolled (measured
+  3 -> 5); a row the cursor leaves deselects itself (measured: none selected), so the last selected
+  index is selected again a frame later (`DelayCallbackNextFrame`).
+- Per-station EQ, one switch for every station (#70). `State.reds` saves `perStationEq` (default
+  false), `eqPreset`, `eqBands`, `stationEq` and `stationEqBands` in state.json;
+  `RadioXLEqualiser.Apply` runs on every station change. On, each station plays its saved choice,
+  else RadioXL's suggestion (a table in `Eq.reds` for the 13 game stations, none for Growl FM or a
+  custom station), else Flat; off, every station plays the global equaliser and each saved choice is
+  kept. Suggestions never live in the preset files, which players edit and share.
+  `RadioXLAPI.PerStationEq()` / `SetPerStationEq(on)`; `StationEqPreset()` returns `""` when nothing
+  is saved. Reset with Per-station EQ on clears the station's saved choice; off, it sets the global
+  equaliser to Flat.
+- Processing, off by default (#70, #52). Three switches are the whole setting, with no mode selector:
+  none on reads as Off, all three as Broadcast, any mix as Custom (`RadioXLAPI.Processing()`). It
+  applies to the radio as a whole, not per station. Three more ShareSets in the same bank:
   AGC (Compressor 1503678448: -36 dB, 2:1, 1 s, 3 s, +8.5 dB) in slot 3 of both radio buses; peak
   compressor (801420832: -18 dB, 3:1, 0.01 s, 0.08 s, +1.5 dB) and limiter (Peak Limiter 1705528755:
   -6 dB, 10:1, 0.01 s look-ahead, 0.1 s, 0 dB) in slots 2 and 3 of `Music_Radio_Car_Player_DVR`.
@@ -52,17 +93,6 @@
   +0x1c0) and adds the boost to its -4 dB through `SetAkProp`. Measured on that bus, the 911 parked: at slider 0
   the station's peaks fell from -15.5 to -26.5 dB (the bus without the radio); at slider 100 +18 the bus rose
   from -37 to -19 dB.
-- "Sound like a car radio", on a new Sound tab (#70). On foot the player's game object holds
-  `veh_radio_tier` 1 and the Radioport's mixer 801426841 maps it to a lower level with low-pass 25 and
-  high-pass 15; a car plays at tier 2, clean. `Mix.hpp` switch `kRadioport` (6th, native index 5)
-  captures the mixer's three tier curves (volume 117034723, low-pass 875835072, high-pass 372331119)
-  through the bank loader hook and, when on, sets every point below tier 2 to 0 (`Flatten`), so tier
-  2 still silences the Radioport in a vehicle. A playing voice takes a rewritten curve only at its
-  next tier change, and each Radioport start is a new voice, so `RadioXLConfig.RestartRadioport`
-  switches `radio_port_station` on `pocket_radio_emitter` to none and back after 0.1 s
-  (`RadioXLRadioportRetune`). Measured: with the switch on, the Radioport read -26.3 to -27.4 dB
-  against the car's -27.3 to -28.3 on the same station seconds earlier, and a switch-on moved a
-  playing Radioport from about -42 to -31 dB.
 
 ### Changed
 - A car switched on with no station set picks from its whole startup list (`Startup.hpp`). The
@@ -143,6 +173,13 @@
 ### Removed
 - `Channels.reds` and `RadioXL_ReserveChannel`, which reported playlist and reflection channels so a
   station under 256 avoided them; custom stations no longer broadcast under 256.
+- Every equaliser row in RCF (#70): the global preset dropdown, the nine band sliders, and each
+  station's equaliser dropdown and band rows on the Stations tab (keys `eq:<station>`). The Sound tab
+  is one page with no sub-tabs: a line saying where the equaliser opens, Volume boost, then a
+  Processing heading, its line and the three processing switches.
+- The Off / Broadcast / Custom processing selector (#70); the three switches are the setting.
+- The car-sound switch on the panel (#70). The filtered Radioport after a drive is a game bug, handled
+  by the separate mod Radioport Fixes; its switch, API calls, restart, row and text are gone.
 
 ### Tools
 - `probe/`: per-channel (left and right) bus meters in `meter_live.txt`, the `bus meter` line and the
@@ -163,6 +200,17 @@
   on a custom station on a random vanilla one. The block's `cmp edx, 14` at +0x6F caps a 14-slot
   stack buffer and stays. Measured on Testing: two Tool FM hijacks and a Pacific Dreams control kept
   their station, and a car saved on Outrun Waves loaded on Outrun Waves (2026-10-06).
+- Equaliser panel, while it was built (#70), never released:
+  - A press acted twice: `OnRelease` fires once for each action bound to the button. `RadioXLEqClick`
+    acts only on `click`.
+  - `Click()` returned early with no station playing, so the panel's controls did nothing with the
+    radio off.
+  - Copied widgets carried no `parentWidget` link and never redrew; `eq-panel-ink.py` sets it.
+  - The panel drew under the popup's full-screen vignette; it is now child 0 of the popup's root,
+    which draws its children last to first.
+  - A band's arrows stepped once and stopped: the band array is read into a local before indexing.
+  - Reset was bound to `restore_default_settings`, which is not in the popup's input context; it is
+    the popup's `showAll` action.
 
 ## [0.7.0] - 2026-10-05
 

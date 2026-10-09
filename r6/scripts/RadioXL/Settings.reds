@@ -42,19 +42,6 @@ import RedscriptConfigFramework.*
 @if(ModuleExists("RedFunctions.Json"))
 import RedFunctions.Json.*
 
-// The second half of RadioXLConfig.RestartRadioport: back on the station it left, if nothing changed it.
-public class RadioXLRadioportRetune extends DelayCallback {
-  public let station: Int32;
-
-  public func Call() -> Void {
-    let player = GameInstance.GetPlayerSystem(GetGameInstance()).GetLocalPlayerMainGameObject() as PlayerPuppet;
-    if !IsDefined(player) || IsDefined(player.GetMountedVehicle()) { return; }
-    let pocket = player.GetPocketRadio();
-    if !IsDefined(pocket) || !pocket.IsActive() || pocket.GetStation() != this.station { return; }
-    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(this.station), n"pocket_radio_emitter");
-  }
-}
-
 // The mute switches the plugin applies in the mix, in RadioXL_SetMixSwitch order.
 public enum RadioXLMix {
   CombatMusic = 0,
@@ -83,8 +70,6 @@ public class RadioXLConfig extends ScriptableSystem {
   public let muteVoices: Bool = true;
   public let muteMegabuilding: Bool = true;
   public let muteMenus: Bool = true;
-  // On: the Radioport on foot plays at the car's level with no filters. Off is the game's own sound.
-  public let radioportLikeCar: Bool = false;
   // dB above the game's own level on the car radio and the Radioport, 0 to RadioXL_MaxBoost().
   public let boostDb: Int32 = 0;
   // Processing: 0 off, 1 Broadcast (every stage), 2 custom (each stage's own switch).
@@ -99,25 +84,8 @@ public class RadioXLConfig extends ScriptableSystem {
     RadioXL_SetMixSwitch(2, this.muteVoices);
     RadioXL_SetMixSwitch(3, this.muteMegabuilding);
     RadioXL_SetMixSwitch(4, this.muteMenus);
-    RadioXL_SetMixSwitch(5, !this.radioportLikeCar);
     RadioXL_SetMixBoost(Cast<Float>(this.boostDb));
     RadioXLEqualiser.Apply();
-  }
-
-  // A playing Radioport voice takes the rewritten tier curves only when its tier next changes, and a
-  // new voice reads them as it starts. So a playing Radioport is switched off its station and back on.
-  public static func RestartRadioport() -> Void {
-    let gi = GetGameInstance();
-    let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
-    if !IsDefined(player) || IsDefined(player.GetMountedVehicle()) { return; }
-    let pocket = player.GetPocketRadio();
-    if !IsDefined(pocket) || !pocket.IsActive() || pocket.IsRestricted() { return; }
-    let delay = GameInstance.GetDelaySystem(gi);
-    if !IsDefined(delay) { return; }
-    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(-1, true), n"pocket_radio_emitter");
-    let tick = new RadioXLRadioportRetune();
-    tick.station = pocket.GetStation();
-    delay.DelayCallback(tick, 0.1);
   }
 
   // The dropdown's option index: 0 most cars, 1 every car, 2 off.
@@ -298,9 +266,6 @@ public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
 public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
 public func RadioXL_MaxBoost() -> Int32 { return 12; }
-public func RadioXL_StationEqPrefix() -> String { return "eq:"; }
-// A station's own band: "stationBand:<station>/<band>".
-public func RadioXL_StationBandPrefix() -> String { return "stationBand:"; }
 public func RadioXL_KeyRandomWorldRadios() -> String { return "randomWorldRadios"; }
 public func RadioXL_KeyRandomStreams() -> String { return "randomStreams"; }
 // A song row's key is the event name behind a fixed prefix; a station's step-over row is its
@@ -384,31 +349,17 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     // --- Sound ---
     b.Tab("RadioXL.tabSound");
     b.Section("RadioXL.secSound");
-    b.Toggle("radioportLikeCar", "RadioXL.optRadioportLikeCar");
-    b.Tip("RadioXL.tipRadioportLikeCar");
+    b.Label("RadioXL.labEqualiser");
     b.Slider("boostDb", "RadioXL.optBoost", 0.0, Cast<Float>(RadioXL_MaxBoost()), 1.0, true);
     b.Tip("RadioXL.tipBoost");
-    b.Section("RadioXL.secEqualiser");
-    b.Dropdown("eqPreset", "RadioXL.optEqPreset", this.GlobalEqOptions()).Rebuilds();
-    b.Tip("RadioXL.tipEqPreset");
-    if Equals(RadioXLState.Get().eqPreset, RadioXL_EqCustom()) {
-      let band: Int32 = 0;
-      while band < RadioXL_EqBandCount() {
-        b.Slider(s"eqBand\(band)", s"RadioXL.eqBand\(band)", -12.0, 12.0, 1.0, true);
-        band += 1;
-      }
-    }
-    b.Section("RadioXL.secProcessing");
-    b.Dropdown("processing", "RadioXL.optProcessing", this.ProcessingOptions()).Rebuilds();
-    b.Tip("RadioXL.tipProcessing");
-    if IsDefined(this.m_cfg) && this.m_cfg.processingMode == 2 {
-      b.Toggle("procAgc", "RadioXL.optProcAgc");
-      b.Tip("RadioXL.tipProcAgc");
-      b.Toggle("procPeak", "RadioXL.optProcPeak");
-      b.Tip("RadioXL.tipProcPeak");
-      b.Toggle("procLimiter", "RadioXL.optProcLimiter");
-      b.Tip("RadioXL.tipProcLimiter");
-    }
+    b.Group("RadioXL.secProcessing");
+    b.Label("RadioXL.labProcessing");
+    b.Toggle("procAgc", "RadioXL.optProcAgc");
+    b.Tip("RadioXL.tipProcAgc");
+    b.Toggle("procPeak", "RadioXL.optProcPeak");
+    b.Tip("RadioXL.tipProcPeak");
+    b.Toggle("procLimiter", "RadioXL.optProcLimiter");
+    b.Tip("RadioXL.tipProcLimiter");
 
     // --- Mute ---
     b.Tab("RadioXL.tabMute");
@@ -547,53 +498,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     return options;
   }
 
-  // The global equaliser: every preset, then Custom. Stored by name, so adding a preset file moves no choice.
-  private func GlobalEqOptions() -> array<String> {
-    let options: array<String> = RadioXLEqualiser.PresetNames();
-    ArrayPush(options, RadioXLText("RadioXL.eqCustom"));
-    return options;
-  }
-
-  private func GlobalEqOption() -> Int32 {
-    let name: String = RadioXLState.Get().eqPreset;
-    if Equals(name, RadioXL_EqCustom()) { return RadioXL_EqPresetCount(); }
-    return Max(RadioXLEqualiser.PresetIndex(name), 0);
-  }
-
-  // A station's own equaliser: Global (follow the global one), every preset, then Custom (the
-  // station's own bands). The preset RadioXL suggests for the station is marked; it is never chosen
-  // for the player.
-  private func StationEqOptions(station: CName) -> array<String> {
-    let options: array<String>;
-    ArrayPush(options, RadioXLText("RadioXL.eqGlobal"));
-    let suggested: String = StrLower(RadioXLEqualiser.Suggested(station));
-    for name in RadioXLEqualiser.PresetNames() {
-      ArrayPush(options, StrLen(suggested) > 0 && Equals(StrLower(name), suggested)
-        ? StrReplace(RadioXLText("RadioXL.eqSuggested"), "{preset}", name) : name);
-    }
-    ArrayPush(options, RadioXLText("RadioXL.eqCustom"));
-    return options;
-  }
-
-  // The station and band a station band row's key names, or false for any other key.
-  private func StationBandKey(key: String, out station: CName, out band: Int32) -> Bool {
-    if !StrBeginsWith(key, RadioXL_StationBandPrefix()) { return false; }
-    let rest: String = StrMid(key, StrLen(RadioXL_StationBandPrefix()));
-    let slash: Int32 = StrFindLast(rest, "/");
-    if slash < 0 { return false; }
-    station = StringToName(StrLeft(rest, slash));
-    band = StringToInt(StrMid(rest, slash + 1));
-    return band >= 0 && band < RadioXL_EqBandCount();
-  }
-
-  private func ProcessingOptions() -> array<String> {
-    let options: array<String>;
-    ArrayPush(options, RadioXLText("RadioXL.procOff"));
-    ArrayPush(options, RadioXLText("RadioXL.procBroadcast"));
-    ArrayPush(options, RadioXLText("RadioXL.procCustom"));
-    return options;
-  }
-
   private func StationAtOption(option: Int32) -> CName {
     let position: Int32 = option - 1;
     if position < 0 || position >= RadioStationDataProvider.GetStationsCount() { return n"None"; }
@@ -648,16 +552,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
         b.Section(this.StationLabel(enumValue));
         b.Toggle(RadioXL_SkipPrefix() + NameToString(name), "RadioXL.optSkipStation");
         b.Tip("RadioXL.tipSkipStation");
-        b.Dropdown(RadioXL_StationEqPrefix() + NameToString(name), "RadioXL.optStationEq", this.StationEqOptions(name)).Rebuilds();
-        b.Tip("RadioXL.tipStationEq");
-        if Equals(RadioXLState.Get().StationEq(name), RadioXL_EqCustom()) {
-          let band: Int32 = 0;
-          while band < RadioXL_EqBandCount() {
-            b.Slider(RadioXL_StationBandPrefix() + NameToString(name) + "/" + IntToString(band), s"RadioXL.eqBand\(band)",
-                     -12.0, 12.0, 1.0, true);
-            band += 1;
-          }
-        }
         if IsDefined(station) && ArraySize(station.tracks) > 0 {
           b.Divider();
           let i: Int32 = 0;
@@ -728,10 +622,9 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "muteVoices") { return c.muteVoices; }
       if Equals(key, "muteMegabuilding") { return c.muteMegabuilding; }
       if Equals(key, "muteMenus") { return c.muteMenus; }
-      if Equals(key, "radioportLikeCar") { return c.radioportLikeCar; }
-      if Equals(key, "procAgc") { return c.processAgc; }
-      if Equals(key, "procPeak") { return c.processPeak; }
-      if Equals(key, "procLimiter") { return c.processLimiter; }
+      if Equals(key, "procAgc") { return RadioXLEqualiser.StageOn(0); }
+      if Equals(key, "procPeak") { return RadioXLEqualiser.StageOn(1); }
+      if Equals(key, "procLimiter") { return RadioXLEqualiser.StageOn(2); }
       if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
       if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
     }
@@ -769,16 +662,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       return;
     }
     if IsDefined(c) && (Equals(key, "procAgc") || Equals(key, "procPeak") || Equals(key, "procLimiter")) {
-      if Equals(key, "procAgc") { c.processAgc = value; }
-      if Equals(key, "procPeak") { c.processPeak = value; }
-      if Equals(key, "procLimiter") { c.processLimiter = value; }
-      RadioXLEqualiser.ApplyProcessing();
-      return;
-    }
-    if IsDefined(c) && Equals(key, "radioportLikeCar") {
-      c.radioportLikeCar = value;
-      c.ApplyMix();
-      if !this.m_restoring { RadioXLConfig.RestartRadioport(); }
+      RadioXLEqualiser.SetStageOn(Equals(key, "procAgc") ? 0 : (Equals(key, "procPeak") ? 1 : 2), value);
       return;
     }
     if IsDefined(c) && StrBeginsWith(key, "mute") && !Equals(key, RadioXL_KeyMuteIdents()) && !Equals(key, RadioXL_KeyMuteNews()) {
@@ -828,17 +712,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     let c: wref<RadioXLConfig> = this.m_cfg;
     if IsDefined(c) && Equals(key, RadioXL_KeyTrafficStations()) { return c.trafficStations; }
     if IsDefined(c) && Equals(key, "boostDb") { return c.boostDb; }
-    if IsDefined(c) && Equals(key, "processing") { return c.processingMode; }
-    if Equals(key, "eqPreset") { return this.GlobalEqOption(); }
-    if StrBeginsWith(key, "eqBand") { return RadioXLState.Get().EqBand(StringToInt(StrMid(key, 6))); }
-    if StrBeginsWith(key, RadioXL_StationEqPrefix()) {
-      let own: String = RadioXLState.Get().StationEq(StringToName(StrMid(key, StrLen(RadioXL_StationEqPrefix()))));
-      if Equals(own, RadioXL_EqCustom()) { return RadioXL_EqPresetCount() + 1; }
-      return StrLen(own) == 0 ? 0 : Max(RadioXLEqualiser.PresetIndex(own) + 1, 0);
-    }
-    let bandStation: CName;
-    let bandIndex: Int32;
-    if this.StationBandKey(key, bandStation, bandIndex) { return RadioXLState.Get().StationBand(bandStation, bandIndex); }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return 0; }
     if StrBeginsWith(key, RadioXL_SongPrefix()) {
@@ -868,48 +741,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if c.boostDb == boost { return; }
       c.boostDb = boost;
       c.ApplyMix();
-      return;
-    }
-    if IsDefined(c) && Equals(key, "processing") {
-      c.processingMode = Clamp(value, 0, 2);
-      RadioXLEqualiser.ApplyProcessing();
-      return;
-    }
-    // The equaliser's choices are names in state.json, the truth: RCF's restore of an option index or
-    // a band is ignored, and only a change made in the panel writes.
-    if Equals(key, "eqPreset") || StrBeginsWith(key, "eqBand") || StrBeginsWith(key, RadioXL_StationEqPrefix())
-       || StrBeginsWith(key, RadioXL_StationBandPrefix()) {
-      if this.m_restoring { return; }
-      let state = RadioXLState.Get();
-      let bandStation: CName;
-      let bandIndex: Int32;
-      // RCF writes every slider row back each time it refreshes: each branch acts only on a change.
-      if Equals(key, "eqPreset") {
-        let wanted: String = value >= RadioXL_EqPresetCount() ? RadioXL_EqCustom() : RadioXL_EqPresetName(value);
-        if Equals(state.eqPreset, wanted) { return; }
-        state.SetEqPreset(wanted);
-      } else if StrBeginsWith(key, "eqBand") {
-        let band: Int32 = StringToInt(StrMid(key, 6));
-        if state.EqBand(band) == Clamp(value, -12, 12) { return; }
-        state.SetEqBand(band, Clamp(value, -12, 12));
-      } else if this.StationBandKey(key, bandStation, bandIndex) {
-        // A band row exists only while its station is on Custom, but the refresh can still write it once the
-        // station has been switched to a preset, and that write must not switch the station back.
-        if Equals(state.StationEq(bandStation), RadioXL_EqCustom()) {
-          RadioXLAPI.SetStationEqBand(bandStation, bandIndex, value);
-        }
-        return;
-      } else {
-        let station: CName = StringToName(StrMid(key, StrLen(RadioXL_StationEqPrefix())));
-        let wantedOwn: String = value > RadioXL_EqPresetCount() ? RadioXL_EqCustom() : (value <= 0 ? "" : RadioXL_EqPresetName(value - 1));
-        if Equals(state.StationEq(station), wantedOwn) { return; }
-        if Equals(wantedOwn, RadioXL_EqCustom()) {
-          RadioXLAPI.SetStationEqPreset(station, wantedOwn);
-        } else {
-          state.SetStationEq(station, wantedOwn);
-        }
-      }
-      RadioXLEqualiser.Apply();
       return;
     }
     let s = RadioXLControls.Get();

@@ -78,7 +78,7 @@ writes what it registered to `r6/logs/mods/`; without it the logging compiles aw
 
 ## Settings
 
-Four tabs in the Redscript Configuration Framework panel, every station and song on them read from
+Five tabs in the Redscript Configuration Framework panel, every station and song on them read from
 the game when a save loads.
 
 - **Controls** - next and previous song, next and previous station, show what is playing, never
@@ -87,11 +87,37 @@ the game when a save loads.
 - **My station** - the station the radio comes on to, at any of three moments.
 - **Stations** - every station in dial order, the game's own included: a step-over switch, and
   On / Off / Off while streaming per song.
-- **Mute** - station idents, DJ announcements, and **Mute the radio when...**: twelve switches,
-  all on by default, one per situation in which the game silences the Radioport (a scene, a phone
-  call, a club, fast travel and so on). They apply to every station on the Radioport, the game's
-  own included. Combat and police heat have no switch: they are Wwise mix states on the radio
-  buses and reach every station on the game's radio route alike.
+- **Sound** - one page: a line saying where the equaliser opens, **Volume boost** (0 to 12 dB past
+  the game's maximum, for the car radio and the Radioport), and under a **Processing** heading three
+  switches: Even out loudness, Soften peaks and Limiter. None on is off, all three is the processing
+  a radio station puts on its sound before it goes out, and any mix is custom. Processing applies to
+  the radio as a whole, not per station.
+- **Mute** - station idents, DJ announcements, and **Mute the radio when...**: eleven switches,
+  all on by default, which is what the game does. Six are situations that silence the Radioport (a
+  call, a scene, a driving scene, a club, a weapons-free area, a quest blocking the radio); four
+  lower or silence the car radio and the Radioport (combat music, police chase music, someone
+  speaking, an open menu); one turns the Radioport down in Megabuilding H10. They apply to every
+  station, the game's own included. The Escape menu still pauses the radio.
+
+### The equaliser panel
+
+The equaliser is set only in its own panel, which opens beside the Radioport's station list and
+closes with it. It is built from the game's own widgets. Top to bottom: the station playing ("Radio
+off" with none), **Per-station EQ**, the preset, nine band faders from 63 Hz to 16 kHz with up and
+down arrows, the three processing switches, Volume boost, and the Reset key at the foot (the
+popup's Z, Y on a controller). Picking a station redraws it at once. The equaliser plays on the car
+radio, the Radioport and the metro; a preset changes the tone, not the volume, and presets are JSON
+files in `red4ext/plugins/RadioXL/presets`.
+
+**Per-station EQ** is one switch for every station, off by default. On, every station plays its own
+equaliser: the one set for it, else RadioXL's suggested preset, else Flat (Growl FM and custom
+stations have no suggestion), and Reset clears the station's own. Off, every station plays the
+global equaliser, each station's own is kept, and Reset puts the global one back on Flat.
+
+The panel works with the mouse, the keys and a controller. R (X on a controller) moves between the
+station list and the panel; the arrow keys or d-pad move the game's own cursor between its controls,
+and Enter or A presses one. The station list takes the mouse too: the wheel scrolls it, pointing at a
+station selects it, a click plays it, and the volume arrows take a click.
 
 ## How it works
 
@@ -233,7 +259,11 @@ r6/scripts/RadioXL/
   Warnings.reds              the on-screen warning for a stream station that cannot play
   Controls.reds, Input.reds, Deck.reds, Catalog.reds, MyStation.reds, Notifications.reds, State.reds
                              the keys, the song deck, the station list, My station, the popups
-  Settings.reds              the settings panel, one provider, four tabs
+  Settings.reds              the settings panel, one provider, five tabs
+  Eq.reds                    the equaliser: presets, Per-station EQ and the suggested presets
+  EqPanel.reds               the equaliser panel beside the Radioport's station list
+  EqPanelAnim.reds           its open and close, and its rows' hover
+  StationListMouse.reds      the station list with the mouse
   Localization.reds, translations/
                              the station names and titles, and the panel's strings
   API.reds                   the script API (RadioXLAPI); see docs/script-api.md
@@ -245,11 +275,13 @@ red4ext/plugins/RadioXL/
   radioxl_routing.bnk        the framework's custom-sound type
   stations/README.md         the manifest reference, ships with the framework
 archive/pc/mod/RadioXL.archive
-                             the RadioXL glyph, the fallback station icon
+                             the RadioXL glyph, the fallback station icon, and the equaliser
+                             panel (radioxl\gui\eq_panel.inkwidget)
 docs/                        what was measured about the engine
 example-station/, tools/make-example-station.py
                              the Nexus optional download, a working station with generated audio
-tools/                       the routing bank builder, the loudness meter, the RadioExt converter
+tools/                       the routing bank builder, the loudness meter, the RadioExt converter,
+                             the equaliser panel's widget builder (eq-panel-ink.py)
 site/                        the station builder page
 ```
 

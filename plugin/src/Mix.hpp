@@ -5,14 +5,12 @@
 // File Version: 0.8.0
 // ======================================================================================
 //
-// Six switches, each on by default (the game's own behaviour):
+// Five switches, each on by default (the game's own behaviour):
 //   combat music  - Music_Systemic_Combat ducks the player radio bus by -96 dB while it plays
 //   police music  - Music_Systemic_Police, the same duck
 //   voices        - five side-chain curves lower the player radio while anyone speaks
 //   megabuilding  - H10's building music turns the Radioport down through rms_loudness_pocket_radio_mb
 //   menus         - a menu or the pause screen pauses the player radio, and its states lower and muffle it
-//   radioport     - on foot the Radioport plays through its mixer's radio tier 1: lower, low-passed and
-//                   high-passed, where a car's radio plays clean at tier 2
 // And a boost: a bus volume above 0 dB on the player radio's top bus, which neither game slider can reach.
 // A duck is switched by writing its entry's volume on the ducking bus; a curve by loading it again
 // through the bank's own curve loader, flat or as shipped. Every Wwise address is reached from a
@@ -46,7 +44,6 @@ enum Switch : int
     kVoices,
     kMegabuilding,
     kMenus,
-    kRadioport,
     kSwitchCount
 };
 
@@ -158,14 +155,7 @@ constexpr Curve kCurves[] = {
     {kVoices, kBuses, 4067771226, 3564350091, 0, 213041943},   // rms_loudness_VO_Dialog_Important, volume
     {kVoices, kBuses, 4067771226, 3564350091, 2, 532204427},   // rms_loudness_VO_Dialog_Important, low-pass
     {kMegabuilding, kNodes, 228915200, 2492096760, 0, 68480862},  // radio_pocket, rms_loudness_pocket_radio_mb
-    // veh_radio_tier on the Radioport's mixer 801426841. The player's game object holds tier 1 on foot and 2
-    // in a vehicle; tier 2 silences the Radioport so it never plays over the car.
-    {kRadioport, kNodes, 801426841, 4124810785, 0, 117034723},  // volume: 0 dB at 0, -6 at 1.5, silent at 2
-    {kRadioport, kNodes, 801426841, 4124810785, 2, 875835072},  // low-pass: 25 from 0.45 to 1, 0 at 2
-    {kRadioport, kNodes, 801426841, 4124810785, 3, 372331119},  // high-pass: 25 at 0.45, 15 at 1, 0 at 2
 };
-// A switched-off tier curve is flattened only below this tier, so the vehicle tier keeps the Radioport silent.
-constexpr float kVehicleTier = 2.0f;
 
 // The boost is a bus volume on the two buses the player radio plays through: Music_Diagetic_Radios_Vehicle_Player_DVR
 // (the car, the Radioport) and Music_Diagetic_Radios_Metro_Player_DVR (the metro). It sits after the game's Car Radio
@@ -230,7 +220,7 @@ inline uintptr_t* g_indexVar = nullptr;
 inline LPCRITICAL_SECTION g_lock = nullptr;
 inline std::mutex g_captureMutex;
 inline Captured g_captured[kCurveCount];
-inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true, true, true};
+inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true, true};
 inline std::atomic<bool> g_pending{false};
 inline bool g_ready = false;
 inline SetFn g_set = nullptr;
@@ -261,7 +251,6 @@ inline const char* Name(Switch aSwitch)
     case kVoices: return "voices";
     case kMegabuilding: return "megabuilding music";
     case kMenus: return "menus";
-    case kRadioport: return "radioport";
     default: return "?";
     }
 }
@@ -318,15 +307,12 @@ inline int Match(uint32_t, const broadcast::CurveDesc* aDesc)
     return -1;
 }
 
-// A switched-off curve's points: every value 0, except a tier curve keeps its vehicle-tier end.
-inline void Flatten(const Curve& aCurve, std::vector<broadcast::GraphPoint>& aPoints)
+// A switched-off curve's points: every value 0.
+inline void Flatten(std::vector<broadcast::GraphPoint>& aPoints)
 {
     for (auto& p : aPoints)
     {
-        if (aCurve.owner != kRadioport || p.from < kVehicleTier)
-        {
-            p.to = 0.0f;
-        }
+        p.to = 0.0f;
     }
 }
 
@@ -338,7 +324,7 @@ inline const broadcast::GraphPoint* Points(int aIndex, const broadcast::CurveDes
         return aPoints;
     }
     aFlat.assign(aPoints, aPoints + aDesc->count);
-    Flatten(kCurves[aIndex], aFlat);
+    Flatten(aFlat);
     return aFlat.data();
 }
 
@@ -515,7 +501,7 @@ inline bool ApplyCurve(size_t aIndex, bool aMute)
     std::vector<broadcast::GraphPoint> points = cap.shipped;
     if (!aMute)
     {
-        Flatten(c, points);
+        Flatten(points);
     }
     const int result = g_set(reinterpret_cast<void*>(table), points.data(), static_cast<uint32_t>(points.size()), cap.scaling);
     if (result != 1 && result != 3)
@@ -684,14 +670,7 @@ inline void Set(int aSwitch, bool aMute)
     }
     if (g_mutes[aSwitch].exchange(aMute) != aMute)
     {
-        if (aSwitch == kRadioport)
-        {
-            Log(aMute ? "radioport: plays as the game made it" : "radioport: plays at the car's level, unfiltered");
-        }
-        else
-        {
-            Log(std::string(Name(static_cast<Switch>(aSwitch))) + (aMute ? " lowers the radio" : " no longer lowers the radio"));
-        }
+        Log(std::string(Name(static_cast<Switch>(aSwitch))) + (aMute ? " lowers the radio" : " no longer lowers the radio"));
     }
     g_pending = true;
 }

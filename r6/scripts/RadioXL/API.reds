@@ -268,7 +268,7 @@ public abstract class RadioXLAPI {
   }
 
   // --- sound -------------------------------------------------------------------------------------
-  // The equaliser, processing, boost and Radioport switch on the Sound tab, and each station's own
+  // The equaliser, processing and boost on the Sound tab, and each station's own
   // equaliser preset. Presets are named; "Custom" is the global equaliser's nine custom bands.
 
   // Every loaded preset, Flat first.
@@ -282,8 +282,14 @@ public abstract class RadioXLAPI {
     return IsDefined(state) ? state.eqPreset : "Flat";
   }
 
-  // The station's own choice: a preset's name, "Custom" for its own bands, or "" when it follows the
-  // global equaliser.
+  // Whether every station plays its own equaliser (on) or every station the global one (off).
+  public final static func PerStationEq() -> Bool {
+    let state = RadioXLState.Get();
+    return IsDefined(state) && state.perStationEq;
+  }
+
+  // The choice saved for the station: a preset's name, "Custom" for its own bands, or "" for none, in
+  // which case it plays RadioXL's suggestion, else Flat, while PerStationEq() is on.
   public final static func StationEqPreset(station: CName) -> String {
     let state = RadioXLState.Get();
     return IsDefined(state) ? state.StationEq(station) : "";
@@ -334,11 +340,6 @@ public abstract class RadioXLAPI {
   public final static func Boost() -> Int32 {
     let c = RadioXLConfig.Get();
     return IsDefined(c) ? c.boostDb : 0;
-  }
-
-  public final static func RadioportLikeCar() -> Bool {
-    let c = RadioXLConfig.Get();
-    return IsDefined(c) && c.radioportLikeCar;
   }
 
   // --- mute switches and traffic -----------------------------------------------------------------
@@ -552,8 +553,16 @@ public abstract class RadioXLAPI {
     return true;
   }
 
-  // "" sets the station back to the global equaliser and "Custom" to its own bands, which start from
-  // what it plays now the first time. Refused for an unknown station or preset.
+  public final static func SetPerStationEq(on: Bool) -> Bool {
+    let state = RadioXLState.Get();
+    if !IsDefined(state) || Equals(state.perStationEq, on) { return false; }
+    state.SetPerStationEq(on);
+    RadioXLEqualiser.Apply();
+    return true;
+  }
+
+  // "" clears the station's saved choice and "Custom" sets its own bands, which start from what it plays
+  // now the first time. Heard while PerStationEq() is on. Refused for an unknown station or preset.
   public final static func SetStationEqPreset(station: CName, name: String) -> Bool {
     let state = RadioXLState.Get();
     if !IsDefined(state) || RadioXLAPI.EnumOf(station) < 0 { return false; }
@@ -638,16 +647,6 @@ public abstract class RadioXLAPI {
     if !IsDefined(c) || c.boostDb == value { return false; }
     c.boostDb = value;
     c.ApplyMix();
-    RadioXLConfig.Persist();
-    return true;
-  }
-
-  public final static func SetRadioportLikeCar(on: Bool) -> Bool {
-    let c = RadioXLConfig.Get();
-    if !IsDefined(c) || Equals(c.radioportLikeCar, on) { return false; }
-    c.radioportLikeCar = on;
-    c.ApplyMix();
-    RadioXLConfig.RestartRadioport();
     RadioXLConfig.Persist();
     return true;
   }

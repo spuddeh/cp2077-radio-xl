@@ -3,8 +3,10 @@
 // Author: Spuddeh
 // Description: The equaliser and processing the player radio plays through, chosen per station.
 //
-//              A station plays its own choice when it has one (a preset, or its own nine custom
-//              bands), otherwise the global equaliser: a preset, or the global nine custom bands. Presets are files the plugin reads at load
+//              With per-station on, every station plays its own choice: the one saved for it (a
+//              preset, or its own nine custom bands), else RadioXL's suggestion, else Flat. With it
+//              off, every station plays the global equaliser: a preset, or the global nine custom
+//              bands. Presets are files the plugin reads at load
 //              (red4ext/plugins/RadioXL/presets); a preset named here that no longer exists plays
 //              Flat. Processing is Off, Broadcast (all three stages) or Custom (each stage's own
 //              switch). Applied when a setting changes and whenever the radio the player hears
@@ -82,11 +84,22 @@ public abstract class RadioXLEqualiser {
     return names;
   }
 
+  // The station's own choice as heard: "" while the global equaliser plays (per-station off, or no
+  // station), else the choice saved for it, else RadioXL's suggestion, else Flat.
+  public final static func OwnChoice(station: CName) -> String {
+    let state = RadioXLState.Get();
+    if !IsDefined(state) || !state.perStationEq || !IsNameValid(station) { return ""; }
+    let saved: String = state.StationEq(station);
+    if StrLen(saved) > 0 { return saved; }
+    let suggested: String = RadioXLAPI.SuggestedEqPreset(station);
+    return StrLen(suggested) > 0 ? suggested : "Flat";
+  }
+
   // The preset the station plays: its own, else the global one; a name no longer loaded reads as Flat.
   public final static func Active(station: CName) -> String {
     let state = RadioXLState.Get();
     if !IsDefined(state) { return "Flat"; }
-    let name: String = state.StationEq(station);
+    let name: String = RadioXLEqualiser.OwnChoice(station);
     if StrLen(name) == 0 { name = state.eqPreset; }
     if Equals(name, RadioXL_EqCustom()) { return name; }
     let index: Int32 = RadioXLEqualiser.PresetIndex(name);
@@ -98,7 +111,7 @@ public abstract class RadioXLEqualiser {
   public final static func Bands(station: CName) -> array<Int32> {
     let out: array<Int32>;
     let state = RadioXLState.Get();
-    let own: String = IsDefined(state) ? state.StationEq(station) : "";
+    let own: String = RadioXLEqualiser.OwnChoice(station);
     let name: String = StrLen(own) > 0 ? own : (IsDefined(state) ? state.eqPreset : "Flat");
     let index: Int32 = Equals(name, RadioXL_EqCustom()) ? -1 : RadioXLEqualiser.PresetIndex(name);
     if !Equals(name, RadioXL_EqCustom()) && index < 0 { index = RadioXLEqualiser.PresetIndex("Flat"); }
@@ -120,7 +133,7 @@ public abstract class RadioXLEqualiser {
     let state = RadioXLState.Get();
     if !IsDefined(state) { return; }
     let station: CName = RadioXLAPI.CurrentStation();
-    let own: String = state.StationEq(station);
+    let own: String = RadioXLEqualiser.OwnChoice(station);
     let name: String = own;
     if StrLen(name) == 0 { name = state.eqPreset; }
     RadioXLEvents.EqChanged(station, RadioXLEqualiser.Active(station));
@@ -154,5 +167,35 @@ public abstract class RadioXLEqualiser {
     RadioXL_SetProcessing(0, broadcast || (custom && c.processAgc));
     RadioXL_SetProcessing(1, broadcast || (custom && c.processPeak));
     RadioXL_SetProcessing(2, broadcast || (custom && c.processLimiter));
+  }
+
+  // A stage as heard: every stage under Broadcast, none under Off, its own switch under Custom.
+  public final static func StageOn(stage: Int32) -> Bool {
+    let c = RadioXLConfig.Get();
+    if !IsDefined(c) { return false; }
+    if c.processingMode == 1 { return true; }
+    if c.processingMode != 2 { return false; }
+    switch stage {
+      case 0: return c.processAgc;
+      case 1: return c.processPeak;
+      case 2: return c.processLimiter;
+    }
+    return false;
+  }
+
+  // The three switches are the processing setting: none on is Off, all three is Broadcast, any other
+  // mix is Custom. The result depends only on which switches end up on, so RCF can restore them in
+  // any order.
+  public final static func SetStageOn(stage: Int32, on: Bool) -> Void {
+    let c = RadioXLConfig.Get();
+    if !IsDefined(c) || stage < 0 || stage > 2 { return; }
+    let heard: array<Bool> = [RadioXLEqualiser.StageOn(0), RadioXLEqualiser.StageOn(1), RadioXLEqualiser.StageOn(2)];
+    heard[stage] = on;
+    c.processAgc = heard[0];
+    c.processPeak = heard[1];
+    c.processLimiter = heard[2];
+    let count: Int32 = (heard[0] ? 1 : 0) + (heard[1] ? 1 : 0) + (heard[2] ? 1 : 0);
+    c.processingMode = count == 0 ? 0 : (count == 3 ? 1 : 2);
+    RadioXLEqualiser.ApplyProcessing();
   }
 }

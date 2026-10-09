@@ -1,13 +1,14 @@
-### [Unreleased - v0.8.0]
+### v0.8.0
 
-- New: an equaliser on the Sound tab, with nine bands from 63 Hz to 16 kHz. Pick a preset or set the bands yourself. It plays on the car radio, the Radioport and the metro. Flat by default, which is the game's own sound.
+- New: an equalizer, with nine bands from 63 Hz to 16 kHz. It opens in its own panel beside the Radioport's station list, which also shows the station playing, the processing switches and the volume boost. Pick a preset or set the bands yourself. It plays on the car radio, the Radioport and the metro. Flat by default, which is the game's own sound. Reset is the key the panel shows at its foot: Z by default, Y on a controller.
+- New: the equalizer panel works with the keyboard and a controller. R (X on a controller) moves between the station list and the panel; the arrow keys or d-pad move between its controls, and Enter or A presses one.
+- New: the Radioport's station list works with the mouse: the wheel scrolls it, pointing at a station selects it, clicking plays it, and the volume arrows take a click.
 - New: 16 presets: Flat, Bass boost, Treble boost, Vocal, Loudness, and one for each kind of music the game's stations play. Presets are files in red4ext\plugins\RadioXL\presets, so you can make your own and share them. Switching presets changes the tone, not the volume.
-- New: each station can have its own preset, on the Stations tab. RadioXL marks a suggested preset for each of the game's stations; nothing is set for you.
-- New: processing on the Sound tab, like a radio station's own: even out loudness, soften peaks, and a limiter. Broadcast turns all three on, Custom lets you pick. Off by default.
-- New: for mod authors, the script API is now version 2: every Sound tab setting, each station's equaliser, the mute switches and the traffic settings can be read and changed, and a new event says when the equaliser changes.
+- New: Per-station EQ, a switch in the panel. On, every station plays its own equalizer: the one you set for it, else RadioXL's suggested preset for that station, else Flat. Growl FM and custom stations have no suggestion. Off, every station plays the same equalizer, and what you set for each station is kept. Off by default.
+- New: processing, like a radio station's own: Even out loudness, Soften peaks and a Limiter, each with its own switch, on the Sound tab and in the panel. All three on together is the processing a radio station puts on its sound before it goes out. It applies to the whole radio, not per station. Off by default.
+- New: for mod authors, the script API is now version 2: the equalizer, Per-station EQ, each station's equalizer, processing, the volume boost, the mute switches and the traffic settings can be read and changed, and a new event says when the equalizer changes.
 - New: a volume boost on the Sound tab, up to 12 dB louder than the game allows, for the car radio and the Radioport. Off by default.
 - Fix: with the Car Radio volume at 0, a parked car's radio could still be heard through the car's reverb. It is now silent.
-- New: "Sound like a car radio", on a new Sound tab. On foot the Radioport plays quieter than a car's radio, with its lows and highs cut like a small speaker; with this on it plays at a car radio's level with nothing cut. In a vehicle the car's radio plays as before. Off by default.
 - Fix: a car whose radio comes on with no station chosen can now start on any station on its list. Only the first 14 were ever picked, so with many stations some custom ones never came up.
 - Fix: changing the traffic setting no longer undoes another mod's changes to which stations traffic cars play.
 - New: the "Mute the radio when..." switches are now situations: a call, a scene, a driving scene, a club, a weapons-free area such as your apartment, and a quest blocking the radio. Turning one off keeps the Radioport playing through that situation. Your previous switch settings are carried over to the matching situation.
