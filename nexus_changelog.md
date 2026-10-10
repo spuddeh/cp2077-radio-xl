@@ -1,3 +1,8 @@
+### v0.8.1
+
+- Requires AudioXL 0.6.0 or later.
+- Fix: RadioXL no longer edits the game's sound event list itself, or edits game files at the moment every other mod does. AudioXL 0.6.0 names both as a cause of crashes at launch when several sound mods are installed. Station songs are now added through AudioXL.
+
 ### v0.8.0
 
 - New: an equalizer, with nine bands from 63 Hz to 16 kHz. It opens in its own panel beside the Radioport's station list, which also shows the station playing, the processing switches and the volume boost. Pick a preset or set the bands yourself. It plays on the car radio, the Radioport and the metro. Flat by default, which is the game's own sound. Reset is the key the panel shows at its foot: Z by default, Y on a controller.

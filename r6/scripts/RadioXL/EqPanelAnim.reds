@@ -9,7 +9,7 @@
 //              picture area, so its content takes that movement as a slide of its own. A row's hover
 //              is what the settings menu's row controller does: the label's Hover state and the row's
 //              highlight.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // ======================================================================================
 
 module RadioXL

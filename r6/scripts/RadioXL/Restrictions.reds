@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Keeps the Radioport playing through a situation the player chose not to mute in.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // ======================================================================================
 //
 // The game silences the pocket radio through `PocketRadio.HandleRestriction`: twelve restrictions,

@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: The script API's events: one Codeware callback event per kind, and one method per
 //              event on RadioXLEvents for CET mods to Observe.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // Credits: psiberx (Codeware)
 // ======================================================================================
 //

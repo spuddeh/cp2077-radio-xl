@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The AudioXL bridge - the one place this framework talks about sound.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // Credits: AudioXL by DigitalVixen.
 // ======================================================================================
 //
@@ -41,11 +41,6 @@ public class RadioXLAudio {
   // 1 is AudioXL's success and 69 is a bank already loaded; both mean the type resolves.
   public final static func LoadBankResult(path: String) -> Int32 {
     return AudioXLNative.LoadBank(path);
-  }
-
-  // True when a token for the resource already exists, so taking another starts no new load.
-  public final static func IsResourceRequested(path: ResRef) -> Bool {
-    return AudioXLNative.IsResourceRequested(path);
   }
 
   // The level trim on a row's samples. False when the row does not exist yet: AudioXL queues a
@@ -97,6 +92,17 @@ public class RadioXLAudio {
 
   public final static func WwiseId(event: CName) -> Uint32 {
     return AudioXLNative.WwiseId(event);
+  }
+
+  // A row in the engine's event table, added by AudioXL when the engine reads eventsmetadata.json.
+  // Only takes effect from OnLoad; false once the table has loaded, or on a game version AudioXL
+  // has no event table for.
+  public final static func RegisterEventRow(event: CName, duration: Float) -> Bool {
+    return AudioXLAPI.RegisterEventRow(event, false, duration, duration);
+  }
+
+  public final static func IsEventRegistered(event: CName) -> Bool {
+    return AudioXLAPI.IsEventRegistered(event);
   }
 
   public final static func Available() -> Bool {

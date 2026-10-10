@@ -20,7 +20,7 @@
 //              bands, each station's own preset (absent = the global one) and each station's own custom
 //              bands are kept here. A station's bands outlive a change to a preset, so switching back to
 //              Custom finds them as they were.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // Credits: DV (RedFunctions)
 // ======================================================================================
 

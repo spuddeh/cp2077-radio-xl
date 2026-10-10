@@ -17,7 +17,7 @@ RadioXL is a framework. Install it, then install stations built on it, or build 
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/1511]redscript[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/4197]TweakXL[/url][/*]
-[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.4.3 or later[/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.6.0 or later[/*]
 [*]Game version 2.31.[/*]
 [/list]
 Optional:

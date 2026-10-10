@@ -9,7 +9,7 @@
 //              wires its controls. It is spawned inside the popup's root, so it opens and closes
 //              with it. Every control writes through RadioXLAPI, so a change is heard at once, and
 //              the panel redraws on RadioXL/EqChanged and on a station change.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // Credits: psiberx (Codeware)
 // ======================================================================================
 

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API: what other mods read from RadioXL, ask it to do, and hear from it.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // ======================================================================================
 //
 // **This class is the promise.** Every other class, function and native in RadioXL is public only

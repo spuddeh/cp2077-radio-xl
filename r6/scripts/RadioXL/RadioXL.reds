@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Builds each declared station out of the engine's own radio systems.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // Credits: RED4ext by WopsS. AudioXL by DigitalVixen.
 // ======================================================================================
 
@@ -116,18 +116,21 @@ public native func RadioXL_StationPosition(station: CName) -> Float;
 //
 //   identity      its CName in the engine roster              the plugin, at load
 //   length        each track's duration, from its file        the plugin, at load
-//   schedule      an event row per track, with that length    RegisterEvents, as the table loads
+//   schedule      an event row per track, with that length    RegisterEventRows, from OnLoad
 //   membership    its name in radioStations                   Register, as the metadata loads
 //   content       an audioRadioStationMetadata with tracks    Register, as the metadata loads
 //   titles        an audioRadioTrack row per track            Register, as the metadata loads
 //   text          onscreens entries for the name and titles   RegisterText, as the file loads
 //   audio         AudioXL registers each track's file         RegisterAudio, whenever AudioXL can
 //
-// **The first seven happen while the resource they touch is LOADING, and nothing may delay them.**
-// The engine builds its station set once, from those resources as they load. A station whose
+// **The first seven are in place before the engine reads the resource they belong to, and nothing
+// may delay them.** The engine builds its station set once, as those resources load. A station whose
 // membership or event rows arrive afterwards is never constructed: its data is present, every log
-// line reads as success, and every receiver is silent. Only the audio registration may wait,
-// because AudioXL takes it whenever it is ready and the engine resolves the sound at play time.
+// line reads as success, and every receiver is silent. The event rows go to AudioXL from OnLoad,
+// which adds them to the engine's own table when it reads eventsmetadata.json; the rest are written
+// from Resource/Load. Only the audio registration may wait, because AudioXL takes it whenever it is
+// ready and the engine resolves the sound at play time.
+// **Never write from a ResourceToken callback, or push into eventsmetadata.json** (MAINTAINING.md 5).
 //
 // **Every label the game shows is a localization KEY, never the text.** The name table the plugin
 // patches holds one, and so does every audioRadioTrack. A station's key is minted here and the text
@@ -158,10 +161,9 @@ public class RadioXLGainPoll extends DelayCallback {
 
 public class RadioXLService extends ScriptableService {
 
-  private let m_tokens: array<ref<ResourceToken>>;
+  private let m_eventsToken: ref<ResourceToken>;
   private let m_audioDone: Bool;
   private let m_cookedDone: Bool;
-  private let m_eventsDone: Bool;
   private let m_textDone: Bool;
   private let m_polls: Int32;
   private let m_gainPending: Bool;
@@ -187,8 +189,9 @@ public class RadioXLService extends ScriptableService {
   // The length the audio event table schedules a track against, vanilla tracks included; 0 when
   // the table was not seen or has no row for it. A vanilla row is a little under the song.
   public func EventDuration(event: CName) -> Float {
-    if !IsDefined(this.m_events) { return 0.0; }
-    for row in this.m_events.events {
+    let events = this.Events();
+    if !IsDefined(events) { return 0.0; }
+    for row in events.events {
       if Equals(row.redId, event) { return row.maxDuration; }
     }
     return 0.0;
@@ -208,35 +211,21 @@ public class RadioXLService extends ScriptableService {
     // A session becoming ready is both a retry opportunity and the point a timer starts working.
     cb.RegisterCallback(n"Session/Ready", this, n"OnSessionReady");
 
-    // Resource/Load only fires while a resource is loading, so it never arrives for one another
-    // mod has already pulled in. Ask the depot as well, and make the work safe to run twice.
-    // The audio metadata is asked for only when a token for it already exists. A token taken from
-    // OnLoad otherwise starts the load inside Codeware's OnLoad loop, and every service after this
-    // one misses the event, other mods' metadata patchers among them.
-    let depot = GameInstance.GetResourceDepot();
-    if RadioXLAudio.IsResourceRequested(r"base\\sound\\metadata\\cooked_metadata.audio_metadata") {
-      this.Watch(depot, r"base\\sound\\metadata\\cooked_metadata.audio_metadata", n"OnCookedReady");
-    }
-    if RadioXLAudio.IsResourceRequested(r"base\\sound\\event\\eventsmetadata.json") {
-      this.Watch(depot, r"base\\sound\\event\\eventsmetadata.json", n"OnEventsReady");
-    }
-    this.Watch(depot, r"base\\localization\\en-us\\onscreens\\onscreens.json", n"OnOnScreensReady");
-
+    // No resource is loaded from here. A load started in OnLoad finishes inside Codeware's OnLoad
+    // loop, and every service after this one misses its Resource/Load, other mods' patchers among them.
+    this.RegisterEventRows();
     this.Poll();
   }
 
   private cb func OnSessionReady(event: ref<GameSessionEvent>) {
+    // Read only, for EventDuration, when Resource/Load came before this service was listening.
+    if !IsDefined(this.m_events) && !IsDefined(this.m_eventsToken) {
+      this.m_eventsToken = GameInstance.GetResourceDepot()
+        .LoadResource(r"base\\sound\\event\\eventsmetadata.json");
+    }
     this.Poll();
     if this.m_gainPending {
       this.ApplyGains();
-    }
-  }
-
-  private func Watch(depot: ref<ResourceDepot>, path: ResRef, callback: CName) -> Void {
-    let token = depot.LoadResource(path);
-    if IsDefined(token) {
-      ArrayPush(this.m_tokens, token);
-      token.RegisterCallback(this, callback);
     }
   }
 
@@ -397,39 +386,31 @@ public class RadioXLService extends ScriptableService {
   // be in the table while the table loads**: the engine reads it once, at boot. A row with a zero
   // duration makes the station pick a track at random instead of running on the clock.
 
+  // Read only. The table is kept for EventDuration; nothing is added to it here.
   private cb func OnEventsMetadata(event: ref<ResourceEvent>) {
-    this.RegisterEvents(event.GetResource() as JsonResource);
-  }
-
-  private cb func OnEventsReady(token: ref<ResourceToken>) {
-    this.RegisterEvents(token.GetResource() as JsonResource);
-  }
-
-  private func RegisterEvents(resource: ref<JsonResource>) -> Void {
-    if !IsDefined(resource) || this.m_eventsDone { return; }
+    let resource = event.GetResource() as JsonResource;
+    if !IsDefined(resource) { return; }
     let events = resource.root as audioAudioEventArray;
-    if !IsDefined(events) { return; }
-    this.m_eventsDone = true;
-    this.m_events = events;
+    if IsDefined(events) { this.m_events = events; }
+  }
 
-    // **The custom-sound TYPE is posted by name, so it needs a row here exactly as a track does.**
-    // AudioXL stores a row's type as the CName hash of the type string, and the engine resolves
-    // that name through this table to reach the Wwise event. A type absent from it plays nothing
-    // and reports nothing - the registration succeeds, the bank loads, and every station is silent.
-    // AudioXL registers its own six `axl_*` types here for the same reason.
-    let typeRow: audioAudioEventMetadataArrayElement;
-    typeRow.redId = n"radioxl_radio";
-    typeRow.wwiseId = RadioXLAudio.WwiseId(n"radioxl_radio");
-    typeRow.isLooping = false;
-    typeRow.maxAttenuation = 0.0;
-    typeRow.minDuration = 0.0;
-    typeRow.maxDuration = 0.0;
-    if typeRow.wwiseId == 0u {
+  private func Events() -> ref<audioAudioEventArray> {
+    if IsDefined(this.m_events) { return this.m_events; }
+    if !IsDefined(this.m_eventsToken) || !this.m_eventsToken.IsLoaded() { return null; }
+    let resource = this.m_eventsToken.GetResource() as JsonResource;
+    return IsDefined(resource) ? resource.root as audioAudioEventArray : null;
+  }
+
+  // **The custom-sound TYPE is posted by name, so it needs a row exactly as a track does.** AudioXL
+  // stores a row's type as the CName hash of the type string, and the engine resolves that name
+  // through the event table to reach the Wwise event. A type absent from it plays nothing and
+  // reports nothing - the registration succeeds, the bank loads, and every station is silent.
+  private func RegisterEventRows() -> Void {
+    if RadioXLAudio.WwiseId(n"radioxl_radio") == 0u {
       RadioXLLog("the radioxl_radio type has no Wwise id - the routing bank cannot be posted, so every station falls to the game's type");
     } else {
-      if !this.HasEvent(events, n"radioxl_radio") {
-        ArrayPush(events.events, typeRow);
-        RadioXLLog(s"registered the radioxl_radio type in the audio event table, wwiseId \(typeRow.wwiseId)");
+      if this.RegisterEventRow(n"radioxl_radio", 0.0) {
+        RadioXLLog("registered the radioxl_radio type with AudioXL's event table");
       }
     }
 
@@ -446,15 +427,7 @@ public class RadioXLService extends ScriptableService {
         if duration <= 0.0 {
           RadioXLLog(s"\(name) has no length - not added to the event table");
         } else {
-          if !this.HasEvent(events, name) {
-            let row: audioAudioEventMetadataArrayElement;
-            row.redId = name;
-            row.wwiseId = RadioXLAudio.WwiseId(name);
-            row.isLooping = false;
-            row.maxAttenuation = 0.0;
-            row.minDuration = duration - RadioXLScheduleMargin();
-            row.maxDuration = duration - RadioXLScheduleMargin();
-            ArrayPush(events.events, row);
+          if this.RegisterEventRow(name, duration - RadioXLScheduleMargin()) {
             added += 1;
             total += duration;
           }
@@ -463,26 +436,22 @@ public class RadioXLService extends ScriptableService {
       }
       station += 1;
     }
-    RadioXLLog(s"registered \(added) event(s) in the audio event table as it loaded, \(Cast<Int32>(total)) s of audio");
+    RadioXLLog(s"registered \(added) event row(s) with AudioXL's event table, \(Cast<Int32>(total)) s of audio");
   }
 
-  private func HasEvent(events: ref<audioAudioEventArray>, name: CName) -> Bool {
-    let i: Int32 = 0;
-    while i < ArraySize(events.events) {
-      if Equals(events.events[i].redId, name) { return true; }
-      i += 1;
+  private func RegisterEventRow(name: CName, duration: Float) -> Bool {
+    if RadioXLAudio.IsEventRegistered(name) { return false; }
+    if !RadioXLAudio.RegisterEventRow(name, duration) {
+      RadioXLLog(s"AudioXL did not take the event row \(name) - see its log for why");
+      return false;
     }
-    return false;
+    return true;
   }
 
   // --- membership, content and titles ----------------------------------------------------------------
 
   private cb func OnCookedMetadata(event: ref<ResourceEvent>) {
     this.Register(event.GetResource() as audioCookedMetadataResource);
-  }
-
-  private cb func OnCookedReady(token: ref<ResourceToken>) {
-    this.Register(token.GetResource() as audioCookedMetadataResource);
   }
 
   // **Membership and the station entry are written while this resource LOADS, and never later.** The
@@ -625,15 +594,11 @@ public class RadioXLService extends ScriptableService {
 
   // --- the text behind every key -----------------------------------------------------------------------
   // onscreens.json is a JsonResource holding localizationPersistenceOnScreenEntries, so a station's
-  // name and its song titles are registered the same way its audio events are: by adding rows as the
-  // resource loads. No archive, and no ArchiveXL dependency.
+  // name and its song titles are registered by adding rows from Resource/Load, as the resource loads.
+  // No archive, and no ArchiveXL dependency.
 
   private cb func OnOnScreens(event: ref<ResourceEvent>) {
     this.RegisterText(event.GetResource() as JsonResource);
-  }
-
-  private cb func OnOnScreensReady(token: ref<ResourceToken>) {
-    this.RegisterText(token.GetResource() as JsonResource);
   }
 
   private func RegisterText(resource: ref<JsonResource>) -> Void {

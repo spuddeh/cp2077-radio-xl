@@ -6,7 +6,7 @@
 //              arrows take a click. Keys and the pad's d-pad move the selection as the game made
 //              them; the left stick moves the cursor. The pointer acts only after the mouse or the
 //              stick moves it, so a cursor resting on the popup takes nothing from the keys.
-// File Version: 0.8.0
+// File Version: 0.8.1
 // ======================================================================================
 
 module RadioXL

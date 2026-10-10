@@ -1,5 +1,25 @@
 # Changelog - RadioXL
 
+## [0.8.1] - 2026-10-11
+
+### Changed
+- AudioXL 0.6.0 is the floor (was 0.4.3): `AudioXLAPI.RegisterEventRow` and `IsEventRegistered` do not
+  exist before it, and `Audio.reds` imports AudioXL unguarded, so an older AudioXL fails compilation.
+
+### Fixed
+- Event rows no longer written into `eventsmetadata.json` (dev #2). The `radioxl_radio` type row and
+  every track row go to `AudioXLAPI.RegisterEventRow(name, false, d, d)` from `RadioXLService.OnLoad`
+  (`RegisterEventRows`), with `d` = the plugin's duration minus `RadioXLScheduleMargin()`; a row already
+  registered is skipped (`IsEventRegistered`), and a refusal is logged per track. AudioXL 0.6.0's docs
+  name an `ArrayPush` into that file, even from `Resource/Load`, as a launch crash.
+- No write from a `ResourceToken` callback anywhere: `OnEventsReady`, `OnCookedReady` and
+  `OnOnScreensReady` removed, with `Watch` and `m_tokens`. `onscreens.json` is no longer loaded from
+  `OnLoad` (it started a load inside Codeware's OnLoad loop, so every later service missed its
+  `Resource/Load`). Cooked metadata and onscreens are written from `Resource/Load` only.
+- `eventsmetadata.json` is read only: `OnEventsMetadata` keeps the table for `EventDuration`
+  (`RadioXLAPI.TrackLength` on vanilla tracks), and `OnSessionReady` takes a read-only token when that
+  event was missed. `RadioXLAudio.IsResourceRequested` removed, unused.
+
 ## [0.8.0] - 2026-10-09
 
 ### Added
@@ -58,6 +78,22 @@
   itself under a resting cursor, which turned one key step into two as the list scrolled (measured
   3 -> 5); a row the cursor leaves deselects itself (measured: none selected), so the last selected
   index is selected again a frame later (`DelayCallbackNextFrame`).
+- The panel's controls with the keys or the pad in charge (#70, `EqPanel.SetPointer`): a control whose
+  centre is not one button stops taking the cursor until the mouse or the stick moves. A selector's
+  two arrows are 200 wide each and split its box, so the cursor snapped to the box lit one arrow and A
+  pressed it (the preset stepped back); a slider's centre is its track, and a click there sets the
+  value (the boost jumped to +6). So the preset and boost arrows and both sliders' tracks go
+  non-interactive, the outline wraps the whole box, and proceed does the row's own action: a switch
+  flips, the preset steps on, a fader arrow moves its band, the boost has none (left and right set
+  it). The d-pad outline is drawn only around a widget that takes the cursor, so a control the cursor
+  rests on exactly keeps taking it (`RadioXLEqClick.keep`): a fader arrow, and a switch's toggle.
+- A switch takes the click on its toggle alone (#70): the copied settings switch is 380 wide and also
+  spans its On / Off text, and its `onState/body` and `offState/body` layers take the cursor and sit
+  over the toggle (a click on the toggle landed on `offState/body` and did nothing). The switch and
+  both bodies are non-interactive; the click is registered on `bk_border`, the 180 x 50 toggle, which
+  is also the d-pad outline's target.
+- "Equalizer", the panel title's spelling, in every player-facing string (`translations/English.reds`
+  values, the in-game docs page); the string keys keep their names.
 - Per-station EQ, one switch for every station (#70). `State.reds` saves `perStationEq` (default
   false), `eqPreset`, `eqBands`, `stationEq` and `stationEqBands` in state.json;
   `RadioXLEqualiser.Apply` runs on every station change. On, each station plays its saved choice,
