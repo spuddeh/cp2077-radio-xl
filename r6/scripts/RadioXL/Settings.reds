@@ -20,7 +20,7 @@
 //
 //              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
 //              plugin, because this mod matches the key itself on Codeware's Input/Key event.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // Credits: Redscript Configuration Framework by DigitalVixen.
 // ======================================================================================
 //
@@ -263,6 +263,7 @@ public func RadioXL_KeyPlayOnVehiclePowerOn() -> String { return "playOnVehicleP
 public func RadioXL_KeyPlayOnPocketPowerOn() -> String { return "playOnPocketPowerOn"; }
 public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio"; }
 public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
+public func RadioXL_KeyShowEq() -> String { return "showEq"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
 public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
 public func RadioXL_MaxBoost() -> Int32 { return 12; }
@@ -350,6 +351,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tab("RadioXL.tabSound");
     b.Section("RadioXL.secSound");
     b.Label("RadioXL.labEqualiser");
+    b.Toggle(RadioXL_KeyShowEq(), "RadioXL.optShowEq");
+    b.Tip("RadioXL.tipShowEq");
     b.Slider("boostDb", "RadioXL.optBoost", 0.0, Cast<Float>(RadioXL_MaxBoost()), 1.0, true);
     b.Tip("RadioXL.tipBoost");
     b.Group("RadioXL.secProcessing");
@@ -644,6 +647,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     if Equals(key, RadioXL_KeyIgnorePocketRadio()) { return s.ignorePocketRadio; }
     if Equals(key, RadioXL_KeyMuteIdents()) { return RadioXLState.Get().muteIdents; }
     if Equals(key, RadioXL_KeyMuteNews()) { return RadioXLState.Get().muteNews; }
+    if Equals(key, RadioXL_KeyShowEq()) { return RadioXLState.Get().showEq; }
     return false;
   }
 
@@ -700,10 +704,12 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     else if Equals(key, RadioXL_KeyPlayOnVehiclePowerOn()) { s.playOnVehiclePowerOn = value; }
     else if Equals(key, RadioXL_KeyPlayOnPocketPowerOn()) { s.playOnPocketPowerOn = value; }
     else if Equals(key, RadioXL_KeyIgnorePocketRadio()) { s.ignorePocketRadio = value; }
-    // The two mutes live in the mod's own file, read before RCF restores anything. RCF's restore
-    // of them is ignored so a stale copy in its JSON cannot overwrite the file.
+    // The two mutes and the equalizer's visibility live in the mod's own file, read before RCF restores
+    // anything; the station selection UI's key also writes the visibility. RCF's restore of them is
+    // ignored so a stale copy in its JSON cannot overwrite the file.
     else if Equals(key, RadioXL_KeyMuteIdents()) { if !this.m_restoring { RadioXLState.Get().SetMuteIdents(value); } }
     else if Equals(key, RadioXL_KeyMuteNews()) { if !this.m_restoring { RadioXLState.Get().SetMuteNews(value); } }
+    else if Equals(key, RadioXL_KeyShowEq()) { if !this.m_restoring { RadioXLState.Get().SetShowEq(value); } }
   }
 
   // Key rows travel on the Int channel as an EInputKey cast to Int32. 0 is IK_None: a key not

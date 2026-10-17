@@ -75,7 +75,7 @@ returned `CName` reads as text through `.value`.
 | `Tracks(station)` | `array<CName>`, the station's songs, idents left out. Includes songs a quest adds during play |
 | `Idents(station)` | `array<CName>`, the station's idents, jingles and ads |
 | `TrackTitle(track)` | `String` in the player's language; an untitled song answers its event name |
-| `TrackLength(track)` | `Float` seconds. A vanilla song's is its schedule slot, a little under the recording |
+| `TrackLength(track)` | `Float` seconds. A vanilla song's is its schedule slot, a little under the recording. `0` for a song another mod adds to a vanilla station through `AudioXLAPI.RegisterEventRow`: AudioXL offers no way to read that length back |
 | `TrackFile(track)` | `String`, a custom song's audio file, full path; `""` for vanilla songs and streams |
 | `TrackGain(track)` | `Float`, the level RadioXL plays a custom song at; `1` for vanilla |
 | `IsStreamingFriendly(track)` | `Bool`, the game's own Streamer Mode flag |

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Puts custom stations on the radio dial, in the UI and in the cycling order.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // Credits: RED4ext by WopsS.
 // ======================================================================================
 //

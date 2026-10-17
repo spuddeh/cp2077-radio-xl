@@ -428,9 +428,12 @@ export function App() {
               >
                 <TextInput value={s.cname} onChange={(v) => s.set({ cname: v, cnameEdited: true })} placeholder="radio_station_hangouts_fm" />
               </Row>
-              <Row label="News" bare note="Stanley's bulletins and greetings, and N54 News.">
-                <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
-              </Row>
+              {/* A stream is one track that never changes, and news only plays at a song change. */}
+              {!s.tracks.some((t) => t.url) && (
+                <Row label="News" bare note="Stanley's bulletins and greetings, and N54 News.">
+                  <Bool value={s.news} onChange={(v) => s.set({ news: v })} />
+                </Row>
+              )}
               <Row
                 label="Add songs I drop into this folder later"
                 bare

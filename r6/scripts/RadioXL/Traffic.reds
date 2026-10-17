@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: Puts custom stations among the random picks: traffic car radios and world radios
 //              set to start on a random station.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // ======================================================================================
 //
 // A traffic car picks its station from its own vehicle metadata's `matchingStartupRadioStations`

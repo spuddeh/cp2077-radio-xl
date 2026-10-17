@@ -20,7 +20,7 @@
 //              bands, each station's own preset (absent = the global one) and each station's own custom
 //              bands are kept here. A station's bands outlive a change to a preset, so switching back to
 //              Custom finds them as they were.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // Credits: DV (RedFunctions)
 // ======================================================================================
 
@@ -40,6 +40,8 @@ public class RadioXLState extends ScriptableService {
   public let eqBands: array<Int32>;
   // On, every station plays its own equaliser; off, every station plays the global one.
   public let perStationEq: Bool = false;
+  // The equalizer panel beside the station selection UI is shown.
+  public let showEq: Bool = true;
   private let m_stationEq: array<CName>;
   private let m_stationEqPreset: array<String>;
   // Nine values per station, in the order of m_stationBandKeys.
@@ -136,6 +138,11 @@ public class RadioXLState extends ScriptableService {
     this.Write();
   }
 
+  public func SetShowEq(on: Bool) -> Void {
+    this.showEq = on;
+    this.Write();
+  }
+
   public func SetMuteIdents(value: Bool) -> Void {
     let changed: Bool = NotEquals(value, this.muteIdents);
     this.muteIdents = value;
@@ -182,6 +189,7 @@ public class RadioXLState extends ScriptableService {
     if obj.Contains("muteNews") { this.muteNews = obj.Bool("muteNews"); }
     if obj.Contains("eqPreset") { this.eqPreset = obj.Text("eqPreset"); }
     if obj.Contains("perStationEq") { this.perStationEq = obj.Bool("perStationEq"); }
+    if obj.Contains("showEq") { this.showEq = obj.Bool("showEq"); }
     ArrayClear(this.eqBands);
     let b: Int32 = 0;
     while b < 9 {
@@ -226,6 +234,7 @@ public class RadioXLState extends ScriptableService {
     obj.PutBool("muteNews", this.muteNews);
     obj.PutText("eqPreset", this.eqPreset);
     obj.PutBool("perStationEq", this.perStationEq);
+    obj.PutBool("showEq", this.showEq);
     let b: Int32 = 0;
     while b < 9 {
       obj.PutInt(s"eqBand\(b)", this.EqBand(b));

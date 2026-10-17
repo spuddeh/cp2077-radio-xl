@@ -9,7 +9,7 @@
 //              wires its controls. It is spawned inside the popup's root, so it opens and closes
 //              with it. Every control writes through RadioXLAPI, so a change is heard at once, and
 //              the panel redraws on RadioXL/EqChanged and on a station change.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -94,6 +94,8 @@ public class RadioXLEqPanel extends IScriptable {
   private let m_bandFrames: array<wref<inkWidget>>;
   private let m_bandFrameOpacity: Float;
   private let m_focusHint: wref<inkText>;
+  // The show / hide hint at the foot of the popup's station list, outside the panel.
+  private let m_showHint: wref<inkText>;
   // The cursor is on the panel (else on the station list), on which row, and on which fader.
   private let m_focused: Bool;
   // The popup's pointer mode: a row under the cursor takes the focus only after the mouse or the stick
@@ -168,12 +170,52 @@ public class RadioXLEqPanel extends IScriptable {
     this.SetText(this.At(content + "inputHints/hintReset/text"), RadioXLText("RadioXL.eqReset"));
     this.Clickable(this.At(content + "inputHints/hintReset"), this.m_actReset);
 
+    // The key that shows and hides the panel is hinted beside the station list's own hints, so the hint
+    // stays on screen while the panel is hidden.
+    let footer = this.AtFrom(owner.GetRootCompoundWidget(), "containerRoot/wrapper/setup/list/inputHints") as inkCompoundWidget;
+    if IsDefined(footer) {
+      let hint = owner.SpawnFromExternal(footer, r"radioxl\\gui\\eq_hint.inkwidget", n"hint") as inkCompoundWidget;
+      if IsDefined(hint) { this.m_showHint = hint.GetWidget(n"text") as inkText; }
+    }
+
     GameInstance.GetCallbackSystem().RegisterCallback(n"RadioXL/EqChanged", this, n"OnEqChanged");
     GameInstance.GetCallbackSystem().RegisterCallback(n"RadioXL/StationChanged", this, n"OnStationChanged");
     this.Focus(false, false);
     this.SetPointer(false);
     this.Draw();
-    RadioXLEqAnim.Open(root);
+    if RadioXLState.Get().showEq {
+      RadioXLEqAnim.Open(root);
+    } else {
+      root.SetVisible(false);
+    }
+    this.DrawShowHint();
+  }
+
+  public func Shown() -> Bool {
+    return IsDefined(this.m_root) && this.m_root.IsVisible();
+  }
+
+  // The panel shows or hides, and the choice is kept. Hiding is at once: the popup stops game time, so
+  // nothing waiting on it would finish.
+  public func ToggleShown() -> Void {
+    if !IsDefined(this.m_root) { return; }
+    let show: Bool = !this.m_root.IsVisible();
+    RadioXLState.Get().SetShowEq(show);
+    if show {
+      this.m_root.SetVisible(true);
+      this.Draw();
+      RadioXLEqAnim.Open(this.m_root);
+    } else {
+      if this.m_focused { this.Focus(false, true); }
+      this.m_root.SetVisible(false);
+    }
+    this.DrawShowHint();
+  }
+
+  private func DrawShowHint() -> Void {
+    if IsDefined(this.m_showHint) {
+      this.m_showHint.SetText(RadioXLText(this.Shown() ? "RadioXL.eqHide" : "RadioXL.eqShow"));
+    }
   }
 
   public func Close() -> Void {
@@ -189,8 +231,12 @@ public class RadioXLEqPanel extends IScriptable {
 
   // A widget by its path below the panel, one name at a time.
   private func At(path: String) -> wref<inkWidget> {
+    return this.AtFrom(this.m_root, path);
+  }
+
+  private func AtFrom(start: wref<inkWidget>, path: String) -> wref<inkWidget> {
     let parts: array<String> = StrSplit(path, "/");
-    let widget: wref<inkWidget> = this.m_root;
+    let widget: wref<inkWidget> = start;
     let i: Int32 = 0;
     while i < ArraySize(parts) && IsDefined(widget) {
       let compound: wref<inkCompoundWidget> = widget as inkCompoundWidget;
@@ -419,6 +465,12 @@ public class RadioXLEqPanel extends IScriptable {
     if Equals(name, n"popup_moveUp_left_stick_up") || Equals(name, n"popup_moveUp_left_stick_down") {
       return true;
     }
+    // U / pad L3: the game's context help action, which the radio popup leaves unused.
+    if Equals(name, n"context_help") {
+      if press { this.ToggleShown(); }
+      return true;
+    }
+    if !this.Shown() { return false; }
     if Equals(name, n"secondaryAction") {
       if press { this.Focus(!this.m_focused, true); }
       return true;
@@ -646,6 +698,7 @@ protected cb func OnPlayerAttach(playerPuppet: ref<GameObject>) -> Bool {
   // The popup hears only the actions it listens for; the base class drops every listener on detach.
   this.GetPlayerControlledObject().RegisterInputListener(this, n"showAll");
   this.GetPlayerControlledObject().RegisterInputListener(this, n"secondaryAction");
+  this.GetPlayerControlledObject().RegisterInputListener(this, n"context_help");
   for moved in [n"mouse_x", n"mouse_y", n"popup_axisX", n"popup_axisY"] {
     this.GetPlayerControlledObject().RegisterInputListener(this, moved);
   }
@@ -671,7 +724,7 @@ protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsu
   let result: Bool = wrappedMethod(action, consumer);
   if Equals(ListenerAction.GetName(action), n"showAll")
     && Equals(ListenerAction.GetType(action), gameinputActionType.BUTTON_RELEASED)
-    && IsDefined(this.m_radioXLEq) {
+    && IsDefined(this.m_radioXLEq) && this.m_radioXLEq.Shown() {
     this.m_radioXLEq.PressReset();
   }
   return result;

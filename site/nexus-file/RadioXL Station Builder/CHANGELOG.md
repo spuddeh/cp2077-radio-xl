@@ -3,6 +3,9 @@
 One entry per builder version. The version is in `package.json` and printed at the foot of the page.
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
+## 0.4.1
+- A stream station has no News switch, and its station.json never asks for news.
+
 ## 0.4.0
 - The page's small text (row notes, hints, counts, the key labels) is drawn at its own small size;
   it was falling back to the size of the text around it.

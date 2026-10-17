@@ -84,7 +84,7 @@ export function buildManifest(s: ManifestInput): Record<string, unknown> {
   const name = s.stationName.trim().replace(/\s+/g, ' ')
   if (name) m.displayName = name
   if (!s.showFrequency) m.showFrequency = false
-  if (s.news) m.news = true
+  if (s.news && !s.tracks.some((t) => t.url)) m.news = true
   if (s.addUnlistedFiles) m.addUnlistedFiles = true
   if (Math.abs(s.gain - 1) >= 0.005) m.gain = Math.round(s.gain * 100) / 100
   const description = s.description.trim()

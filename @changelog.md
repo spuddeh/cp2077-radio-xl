@@ -1,5 +1,31 @@
 # Changelog - RadioXL
 
+## [0.8.2] - 2026-10-17
+
+### Added
+- Show or hide the equalizer panel (#74). RCF Sound tab: "Show the equalizer" (`showEq`, on by
+  default), kept in `state.json` with the other panel settings, so RCF's restore of it is ignored. On
+  the station selection UI the game's `context_help` action (U, pad L3, or the player's own rebind)
+  toggles it and writes the same value; its hint is `radioxl\gui\eq_hint.inkwidget`, a copy of the
+  popup's Close hint, spawned into the popup's own `inputHints` row so it stays while the panel is
+  hidden. Hiding is at once (the popup stops game time, so a timed fade would not finish); showing
+  plays the panel's open animation. While hidden, R and Reset do nothing. `tools/eq-panel-ink.py` writes
+  the hint as its own file: WolvenKit refuses one inkwidget holding both items.
+
+### Fixed
+- Custom stations went silent in menus with the "A menu is open" mute off (dev #5). A menu posts
+  `sys_sfx_and_vo_pause`, which pauses eleven buses; `radioxl_radio` (a copy of `mod_sfx_radio`)
+  output to `Music_Diagetic_Radios_Default`, whose branch sits under two of them (552529924 and
+  127040125, in `sfx_container.bnk`), and the switch lifts only the one on `Music_Diagetic`.
+  `tools/make_routing_bank.py` now sets the copied sound's bus to `Music_Diagetic` (666212655), the bus
+  of every vanilla station playlist; `radioxl_routing.bnk` rebuilt, 4 bytes changed.
+- The equalizer's station name wrapped onto a second line over the Per-station EQ row (dev #6). The
+  name widget is a copy of the popup's `TrackName`, which kept that widget's `wrappingAtPosition` of
+  680 inside the 900-wide panel. `tools/eq-panel-ink.py`: `text_copy` sets a copy's wrap position to
+  its own width, and the station name takes the popup's station list row settings: no auto-wrapping,
+  wrap position 0, `textOverflowPolicy` PingPongScroll, `contentHAlign` Fill. A name wider than the
+  panel scrolls side to side on one line. `RadioXL.archive` rebuilt.
+
 ## [0.8.1] - 2026-10-11
 
 ### Changed

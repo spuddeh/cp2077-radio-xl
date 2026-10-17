@@ -1,3 +1,9 @@
+### v0.8.2
+
+- New: hide the equalizer. A key at the foot of the Radioport's station list (U by default, L3 on a controller) shows or hides the equalizer panel, and RadioXL remembers the choice. The same switch is on the Sound tab of RadioXL's settings as "Show the equalizer".
+- Fix: with "A menu is open" turned off, custom stations now keep playing in menus.
+- Fix: a long station name no longer wraps onto a second line over the equalizer's settings. A name too long for the panel scrolls.
+
 ### v0.8.1
 
 - Requires AudioXL 0.6.0 or later.

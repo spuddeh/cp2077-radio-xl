@@ -5,7 +5,7 @@
 //              language. The key is the first text on each line and never changes; the second is
 //              what the player reads. Station names and song titles are not here: those are the
 //              station author's text and go through RadioXLTexts unchanged.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -42,6 +42,10 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.eqSave", "Save as preset");
     this.Text("RadioXL.eqFocusPanel", "Equalizer");
     this.Text("RadioXL.eqFocusList", "Stations");
+    this.Text("RadioXL.optShowEq", "Show the equalizer");
+    this.Text("RadioXL.tipShowEq", "Off, the station selection UI opens without the equalizer panel. The key at the foot of the station list (U by default, L3 on a controller) shows or hides it there, and sets this switch.");
+    this.Text("RadioXL.eqShow", "Equalizer");
+    this.Text("RadioXL.eqHide", "Hide equalizer");
     this.Text("RadioXL.eqBoost", "Volume boost");
     this.Text("RadioXL.eqSuggested", "{preset} (suggested)");
     this.Text("RadioXL.eqBand0", "63 Hz");

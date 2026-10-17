@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API: what other mods read from RadioXL, ask it to do, and hear from it.
-// File Version: 0.8.1
+// File Version: 0.8.2
 // ======================================================================================
 //
 // **This class is the promise.** Every other class, function and native in RadioXL is public only
@@ -193,7 +193,8 @@ public abstract class RadioXLAPI {
   }
 
   // Seconds. A custom song's is read from its file; a vanilla song's is the length its station
-  // schedules against, a little under the recording.
+  // schedules against, a little under the recording. 0 for a row added through AudioXL's
+  // RegisterEventRow, which goes into the engine's table natively and has no getter.
   public final static func TrackLength(track: CName) -> Float {
     let slot: Int32;
     let index: Int32;

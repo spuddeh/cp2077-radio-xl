@@ -35,6 +35,8 @@
   ("Radio off" with none), the Per-station EQ switch, the preset selector, nine band faders with up
   and down arrows, the three processing switches, Volume boost, the Reset hint. Reset is the popup's
   `showAll` action (Z, pad Y). Picking a station redraws it at once. Verified in game.
+- Show or hide the equaliser panel (#74): the RCF Sound tab switch "Show the equalizer" and the
+  `context_help` key (U, pad L3) on the station selection UI, hinted beside the list's own hints.
 - The panel with keys and the pad (#70): R / pad X moves between the station list and the panel; the
   arrows or d-pad move the game's cursor between its controls, Enter / A press them. The popup opens
   on the station list. Verified in game with the keyboard, the mouse and a pad.
