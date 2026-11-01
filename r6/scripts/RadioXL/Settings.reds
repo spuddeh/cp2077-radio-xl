@@ -20,7 +20,7 @@
 //
 //              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
 //              plugin, because this mod matches the key itself on Codeware's Input/Key event.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // Credits: Redscript Configuration Framework by DigitalVixen.
 // ======================================================================================
 //

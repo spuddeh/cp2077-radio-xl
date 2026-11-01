@@ -1,5 +1,34 @@
 # Changelog - RadioXL
 
+## [0.9.0] - 2026-11-02
+
+### Added
+- Game 2.5 support. 2.5 adds a fifteenth vanilla station, `EDGE_RUNNERS` = enum 14 (HKGN 102.0,
+  record `RadioStation.HKGN`), raises every station bound to 15, reshapes the modulo sequences, moves
+  the receiver's turn-on block from a cold block behind a `jne` to a fall-through after a `je`, moves
+  the police scanner to internal id 24 and the engine root's audio system from +0xa8 to +0xc8.
+  `plugin/src/Build.hpp` holds one table per supported build (2.31 and 2.5): the roster sites, the
+  startup pick's sites, the audio system offset, the curve loader's prologue, the mix switches' sites
+  and `SetBusEffect`'s prologue. `SelectBuild` in `Main.cpp` runs every table's checks and uses the one
+  that passes all of them; the game version is logged and never decides. `Channels.hpp` needs no table.
+- `RadioXL_VanillaCount`: the scripts take the vanilla station count from the plugin (`Dial.reds`
+  `Total`, `Retune`, `VanillaRecordName` with `RadioStation.HKGN`; `Traffic.reds`'s random start).
+  `kVanillaFrequency` carries HKGN at 102.0.
+- Game 2.31 support as an optional download, artifact `compat231`: the 2.31 build of `RadioXL.dll`
+  alone, in `compat/2.31/`, installed over the main download's 2.5 build. RED4ext.SDK's 2.5 update
+  changed engine type layouts (`CBaseFunction` 0xB0 -> 0xF0) and its runtime, so each game build needs
+  its own DLL; `plugin/build.ps1` builds the 2.5 one against the current SDK and the 2.31 one against an
+  export of it at `f9ad5334` (`plugin/build/sdk/`). `release-manifest.json`, `publish.json` and `RELEASING.md` carry it.
+
+### Changed
+- A failed byte check logs every failure with the bytes found and wanted, then the code around each
+  function that failed (`plugin/src/Diag.hpp`), across the roster, the startup pick, the broadcaster, the
+  mix switches and the equalizer. Bounds that all read one past a table's are reported as a new vanilla
+  station.
+- The station clock and the schedule reader log where their walk to the radio manager stops, and call
+  no station virtual unless its vtable and the function lie inside the game's image.
+- The log names the game version as the game does: `2.31`, `2.5`.
+
 ## [0.8.2] - 2026-10-17
 
 ### Added

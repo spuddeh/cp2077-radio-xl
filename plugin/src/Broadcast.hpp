@@ -27,6 +27,9 @@
 #pragma once
 
 #include <RED4ext/RED4ext.hpp>
+
+#include "Build.hpp"
+#include "Diag.hpp"
 #include <Windows.h>
 
 #include <atomic>
@@ -217,7 +220,8 @@ inline bool Widen(ResolveFn aResolve, WriteFn aWrite, const RED4ext::v1::Sdk* aS
         fn[i] = reinterpret_cast<uint8_t*>(aResolve(kFnHash[i]));
         if (!fn[i])
         {
-            Log("a broadcaster function did not resolve - left at 256 channels");
+            Log("broadcaster function " + std::to_string(i) + " (hash " + std::to_string(kFnHash[i]) +
+                ") did not resolve - left at 256 channels");
             return false;
         }
     }
@@ -235,21 +239,25 @@ inline bool Widen(ResolveFn aResolve, WriteFn aWrite, const RED4ext::v1::Sdk* aS
     if (std::memcmp(getInstance, getLead, sizeof(getLead)) != 0 || getInstance[7] != 0xC3 || getInstance[8] != 0xCC ||
         getInstance[11] != 0xCC)
     {
-        Log("byte check FAILED at GetInstance - left at 256 channels");
+        Log("byte check FAILED at GetInstance: found " + diag::Bytes(getInstance, 12) +
+            ", wanted 48 8D 05 rel32 C3 CC .. CC - left at 256 channels");
         return false;
     }
     int32_t rel = 0;
     std::memcpy(&rel, getInstance + 3, sizeof(rel));
     uint8_t* original = getInstance + 7 + rel;
 
+    int failed = 0;
     for (const Bound& b : kBounds)
     {
         uint32_t imm = 0;
         std::memcpy(&imm, fn[b.fn] + b.offset + b.immAt, sizeof(imm));
         if (std::memcmp(fn[b.fn] + b.offset, b.lead, b.leadLen) != 0 || imm != b.from)
         {
-            Log("byte check FAILED at a channel bound - left at 256 channels");
-            return false;
+            ++failed;
+            Log("byte check FAILED at channel bound, function " + std::to_string(b.fn) + " " + diag::Offset(b.offset) +
+                ": found " + diag::Bytes(fn[b.fn] + b.offset, b.immAt + 4) + ", wanted " +
+                diag::Bytes(b.lead, b.leadLen) + " then " + std::to_string(b.from));
         }
     }
     for (const Disp& d : kDisps)
@@ -258,20 +266,34 @@ inline bool Widen(ResolveFn aResolve, WriteFn aWrite, const RED4ext::v1::Sdk* aS
         std::memcpy(&disp, fn[d.fn] + d.offset + 4, sizeof(disp));
         if (disp != kOldTable)
         {
-            Log("byte check FAILED at a table displacement - left at 256 channels");
-            return false;
+            ++failed;
+            Log("byte check FAILED at table displacement, function " + std::to_string(d.fn) + " " +
+                diag::Offset(d.offset) + ": found " + diag::Bytes(fn[d.fn] + d.offset, 8) + ", wanted disp32 0x208");
         }
+    }
+    if (failed > 0)
+    {
+        Log(std::to_string(failed) + " broadcaster check(s) failed - left at 256 channels");
+        return false;
     }
     const uint8_t swapLead[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x20};
     if (std::memcmp(swap, swapLead, sizeof(swapLead)) != 0)
     {
-        Log("byte check FAILED at the buffer swap - left at 256 channels");
+        Log("byte check FAILED at the buffer swap: " + diag::Mismatch(swap, swapLead, sizeof(swapLead)) +
+            " - left at 256 channels");
         return false;
     }
-    const uint8_t loaderLead[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x6C, 0x24, 0x10};
-    if (std::memcmp(curveLoader, loaderLead, sizeof(loaderLead)) != 0)
+    if (!g_build)
     {
-        Log("byte check FAILED at the curve loader - left at 256 channels");
+        Log("no build table selected - left at 256 channels");
+        return false;
+    }
+    const uint8_t* loaderLead = g_build->curveLoaderLead;
+    if (std::memcmp(curveLoader, loaderLead, sizeof(g_build->curveLoaderLead)) != 0)
+    {
+        Log("byte check FAILED at the curve loader: " +
+            diag::Mismatch(curveLoader, loaderLead, sizeof(g_build->curveLoaderLead)) + " - left at 256 channels");
+        diag::Region(&Log, "curve loader", curveLoader, 0x00, 0x40);
         return false;
     }
 

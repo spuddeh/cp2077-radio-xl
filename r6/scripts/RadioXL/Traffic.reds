@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: Puts custom stations among the random picks: traffic car radios and world radios
 //              set to start on a random station.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // ======================================================================================
 //
 // A traffic car picks its station from its own vehicle metadata's `matchingStartupRadioStations`
@@ -14,8 +14,9 @@
 // whichever loads first, and Off leaves the list without RadioXL's stations.
 //
 // The same list feeds the player's car when its radio switches on with no station set: that pick
-// copies only the list's FIRST 14 entries (a 14-slot stack buffer in the receiver's turn-on block),
-// so a custom station appended past position 14 is never that car's first station. A traffic car's
+// copies only as many entries as the vanilla roster holds (a stack buffer in the receiver's turn-on
+// block), so a custom station appended past them is never that car's first station unless the
+// plugin's startup pick (Startup.hpp) replaces the copy. A traffic car's
 // own pick (`RadioSystem::GetRandomStation`) reads the whole list.
 //
 // A world radio set to randomise picks once, in script, the first time its device initialises,
@@ -147,16 +148,17 @@ public class RadioXLTraffic extends ScriptableService {
   }
 }
 
-// Vanilla draws evenly from the fourteen, less Samizdat. Each custom station is one more equal
+// Vanilla draws evenly from its stations, less Samizdat. Each custom station is one more equal
 // share of the draw.
 @wrapMethod(RadioStationDataProvider)
 public final static func GetRandomStation() -> ERadioStationList {
   let random = RadioXLTraffic.Get();
   if !IsDefined(random) || !random.WorldRadios() { return wrappedMethod(); }
   let slots: array<Int32> = random.Candidates();
-  let pick: Int32 = RandRange(0, 13 + ArraySize(slots));
-  if pick < 13 { return wrappedMethod(); }
-  let station: ERadioStationList = IntEnum<ERadioStationList>(RadioXL_SlotEnum(slots[pick - 13]));
-  RadioXLLog(s"world radio: random start on \(RadioXL_StationName(slots[pick - 13]))");
+  let vanilla: Int32 = RadioXLDial.VanillaCount() - 1;
+  let pick: Int32 = RandRange(0, vanilla + ArraySize(slots));
+  if pick < vanilla { return wrappedMethod(); }
+  let station: ERadioStationList = IntEnum<ERadioStationList>(RadioXL_SlotEnum(slots[pick - vanilla]));
+  RadioXLLog(s"world radio: random start on \(RadioXL_StationName(slots[pick - vanilla]))");
   return station;
 }

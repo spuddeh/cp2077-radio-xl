@@ -17,8 +17,8 @@ RadioXL is a framework. Install it, then install stations built on it, or build 
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/1511]redscript[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/7780]Codeware[/url][/*]
 [*][url=https://www.nexusmods.com/cyberpunk2077/mods/4197]TweakXL[/url][/*]
-[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.6.0 or later[/*]
-[*]Game version 2.31.[/*]
+[*][url=https://www.nexusmods.com/cyberpunk2077/mods/33442]AudioXL[/url] 0.9.0 or later on game 2.5[/*]
+[*]Game version 2.5. On game 2.31, also install the optional file RadioXL - Game 2.31 Compatibility, after this one.[/*]
 [/list]
 Optional:
 [url=https://www.nexusmods.com/cyberpunk2077/mods/30726]Redscript Configuration Framework[/url] - the settings panel below, and the keys.
@@ -26,7 +26,7 @@ Optional:
 [url=https://www.nexusmods.com/cyberpunk2077/mods/31920]RedLogger[/url] - a log of what was registered, in r6\logs\mods\.
 
 [b]Install[/b]
-Drop the archive into your mod manager. The plugin and the scripts always travel together: installed apart, the scripts fail to compile.
+Drop the archive into your mod manager. The plugin and the scripts always travel together: installed apart, the scripts fail to compile. On game 2.31, install RadioXL - Game 2.31 Compatibility next and let it overwrite RadioXL's plugin. It holds only that one file.
 
 [b]Uninstall[/b]
 Remove RadioXL and every station built on it. RadioXL writes no data of its own into your saves. A radio in the world left on a custom station keeps that station's place in the list, so it can come back on another station.

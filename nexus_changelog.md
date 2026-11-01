@@ -1,3 +1,10 @@
+### v0.9.0
+
+- New: supports game 2.5.
+- New: game 2.31 keeps working with an optional file, RadioXL - Game 2.31 Compatibility. Install it after RadioXL.
+- Requires AudioXL 0.9.0 or later on game 2.5.
+- Minor code improvements
+
 ### v0.8.2
 
 - New: hide the equalizer. A key at the foot of the Radioport's station list (U by default, L3 on a controller) shows or hides the equalizer panel, and RadioXL remembers the choice. The same switch is on the Sound tab of RadioXL's settings as "Show the equalizer".

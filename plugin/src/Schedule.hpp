@@ -70,12 +70,12 @@ inline size_t TracksOffset()
 inline uintptr_t FindStation(uint64_t aNameHash)
 {
     const auto rootSlot = clock::ResolveByHash(clock::kHashEngineRoot);
-    if (!rootSlot)
+    if (!rootSlot || !clock::RootAudioSystem())
     {
         return 0;
     }
     const auto root = clock::Read<uintptr_t>(rootSlot);
-    const auto audio = root ? clock::Read<uintptr_t>(root + clock::kRootAudioSystem) : 0;
+    const auto audio = root ? clock::Read<uintptr_t>(root + clock::RootAudioSystem()) : 0;
     const auto manager = audio ? clock::Read<uintptr_t>(audio + clock::kAudioRadioManager) : 0;
     if (!manager)
     {
@@ -94,8 +94,19 @@ inline uintptr_t FindStation(uint64_t aNameHash)
         {
             continue;
         }
+        // A call through a vtable outside the game's image would end the game; SEH does not catch it.
         const auto vtbl = clock::Read<uintptr_t>(station);
+        if (!clock::InImage(vtbl))
+        {
+            clock::g_walkStop = clock::kWalkOutsideImage;
+            return 0;
+        }
         const auto getName = clock::Read<clock::GetNameFn>(vtbl + clock::kVtblGetName);
+        if (!clock::InImage(reinterpret_cast<uintptr_t>(getName)))
+        {
+            clock::g_walkStop = clock::kWalkOutsideImage;
+            return 0;
+        }
         uint64_t name = 0;
         getName(reinterpret_cast<void*>(station), &name);
         if (name == aNameHash)

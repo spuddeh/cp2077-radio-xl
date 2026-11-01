@@ -2,6 +2,8 @@
 
 ## Implemented
 
+- Game 2.5 and 2.31 are both supported: the main download for 2.5, an optional file with the 2.31
+  plugin over it. The plugin finds the game's patch sites by their bytes in one table per build.
 - Custom stations are real engine stations: the compiled roster and station name table are extended
   at plugin load, so the Radioport, world radios and the vehicle radio all play them unwrapped.
 - A station is one manifest per mod, plus its audio files and at most an icon archive. Any number of
@@ -138,6 +140,12 @@
   files its tracks miss and remove tracks whose file is gone (#67).
 
 ## Verified in game
+
+- On 2.5 (Testing, 2026-11-02): `game build 2.5 ... every byte check passed`, police at slot 16,
+  every subsystem patched; HKGN, vanilla and custom stations heard; Tool FM resumed mid-song; a world
+  radio fell off with distance; next-station in a car stepped through HKGN in dial order.
+- On 2.31 (Gameplay, 2026-11-02), with the compatibility file over the main one: one RadioXL load,
+  `game build 2.31 ... every byte check passed`, police at slot 15, the station walk reached 19.
 
 - Traffic cars pick custom stations (4 of 34, then 149 of 337 with the player's car on one);
   Off applies mid-session (0 in 36); jukeboxes started on OutrunWaves and PHONKWAVE (#63).

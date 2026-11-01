@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The engine's own station clock, handed to AudioXL as each track's start offset.
-// File Version: 0.4.0
+// File Version: 0.9.0
 // Credits: AudioXL by DigitalVixen.
 // ======================================================================================
 //
@@ -20,12 +20,16 @@
 // The game-state update runs whenever the game does.
 //
 // The walk reads engine memory by offset, so it is wrapped in SEH like the probe it came from: a bad
-// read disables the clock and says so, and the game carries on with tracks starting from 0.
+// read disables the clock and says so, and the game carries on with tracks starting from 0. SEH does
+// not stop the game ending on an access violation inside a call, so no station's virtual is called
+// unless its vtable and the function both lie inside the game's image.
 
 #pragma once
 
 #include <RED4ext/RED4ext.hpp>
 #include <Windows.h>
+
+#include "Build.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -37,8 +41,8 @@ namespace radioxl::clock
 
 // The global holding the engine root pointer, by RED4ext hash, and the walk from it to the radio
 // manager's station array - the same walk GetRadioStationCurrentTrackName makes.
+// The root's audio system offset is the build table's `rootAudioSystem`.
 constexpr uint32_t kHashEngineRoot = 2549221846;
-constexpr size_t kRootAudioSystem = 0xa8;
 constexpr size_t kAudioRadioManager = 0xe0;
 constexpr size_t kManagerStations = 0x0;
 constexpr size_t kManagerCount = 0xc;
@@ -53,6 +57,47 @@ constexpr uint64_t kPeriodMs = 250;      // how often the clock is read and the 
 constexpr uint64_t kHeartbeatMs = 10000; // how often each station's state is logged regardless
 
 using GetNameFn = uint64_t* (*)(void* aSelf, uint64_t* aOut);
+
+// Where the last walk stopped, read after it by code that may log. Plain data, for the SEH functions.
+enum WalkStop : int
+{
+    kWalkReached = 0,   // the station array was reached
+    kWalkNoBuild,       // no build table is selected
+    kWalkNoRootSlot,    // the engine root's global did not resolve
+    kWalkNoRoot,        // the engine root is null
+    kWalkNoAudio,       // root + rootAudioSystem is null
+    kWalkNoManager,     // audio system + 0xe0 is null
+    kWalkBadArray,      // the station array is null or its count is past 256
+    kWalkOutsideImage,  // a station's vtable or its GetName is outside the game's image
+};
+inline volatile int g_walkStop = kWalkNoRoot;
+inline volatile uint32_t g_walkCount = 0;
+inline uintptr_t g_imageBegin = 0;
+inline uintptr_t g_imageEnd = 0;
+
+inline bool InImage(uintptr_t aAddress)
+{
+    return aAddress >= g_imageBegin && aAddress < g_imageEnd;
+}
+
+// The game's image bounds, read from its PE header. Called before any walk.
+inline void FindImage()
+{
+    const auto base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
+    if (!base)
+    {
+        return;
+    }
+    const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS*>(base + dos->e_lfanew);
+    g_imageBegin = base;
+    g_imageEnd = base + nt->OptionalHeader.SizeOfImage;
+}
+
+inline size_t RootAudioSystem()
+{
+    return g_build ? g_build->rootAudioSystem : 0;
+}
 
 // One custom station as the clock sees it.
 struct Watched
@@ -116,32 +161,44 @@ inline T Read(uintptr_t aAddress)
 // Plain data only: this is the function SEH guards, so nothing in it may need a destructor.
 inline float ReadClock(uint64_t aNameHash)
 {
+    if (!RootAudioSystem())
+    {
+        g_walkStop = kWalkNoBuild;
+        return -2.0f;
+    }
     const auto rootSlot = ResolveByHash(kHashEngineRoot);
     if (!rootSlot)
     {
+        g_walkStop = kWalkNoRootSlot;
         return -2.0f;
     }
     const auto root = Read<uintptr_t>(rootSlot);
     if (!root)
     {
+        g_walkStop = kWalkNoRoot;
         return -1.0f;
     }
-    const auto audio = Read<uintptr_t>(root + kRootAudioSystem);
+    const auto audio = Read<uintptr_t>(root + RootAudioSystem());
     if (!audio)
     {
+        g_walkStop = kWalkNoAudio;
         return -1.0f;
     }
     const auto manager = Read<uintptr_t>(audio + kAudioRadioManager);
     if (!manager)
     {
+        g_walkStop = kWalkNoManager;
         return -1.0f;
     }
     const auto stations = Read<uintptr_t>(manager + kManagerStations);
     const auto count = Read<uint32_t>(manager + kManagerCount);
     if (!stations || count > 256)
     {
+        g_walkStop = kWalkBadArray;
         return -1.0f;
     }
+    g_walkStop = kWalkReached;
+    g_walkCount = count;
     for (uint32_t i = 0; i < count; ++i)
     {
         const auto station = Read<uintptr_t>(stations + i * 8);
@@ -150,7 +207,17 @@ inline float ReadClock(uint64_t aNameHash)
             continue;
         }
         const auto vtbl = Read<uintptr_t>(station);
+        if (!InImage(vtbl))
+        {
+            g_walkStop = kWalkOutsideImage;
+            return -2.0f;
+        }
         const auto getName = Read<GetNameFn>(vtbl + kVtblGetName);
+        if (!InImage(reinterpret_cast<uintptr_t>(getName)))
+        {
+            g_walkStop = kWalkOutsideImage;
+            return -2.0f;
+        }
         uint64_t name = 0;
         getName(reinterpret_cast<void*>(station), &name);
         if (name == aNameHash)
@@ -267,6 +334,47 @@ inline bool Arm(const std::string& aRow, float aSeconds)
     return ok;
 }
 
+// Each place the walk stops is logged the first time it happens, and the station array the first
+// time it is reached, so a moved offset shows as a stop that no reach ever follows.
+inline void LogWalk()
+{
+    static uint32_t logged = 0;
+    const int stop = g_walkStop;
+    if (logged & (1u << stop))
+    {
+        return;
+    }
+    logged |= 1u << stop;
+    char root[24];
+    std::snprintf(root, sizeof(root), "+0x%zx", RootAudioSystem());
+    switch (stop)
+    {
+    case kWalkReached:
+        Log("station walk: reached the radio manager's " + std::to_string(g_walkCount) + " station(s)");
+        break;
+    case kWalkNoBuild:
+        Log("station walk: no build table is selected");
+        break;
+    case kWalkNoRootSlot:
+        Log("station walk: the engine root's global did not resolve by hash");
+        break;
+    case kWalkNoRoot:
+        Log("station walk: the engine root is not set yet");
+        break;
+    case kWalkNoAudio:
+        Log(std::string("station walk: the audio system at engine root ") + root + " is null");
+        break;
+    case kWalkNoManager:
+        Log("station walk: the radio manager at audio system +0xe0 is null");
+        break;
+    case kWalkBadArray:
+        Log("station walk: the radio manager's station array is null or holds past 256 stations");
+        break;
+    default:
+        break;
+    }
+}
+
 inline void Tick()
 {
     const uint64_t now = GetTickCount64();
@@ -289,6 +397,14 @@ inline void Tick()
             g_state.failed = true;
             Log("a read of the station clock faulted - offsets are not this build's. Tracks start "
                 "from 0 on every tune-in.");
+            return;
+        }
+        LogWalk();
+        if (g_walkStop == kWalkOutsideImage)
+        {
+            g_state.failed = true;
+            Log("a station's virtual table is outside the game's image - offsets are not this build's. "
+                "Tracks start from 0 on every tune-in.");
             return;
         }
         if (clock < 0.0f)
@@ -365,6 +481,7 @@ inline void Start(const RED4ext::v1::Sdk* aSdk, RED4ext::v1::PluginHandle aHandl
 {
     g_state.sdk = aSdk;
     g_state.handle = aHandle;
+    FindImage();
     for (const auto& s : aStations)
     {
         // A stream has no position to resume: AudioXL refuses PlayFrom on a URL row, and a

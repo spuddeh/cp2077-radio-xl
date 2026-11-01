@@ -46,7 +46,7 @@ constexpr uint32_t kHashLoadBankMemoryCopy = 3400209645;  // 0x1ac7e00
 constexpr uint8_t kLoadBankPrologue[] = {0x48, 0x89, 0x5C, 0x24, 0x08, 0x48, 0x89, 0x74};
 using LoadBankFn = int32_t (*)(const void*, uint32_t, uint32_t*);
 constexpr uint32_t kHashSetBusEffect = 3497922771;  // 0x1ace280
-constexpr uint8_t kSetBusEffectPrologue[] = {0x40, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83};
+// SetBusEffect's prologue is the build table's `setBusEffectPrologue`.
 using SetBusEffectFn = int32_t (*)(uint32_t, uint32_t, uint32_t);
 constexpr uint32_t kHashSetRtpc = 796138256;  // 0x1acf570
 constexpr uint8_t kSetRtpcPrologue[] = {0x48, 0x83, 0xEC, 0x48, 0x0F, 0xB6, 0x44, 0x24};
@@ -449,11 +449,40 @@ inline void Init(uintptr_t (*aResolve)(uint32_t))
     const auto load = reinterpret_cast<const uint8_t*>(aResolve(kHashLoadBankMemoryCopy));
     const auto set = reinterpret_cast<const uint8_t*>(aResolve(kHashSetBusEffect));
     const auto rtpc = reinterpret_cast<const uint8_t*>(aResolve(kHashSetRtpc));
-    if (!load || std::memcmp(load, kLoadBankPrologue, sizeof(kLoadBankPrologue)) != 0 || !set ||
-        std::memcmp(set, kSetBusEffectPrologue, sizeof(kSetBusEffectPrologue)) != 0 || !rtpc ||
-        std::memcmp(rtpc, kSetRtpcPrologue, sizeof(kSetRtpcPrologue)) != 0)
+    if (!g_build)
     {
-        Log("byte check FAILED at the bank loader, the bus effect setter or the game parameter setter - no equaliser");
+        Log("no build table selected - no equaliser");
+        return;
+    }
+    struct Check
+    {
+        const uint8_t* at;
+        const uint8_t* want;
+        size_t len;
+        const char* what;
+    };
+    const Check checks[] = {
+        {load, kLoadBankPrologue, sizeof(kLoadBankPrologue), "the bank loader"},
+        {set, g_build->setBusEffectPrologue, sizeof(g_build->setBusEffectPrologue), "the bus effect setter"},
+        {rtpc, kSetRtpcPrologue, sizeof(kSetRtpcPrologue), "the game parameter setter"},
+    };
+    int failed = 0;
+    for (const Check& c : checks)
+    {
+        if (!c.at)
+        {
+            ++failed;
+            Log(std::string(c.what) + " did not resolve by hash");
+        }
+        else if (std::memcmp(c.at, c.want, c.len) != 0)
+        {
+            ++failed;
+            Log(std::string("byte check FAILED at ") + c.what + ": " + diag::Mismatch(c.at, c.want, c.len));
+        }
+    }
+    if (failed > 0)
+    {
+        Log(std::to_string(failed) + " check(s) failed - no equaliser");
         return;
     }
     g_loadBank = reinterpret_cast<LoadBankFn>(const_cast<uint8_t*>(load));

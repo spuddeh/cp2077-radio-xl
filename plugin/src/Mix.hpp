@@ -20,6 +20,8 @@
 #pragma once
 
 #include "Broadcast.hpp"
+#include "Build.hpp"
+#include "Diag.hpp"
 
 #include <RED4ext/RED4ext.hpp>
 #include <Windows.h>
@@ -52,7 +54,7 @@ enum Switch : int
 constexpr uint32_t kHashIndexUser = 653209842;  // 0x1a7a650
 constexpr size_t kIndexLoadAt = 0x4a;
 constexpr uint8_t kIndexLoad[] = {0x48, 0x89, 0x5C, 0x24, 0x70, 0x48, 0x8B, 0x1D};
-constexpr size_t kCritCallAt = 0x12b;
+// The call to the lock's constructor is the build table's `mixCritCallAt`.
 constexpr uint8_t kCritPrologue[] = {0x40, 0x53, 0x48, 0x83, 0xEC, 0x20, 0x48, 0x8B};
 
 // g_pIndex: one table per object type, 0x58 apart. Table 0 holds audio nodes, table 1 buses; each
@@ -75,7 +77,7 @@ constexpr int kActions = 3;  // the indexed pointer is the action itself
 // director and playlist systems stay paused. RadioSystem::Update reads the flag through
 // `mov rax, [rip+rel32]` at +0x2d and `cmp byte [rax+0x1e0], r14b` at +0x34.
 constexpr uint32_t kHashRadioUpdate = 3455127956;  // 0x247fa0
-constexpr size_t kFlagLoadAt = 0x2d;
+// Where the flag is loaded is the build table's `mixFlagLoadAt`.
 constexpr uint8_t kFlagLoad[] = {0x48, 0x8B, 0x05};
 constexpr uint8_t kFlagCmp[] = {0x44, 0x38, 0xB0, 0xE0, 0x01, 0x00, 0x00};
 using RadioUpdateFn = void (*)(void*, float, void*);
@@ -204,7 +206,7 @@ constexpr size_t kCurveCount = sizeof(kCurves) / sizeof(kCurves[0]);
 // scaling). Calling Set alone, and not the loader, keeps the entry's cache of recent outputs: a voice
 // takes each parameter change as new minus cached, so the next change moves it onto the new curve.
 // The loader re-primes that cache, which would leave playing voices on the old curve.
-constexpr size_t kSetCallAt = 0x122;
+// Where the Set call sits is the build table's `mixSetCallAt`.
 constexpr uint8_t kSetCall[] = {0x44, 0x8B, 0x47, 0x10, 0xE8};
 using SetFn = int (*)(void*, const broadcast::GraphPoint*, uint32_t, uint8_t);
 
@@ -690,15 +692,19 @@ inline void HookRadioUpdate(uintptr_t (*aResolve)(uint32_t), const RED4ext::v1::
                             RED4ext::v1::PluginHandle aHandle)
 {
     auto* fn = reinterpret_cast<uint8_t*>(aResolve(kHashRadioUpdate));
-    if (!fn || std::memcmp(fn + kFlagLoadAt, kFlagLoad, sizeof(kFlagLoad)) != 0 ||
-        std::memcmp(fn + kFlagLoadAt + 7, kFlagCmp, sizeof(kFlagCmp)) != 0)
+    const size_t flagLoadAt = g_build ? g_build->mixFlagLoadAt : 0;
+    if (!fn || !g_build || std::memcmp(fn + flagLoadAt, kFlagLoad, sizeof(kFlagLoad)) != 0 ||
+        std::memcmp(fn + flagLoadAt + 7, kFlagCmp, sizeof(kFlagCmp)) != 0)
     {
-        Log("byte check FAILED at the radio system's update - menus still hold the radio");
+        Log("byte check FAILED at the radio system's update " + diag::Offset(flagLoadAt) + ": found " +
+            diag::Bytes(fn ? fn + flagLoadAt : nullptr, 14) + ", wanted 48 8B 05 rel32 " +
+            diag::Bytes(kFlagCmp, sizeof(kFlagCmp)) + " - menus still hold the radio");
+        diag::Region(&Log, "radio update", fn, 0x00, 0x60);
         return;
     }
     int32_t rel = 0;
-    std::memcpy(&rel, fn + kFlagLoadAt + 3, sizeof(rel));
-    g_soundSystemVar = reinterpret_cast<uintptr_t*>(fn + kFlagLoadAt + 7 + rel);
+    std::memcpy(&rel, fn + flagLoadAt + 3, sizeof(rel));
+    g_soundSystemVar = reinterpret_cast<uintptr_t*>(fn + flagLoadAt + 7 + rel);
     if (!aSdk->hooking->Attach(aHandle, fn, reinterpret_cast<void*>(&RadioUpdate),
                                reinterpret_cast<void**>(&g_origRadioUpdate)))
     {
@@ -711,35 +717,45 @@ inline void HookRadioUpdate(uintptr_t (*aResolve)(uint32_t), const RED4ext::v1::
 inline bool Init(uintptr_t (*aResolve)(uint32_t))
 {
     const auto fn = reinterpret_cast<const uint8_t*>(aResolve(kHashIndexUser));
-    if (!fn || std::memcmp(fn + kIndexLoadAt, kIndexLoad, sizeof(kIndexLoad)) != 0 || fn[kCritCallAt] != 0xE8)
+    const size_t critCallAt = g_build ? g_build->mixCritCallAt : 0;
+    if (!fn || !g_build || std::memcmp(fn + kIndexLoadAt, kIndexLoad, sizeof(kIndexLoad)) != 0 || fn[critCallAt] != 0xE8)
     {
-        Log("byte check FAILED at the index reader - the mix switches are off");
+        Log("byte check FAILED at the index reader: " +
+            (fn ? diag::Offset(kIndexLoadAt) + " " + diag::Mismatch(fn + kIndexLoadAt, kIndexLoad, sizeof(kIndexLoad)) +
+                      ", " + diag::Offset(critCallAt) + " found " + diag::Bytes(fn + critCallAt, 1) + " wanted E8"
+                : std::string("did not resolve")) +
+            " - the mix switches are off");
+        diag::Region(&Log, "index reader", fn, 0x40, 0x160);
         return false;
     }
     int32_t rel = 0;
     std::memcpy(&rel, fn + kIndexLoadAt + sizeof(kIndexLoad), sizeof(rel));
     g_indexVar = reinterpret_cast<uintptr_t*>(const_cast<uint8_t*>(fn) + kIndexLoadAt + 12 + rel);
 
-    std::memcpy(&rel, fn + kCritCallAt + 1, sizeof(rel));
-    const uint8_t* crit = fn + kCritCallAt + 5 + rel;
+    std::memcpy(&rel, fn + critCallAt + 1, sizeof(rel));
+    const uint8_t* crit = fn + critCallAt + 5 + rel;
     if (std::memcmp(crit, kCritPrologue, sizeof(kCritPrologue)) != 0 || crit[0x17] != 0x48 || crit[0x18] != 0x8D ||
         crit[0x19] != 0x0D)
     {
-        Log("byte check FAILED at Wwise's lock - the mix switches are off");
+        Log("byte check FAILED at Wwise's lock: found " + diag::Bytes(crit, 0x1e) + ", wanted " +
+            diag::Bytes(kCritPrologue, sizeof(kCritPrologue)) + " .. and 48 8D 0D at +0x17 - the mix switches are off");
         return false;
     }
     std::memcpy(&rel, crit + 0x1a, sizeof(rel));
     g_lock = reinterpret_cast<LPCRITICAL_SECTION>(const_cast<uint8_t*>(crit) + 0x1e + rel);
 
     const auto loader = reinterpret_cast<const uint8_t*>(aResolve(broadcast::kHashCurveLoader));
-    if (loader && std::memcmp(loader + kSetCallAt, kSetCall, sizeof(kSetCall)) == 0)
+    const size_t setCallAt = g_build->mixSetCallAt;
+    if (loader && std::memcmp(loader + setCallAt, kSetCall, sizeof(kSetCall)) == 0)
     {
-        std::memcpy(&rel, loader + kSetCallAt + sizeof(kSetCall), sizeof(rel));
-        g_set = reinterpret_cast<SetFn>(const_cast<uint8_t*>(loader) + kSetCallAt + sizeof(kSetCall) + 4 + rel);
+        std::memcpy(&rel, loader + setCallAt + sizeof(kSetCall), sizeof(rel));
+        g_set = reinterpret_cast<SetFn>(const_cast<uint8_t*>(loader) + setCallAt + sizeof(kSetCall) + 4 + rel);
     }
     else
     {
-        Log("byte check FAILED at the curve setter - voices and megabuilding music take a switch at the next load only");
+        Log("byte check FAILED at the curve setter " + diag::Offset(setCallAt) + ": " +
+            (loader ? diag::Mismatch(loader + setCallAt, kSetCall, sizeof(kSetCall)) : std::string("did not resolve")) +
+            " - voices and megabuilding music take a switch at the next load only");
     }
     g_nodeSetRtpc = reinterpret_cast<NodeSetRtpcFn>(aResolve(kHashNodeSetRtpc));
     const auto setProp = reinterpret_cast<const uint8_t*>(aResolve(kHashSetAkProp));
@@ -749,7 +765,9 @@ inline bool Init(uintptr_t (*aResolve)(uint32_t))
     }
     else
     {
-        Log("byte check FAILED at the node property setter - the cabin reverb is not boosted");
+        Log("byte check FAILED at the node property setter: " +
+            (setProp ? diag::Mismatch(setProp, kSetAkPropPrologue, sizeof(kSetAkPropPrologue)) : std::string("did not resolve")) +
+            " - the cabin reverb is not boosted");
     }
     const auto busSet = reinterpret_cast<const uint8_t*>(aResolve(kHashBusSetAkProp));
     if (busSet && std::memcmp(busSet, kBusSetAkPropPrologue, sizeof(kBusSetAkPropPrologue)) == 0)
@@ -758,7 +776,9 @@ inline bool Init(uintptr_t (*aResolve)(uint32_t))
     }
     else
     {
-        Log("byte check FAILED at the bus property setter - no boost");
+        Log("byte check FAILED at the bus property setter: " +
+            (busSet ? diag::Mismatch(busSet, kBusSetAkPropPrologue, sizeof(kBusSetAkPropPrologue)) : std::string("did not resolve")) +
+            " - no boost");
     }
     g_ready = true;
     Log("ready");

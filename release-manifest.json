@@ -16,7 +16,20 @@
       "primary_mod_manager_download": true,
       "show_requirements_pop_up": true,
       "update_mod_version": true,
-      "currentVersion": "0.8.2"
+      "currentVersion": "0.9.0"
+    },
+    "compat231": {
+      "displayName": "RadioXL - Game 2.31 Compatibility",
+      "fileBaseName": "RadioXL_Game_2.31_Compatibility",
+      "contentDir": ["compat/2.31/red4ext"],
+      "installDir": ["red4ext"],
+      "nexus_mod_id": 33983,
+      "category": "optional",
+      "primary_mod_manager_download": false,
+      "show_requirements_pop_up": false,
+      "update_mod_version": false,
+      "post_changelog": false,
+      "currentVersion": "0.9.0"
     },
     "builder": {
       "displayName": "RadioXL Station Builder",
@@ -32,5 +45,6 @@
       "currentVersion": "0.4.1sb"
     }
   },
+  "$compat_note": "compat231 is the game 2.31 build of the plugin DLL alone, named RadioXL.dll and installed over the main download's (the 2.5 build), so one DLL is ever in the plugin folder. It is released with the same version as radioxl, under its own tag (compat231-v<version>). plugin/build.ps1 writes it to compat/2.31/.",
   "$name_note": "Nexus v3 validates displayName against ^[a-zA-Z0-9 _'().-]+$ and rejects the upload with a 422 otherwise. No '&', no '/'."
 }

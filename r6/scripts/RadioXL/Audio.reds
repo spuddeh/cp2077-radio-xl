@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The AudioXL bridge - the one place this framework talks about sound.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // Credits: AudioXL by DigitalVixen.
 // ======================================================================================
 //
@@ -24,9 +24,9 @@ import AudioXL.*
 public class RadioXLAudio {
 
   public final static func Register(event: CName, file: String, type: CName) -> Bool {
-    // pitch default, distance 30: the row's attenuation reach at a world device. 0 is the engine's
-    // default for the mod_sfx_radio object, which is tuned for a broadcast effect and plays a
-    // station audibly quieter at a device than a vanilla one. `stream` is read for WAV only.
+    // pitch default, distance 30: the row's attenuation reach at a world device, where a station
+    // falls off with distance as a vanilla station does. At 0 it falls off about twice as fast.
+    // `stream` is read for WAV only.
     // The gain argument here is stored in the engine's registry entry and never reaches the
     // samples; the level is set through SetGain below once the row exists.
     return AudioXLNative.RegisterSoundEx(event, type, file, 1.0, 0.0, 30.0,

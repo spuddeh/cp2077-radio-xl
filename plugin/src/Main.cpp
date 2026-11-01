@@ -22,6 +22,8 @@
 #include <RED4ext/RED4ext.hpp>
 
 #include "Broadcast.hpp"
+#include "Build.hpp"
+#include "Diag.hpp"
 #include "Eq.hpp"
 #include "Presets.hpp"
 #include "Mix.hpp"
@@ -72,28 +74,21 @@ constexpr size_t kVehicleCmpOpcode = 0x5E;  // 83 FF 0E   cmp edi, 14
 constexpr size_t kVehicleCmpImm    = 0x60;
 
 // **A fourth bound, in the receiver's turn-on path.** Switching a vehicle radio back on runs the
-// receiver's enable routine (0xa32d90), whose turn-on branch lives in a cold block with no hash of
-// its own. The block is reached through the routine's own `jne` at +0x42, so it is found by reading
-// that displacement rather than by address. At +0x29 into the block the stored station is compared
-// with 14: a station at or past the bound is taken as "none chosen yet" and the receiver picks one
-// of the vehicle's own at random. The bound is raised to the station total like the other three.
-constexpr uint32_t kHashReceiverEnable = 1795889442;  // 0xa32d90, the receiver's enable/disable
-constexpr size_t kEnableTest    = 0x40;  // 84 D2            test dl, dl
-constexpr size_t kEnableJne     = 0x42;  // 0F 85 rel32      jne turn-on block
-constexpr size_t kEnableJneNext = 0x48;  // the rel32 is measured from here
-constexpr size_t kOnCmpOpcode   = 0x29;  // 83 7F 0C 0E      cmp dword [rdi+0xc], 14
+// receiver's enable routine, whose turn-on block has no hash of its own. It is found from the
+// routine's `test dl, dl` and the rel32 jump after it (the build table says which jump, and whether
+// the block is its target or its fall-through). At +0x29 into the block the stored station is
+// compared with the vanilla count: a station at or past the bound is taken as "none chosen yet" and
+// the receiver picks one of the vehicle's own at random. The bound is raised to the station total.
+constexpr uint32_t kHashReceiverEnable = 1795889442;  // the receiver's enable/disable
+constexpr size_t kOnCmpOpcode   = 0x29;  // 83 7F 0C imm8    cmp dword [rdi+0xc], count
 constexpr size_t kOnCmpImm      = 0x2C;
-constexpr uint8_t kTestDlJne[] = {0x84, 0xD2, 0x0F, 0x85};
+constexpr uint8_t kTestDl[] = {0x84, 0xD2, 0x0F};
 constexpr uint8_t kOnBlockStart[] = {0x4C, 0x8B, 0x01, 0x49, 0x8B, 0xC8};  // mov r8,[rcx]; mov rcx,r8
 constexpr uint8_t kCmpRdi0c[] = {0x83, 0x7F, 0x0C};
 
 // The same block's SECOND bound, after the random pick: the picked name is resolved, stored at
-// `[rdi+0xc]` and compared with 14 again, and at or past it the receiver stays off. A car whose own
-// list names a custom station came up silent when the pick landed on it.
-constexpr size_t kOnPickStore  = 0x171;  // 89 47 0C         mov [rdi+0xc], eax
-constexpr size_t kOnPickCmp    = 0x174;  // 83 7F 0C 0E      cmp dword [rdi+0xc], 14
-constexpr size_t kOnPickCmpImm = 0x177;
-constexpr size_t kOnPickJae    = 0x178;  // 0F 83 rel32      jae leave off
+// `[rdi+0xc]` and compared with the vanilla count again, and at or past it the receiver stays off.
+// A car whose own list names a custom station came up silent when the pick landed on it.
 constexpr uint8_t kMovRdi0cEax[] = {0x89, 0x47, 0x0C};
 constexpr uint8_t kJaeRel32[] = {0x0F, 0x83};
 
@@ -123,21 +118,17 @@ constexpr uint8_t kJneRel32[] = {0x0F, 0x85};
 constexpr uint8_t kCmpRcxRip[] = {0x48, 0x3B, 0x0D};
 constexpr uint8_t kJaeRel8[] = {0x73};
 
-// The vehicle receiver's NEXT-station step, `+0x68` to `+0x92` of the same function. It takes the
-// current index through a dial-order table (a switch on 0..13), adds one, reduces modulo 14 with a
-// magic-number division, maps back through the inverse table (another switch on 0..13) and drops
-// the id bias. A custom index gets a wrong answer from each table before the modulo is reached, so
-// the operand cannot be widened and the block is DETOURED whole: a stub reads two tables of this
-// plugin's own, holding every station in dial order, and the two switches are consulted once at
-// patch time for the order of the fourteen.
+// The vehicle receiver's NEXT-station step, from `+0x68` of the same function to the build's
+// `stepTo`. It takes the current index through a dial-order table (a switch over the vanilla
+// stations), adds one, reduces it modulo the vanilla count with a magic-number division, maps back
+// through the inverse table and drops the id bias. A custom index gets a wrong answer from each table
+// before the modulo is reached, so the operand cannot be widened and the block is DETOURED whole: a
+// stub reads two tables of this plugin's own, holding every station in dial order, and the switch is
+// consulted once at patch time for the vanilla stations' order.
 constexpr size_t kVehicleStepFrom     = 0x68;  // 8B 4B 0C         mov ecx, [rbx+0xc]
 constexpr size_t kVehicleStepToDial   = 0x6B;  // E8 rel32         call index -> dial position
 constexpr size_t kVehicleStepInc      = 0x70;  // 8D 48 01         lea ecx, [rax+1]
-constexpr size_t kVehicleStepMagic    = 0x73;  // B8 25 49 92 24   mov eax, 0x24924925
-constexpr size_t kVehicleStepImul     = 0x85;  // 6B C0 0E         imul eax, eax, 14
-constexpr size_t kVehicleStepFromDial = 0x8A;  // E8 rel32         call dial position -> internal id
-constexpr size_t kVehicleStepBias     = 0x8F;  // 8D 78 F8         lea edi, [rax-8]
-constexpr size_t kVehicleStepTo       = 0x92;  // 89 7B 0C         mov [rbx+0xc], edi - the stub returns here
+constexpr size_t kVehicleStepMagic    = 0x73;  // B8 imm32         mov eax, magic
 
 constexpr uint8_t kMovEcxRbx0c[] = {0x8B, 0x4B, 0x0C};
 constexpr uint8_t kLeaEcxRax1[] = {0x8D, 0x48, 0x01};
@@ -146,44 +137,29 @@ constexpr uint8_t kMovRbx0cEdi[] = {0x89, 0x7B, 0x0C};
 constexpr uint8_t kCallRel32[] = {0xE8};
 
 // The station NAME table's reader, offsets from its own start. It takes the station index in edx
-// and reduces it MODULO 14 before the bounds check, so **slot 14 wraps to 0 and a custom station
-// reports Radio Vexelstrom's name**. `+0x03` to `+0x1B` is a magic-number division by 14, ending
-// in `sub r8d, eax`; `+0x1C` is `cmp r8d, 13`; `+0x22` is the `lea` naming the table.
+// and reduces it MODULO the vanilla count before the bounds check, so **the first slot past the
+// vanilla stations wraps to 0 and a custom station reports Radio Vexelstrom's name**. From `+0x03`
+// to the build's `nameDivTo` is the magic-number division, ending in `sub r8d, eax`; then
+// `cmp r8d, imm8` and the `lea` naming the table.
 //
 // The division is REMOVED rather than retuned: r8d already holds the index from `+0x00`, and
-// `index % 14 == index` for every vanilla index, so erasing it changes nothing for the fourteen.
+// `index % count == index` for every vanilla index, so erasing it changes nothing for them.
 constexpr size_t kNameMovR8   = 0x00;  // 44 8B C2   mov r8d, edx
 constexpr size_t kNameDivFrom = 0x03;  // first byte of the division
-constexpr size_t kNameDivTo   = 0x1C;  // one past its last byte
-constexpr size_t kNameImul    = 0x16;  // 6B C0 0E   imul eax, eax, 14
-constexpr size_t kNameSub     = 0x19;  // 44 2B C0   sub r8d, eax
-constexpr size_t kNameCmp     = 0x1C;  // 41 83 F8   cmp r8d, imm8
-constexpr size_t kNameCmpImm  = 0x1F;
-constexpr size_t kNameLea     = 0x22;  // 48 8D 15   lea rdx, [rip+disp32]
-constexpr size_t kNameLeaDisp = 0x25;
 
 constexpr uint8_t kMovR8Edx[] = {0x44, 0x8B, 0xC2};
-constexpr uint8_t kMovEaxImm[] = {0xB8, 0x25, 0x49, 0x92, 0x24};
-constexpr uint8_t kImulEax14[] = {0x6B, 0xC0, 0x0E};
 constexpr uint8_t kSubR8Eax[] = {0x44, 0x2B, 0xC0};
 constexpr uint8_t kCmpR8[] = {0x41, 0x83, 0xF8};
 
-// The SECOND reader of the same name table, at 0x1cb3320, offsets from its own start. It is the
-// Radioport's, it wraps the index the same way, and it was missed because it reaches the table as
-// `[r14 + rcx*8 + disp32]` with r14 holding the image base - not the `lea` form the first uses.
+// The SECOND reader of the same name table. It is the Radioport's, it wraps the index the same way,
+// and it reaches the table as `[r14 + rcx*8 + disp32]` with r14 holding the image base - not the
+// `lea` form the first uses.
 //
 // **An `inc qword [rdi]` sits INSIDE the division**, at +0x62, so the block cannot be filled with
 // nops in one run without deleting a live side effect. Two runs skip over it.
-constexpr size_t kName2MovEax   = 0x5D;  // B8 25 49 92 24   mov eax, 0x24924925
+constexpr size_t kName2MovEax   = 0x5D;  // B8 imm32         mov eax, magic
 constexpr size_t kName2Keep     = 0x62;  // 48 FF 07         inc qword [rdi]   a live side effect, kept
 constexpr size_t kName2DivFrom  = 0x65;  // F7 E1            mul ecx
-constexpr size_t kName2DivTo    = 0x77;  // one past `sub ecx, eax`
-constexpr size_t kName2Imul     = 0x72;  // 6B C0 0E         imul eax, eax, 14
-constexpr size_t kName2Sub      = 0x75;  // 2B C8            sub ecx, eax
-constexpr size_t kName2Cmp      = 0x77;  // 83 F9            cmp ecx, imm8
-constexpr size_t kName2CmpImm   = 0x79;
-constexpr size_t kName2Mov      = 0x7C;  // 49 8B 9C CE      mov rbx, [r14+rcx*8+disp32]
-constexpr size_t kName2MovDisp  = 0x80;
 
 constexpr uint8_t kIncRdi[] = {0x48, 0xFF, 0x07};
 constexpr uint8_t kMulEcx[] = {0xF7, 0xE1};
@@ -196,28 +172,40 @@ constexpr uint8_t kLeaRdx[] = {0x48, 0x8D, 0x15};
 constexpr uint8_t kCmpEax[] = {0x83, 0xF8};
 constexpr uint8_t kCmpEdi[] = {0x83, 0xFF};
 
-constexpr int kVanillaCount = 14;
+constexpr int kMaxVanilla = 15;    // the most vanilla stations any supported build has
 constexpr int kMaxStations = 127;  // both bounds are 8-bit immediates
 
-// **Two internal ids past the fourteen belong to vanilla stations outside the roster.**
-// `TryGetRadioStationChannel` gives `radio_station_police` internal id 23 and `radio_station_kurtz`
-// 33 (enum 15 and 25, internal id = enum + 8). Custom stations start past the highest of them, at
-// enum 26, so none sits among the game's own; slots 14 to 25 are empty but for those two, which carry
-// the vanilla names so name -> id and id -> name agree with the game. None of them is on a dial.
+// The selected build's vanilla station count. Before a build is selected, the lowest any supported
+// build has, which is every station the game is sure to have.
+int VanillaCount()
+{
+    return radioxl::g_build ? radioxl::g_build->vanillaCount : radioxl::kBuild231.vanillaCount;
+}
+
+// **Two internal ids past the vanilla stations belong to stations outside the roster.**
+// `TryGetRadioStationChannel` gives `radio_station_police` an internal id the build table holds
+// (enum + 8) and `radio_station_kurtz` internal id 33 (enum 25). Custom stations start past the
+// highest of them, at enum 26, so none sits among the game's own; the slots between the vanilla
+// stations and 26 are empty but for those two, which carry the vanilla names so name -> id and
+// id -> name agree with the game. None of them is on a dial.
 struct ReservedSlot
 {
     int32_t enumValue;
     const char* name;
     const char* labelKey;
 };
-constexpr ReservedSlot kReserved[] = {
-    {15, "radio_station_police", "Gameplay-Devices-Radio-PoliceStation"},
-    {25, "radio_station_kurtz", "Gameplay-Devices-Radio-NoneStation"},  // the game has no Kurtz label key
-};
+std::vector<ReservedSlot> Reserved()
+{
+    return {
+        {radioxl::g_build ? radioxl::g_build->policeEnum : radioxl::kBuild231.policeEnum, "radio_station_police",
+         "Gameplay-Devices-Radio-PoliceStation"},
+        {25, "radio_station_kurtz", "Gameplay-Devices-Radio-NoneStation"},  // the game has no Kurtz label key
+    };
+}
 
 std::vector<int32_t> g_enumOf;  // custom station -> ERadioStationList value
 std::vector<int32_t> g_slotOf;  // ERadioStationList value -> custom station, -1 for vanilla or reserved
-int32_t g_enumEnd = kVanillaCount;  // one past the last custom station's enum value
+int32_t g_enumEnd = 14;         // one past the last custom station's enum value; set by AssignEnums
 
 constexpr int32_t kFirstCustomEnum = 26;  // one past Kurtz
 
@@ -228,7 +216,7 @@ void AssignEnums(size_t aCount)
     {
         g_enumOf.push_back(kFirstCustomEnum + static_cast<int32_t>(i));
     }
-    g_enumEnd = aCount ? g_enumOf.back() + 1 : kVanillaCount;
+    g_enumEnd = aCount ? g_enumOf.back() + 1 : VanillaCount();
     g_slotOf.assign(static_cast<size_t>(g_enumEnd), -1);
     for (size_t i = 0; i < aCount; ++i)
     {
@@ -247,7 +235,8 @@ using radioxl::Track;
 // table of every station in that order and hands it to both. The fourteen's order comes from the
 // game's own switch at patch time; their frequencies, which decide where a custom station is
 // inserted, are these, indexed by ERadioStationList.
-constexpr float kVanillaFrequency[kVanillaCount] = {
+// A build with fewer vanilla stations reads only the first `VanillaCount()` entries.
+constexpr float kVanillaFrequency[kMaxVanilla] = {
     89.3f,   // AGGRO_INDUSTRIAL   Radio Vexelstrom
     92.9f,   // ELECTRO_INDUSTRIAL Night FM
     101.9f,  // HIP_HOP            The Dirge
@@ -262,6 +251,7 @@ constexpr float kVanillaFrequency[kVanillaCount] = {
     89.7f,   // GROWL              Growl FM
     107.5f,  // DARK_STAR          Dark Star
     99.9f,   // IMPULSE_FM         Impulse
+    102.0f,  // EDGE_RUNNERS       HKGN (2.5)
 };
 
 // Vanilla puts a LOCALIZATION KEY in the engine's name table and in every audioRadioTrack row, and
@@ -309,6 +299,7 @@ std::string LegacyTrackEvent(const Station& aStation, size_t aIndex)
 
 std::vector<Station> g_stations;
 bool g_patched = false;
+uint8_t* g_receiverOn = nullptr;  // the receiver's turn-on block, found by the selected build's checks
 
 const RED4ext::v1::Sdk* g_sdk = nullptr;
 RED4ext::v1::PluginHandle g_handle = nullptr;
@@ -624,20 +615,21 @@ void LoadManifests()
 std::vector<int32_t> g_dial;      // dial position -> ERadioStationList value
 std::vector<int32_t> g_position;  // ERadioStationList value -> dial position
 
-// Every station in dial order. The fourteen come first in the order the game's own switch gives
-// them; each custom station is then inserted before the first station whose frequency is above
-// its own, so a 93.7 lands between 92.9 and 95.2. Two stations on one frequency keep slot order,
-// the vanilla one first, and the tie is logged.
+// Every station in dial order. The vanilla stations come first in the order the game's own switch
+// gives them; each custom station is then inserted before the first station whose frequency is
+// above its own, so a 93.7 lands between 92.9 and 95.2. Two stations on one frequency keep slot
+// order, the vanilla one first, and the tie is logged.
 using DialSwitch = uint32_t (*)(uint32_t);
 
 void BuildDial(DialSwitch aIndexToDial)
 {
-    std::vector<int32_t> order(kVanillaCount, -1);
+    const int vanilla = VanillaCount();
+    std::vector<int32_t> order(vanilla, -1);
     bool permutation = true;
-    for (int32_t i = 0; i < kVanillaCount && permutation; ++i)
+    for (int32_t i = 0; i < vanilla && permutation; ++i)
     {
         const uint32_t p = aIndexToDial(static_cast<uint32_t>(i));
-        if (p >= static_cast<uint32_t>(kVanillaCount) || order[p] != -1)
+        if (p >= static_cast<uint32_t>(vanilla) || order[p] != -1)
         {
             permutation = false;
         }
@@ -648,8 +640,9 @@ void BuildDial(DialSwitch aIndexToDial)
     }
     if (!permutation)
     {
-        Log("the game's dial switch is not a permutation of 14 - the fourteen are ordered by the frequency table instead");
-        for (int32_t i = 0; i < kVanillaCount; ++i)
+        Log("the game's dial switch is not a permutation of " + std::to_string(vanilla) +
+            " - the vanilla stations are ordered by the frequency table instead");
+        for (int32_t i = 0; i < vanilla; ++i)
         {
             order[i] = i;
         }
@@ -657,15 +650,13 @@ void BuildDial(DialSwitch aIndexToDial)
                          [](int32_t a, int32_t b) { return kVanillaFrequency[a] < kVanillaFrequency[b]; });
     }
 
-    auto frequencyOf = [](int32_t aStation)
+    auto frequencyOf = [vanilla](int32_t aStation)
     {
-        return aStation < kVanillaCount ? kVanillaFrequency[aStation]
-                                        : g_stations[g_slotOf[aStation]].frequency;
+        return aStation < vanilla ? kVanillaFrequency[aStation] : g_stations[g_slotOf[aStation]].frequency;
     };
-    auto nameOf = [](int32_t aStation) -> std::string
+    auto nameOf = [vanilla](int32_t aStation) -> std::string
     {
-        return aStation < kVanillaCount ? "vanilla station " + std::to_string(aStation)
-                                        : g_stations[g_slotOf[aStation]].name;
+        return aStation < vanilla ? "vanilla station " + std::to_string(aStation) : g_stations[g_slotOf[aStation]].name;
     };
 
     std::vector<int32_t> customs(g_enumOf.begin(), g_enumOf.end());
@@ -833,6 +824,297 @@ bool WriteBytes(void* aAt, const void* aData, size_t aLen)
     return true;
 }
 
+// The functions the roster patch touches, by RED4ext hash. Every supported build has all of them.
+struct RosterFunctions
+{
+    uint64_t* roster = nullptr;
+    uint8_t* resolve = nullptr;
+    uint8_t* indexToName = nullptr;
+    uint8_t* vehicleSet = nullptr;
+    uint64_t* nameTable = nullptr;
+    uint8_t* nameReader = nullptr;
+    uint8_t* nameReader2 = nullptr;
+    uint8_t* receiverEnable = nullptr;
+    uint8_t* handover = nullptr;
+    uint8_t* vehicleLoad = nullptr;
+};
+
+bool ResolveRoster(RosterFunctions& aOut)
+{
+    struct Entry
+    {
+        uint32_t hash;
+        const char* name;
+        void** at;
+    };
+    const Entry entries[] = {
+        {kHashRoster, "roster", reinterpret_cast<void**>(&aOut.roster)},
+        {kHashResolve, "resolve", reinterpret_cast<void**>(&aOut.resolve)},
+        {kHashIndexToName, "indexToName", reinterpret_cast<void**>(&aOut.indexToName)},
+        {kHashVehicleSet, "vehicleSet", reinterpret_cast<void**>(&aOut.vehicleSet)},
+        {kHashNameTable, "nameTable", reinterpret_cast<void**>(&aOut.nameTable)},
+        {kHashNameReader, "nameReader", reinterpret_cast<void**>(&aOut.nameReader)},
+        {kHashNameReader2, "nameReader2", reinterpret_cast<void**>(&aOut.nameReader2)},
+        {kHashReceiverEnable, "receiverEnable", reinterpret_cast<void**>(&aOut.receiverEnable)},
+        {kHashTrafficHandover, "handover", reinterpret_cast<void**>(&aOut.handover)},
+        {kHashVehicleLoad, "vehicleLoad", reinterpret_cast<void**>(&aOut.vehicleLoad)},
+    };
+    std::string missing;
+    for (const Entry& e : entries)
+    {
+        *e.at = reinterpret_cast<void*>(ResolveByHash(e.hash));
+        if (!*e.at)
+        {
+            missing += (missing.empty() ? "" : ", ") + std::string(e.name) + " (hash " + std::to_string(e.hash) + ")";
+        }
+    }
+    if (!missing.empty())
+    {
+        Log("address resolution failed for " + missing +
+            " - is RED4ext's address database present for this build? Nothing patched");
+        return false;
+    }
+    return true;
+}
+
+// The two blocks reached through a jump. Null when the jump is not where the build says.
+struct RosterSites
+{
+    uint8_t* receiverOn = nullptr;
+    uint8_t* vehicleLoadCold = nullptr;
+};
+
+// One failed check: the function it is in, for the region dump, and the line logged.
+struct Failure
+{
+    std::string function;
+    std::string line;
+    bool bound = false;
+    int found = 0;
+    int wanted = 0;
+};
+
+// Every byte check of one build's table. An empty result is a match.
+std::vector<Failure> CheckRoster(const RosterFunctions& aFn, const radioxl::Build& aBuild, RosterSites& aSites)
+{
+    using radioxl::diag::Mismatch;
+    using radioxl::diag::Offset;
+    std::vector<Failure> failures;
+    const auto check = [&](const char* aName, const uint8_t* aBase, size_t aAt, const uint8_t* aWant, size_t aLen,
+                           const char* aWhat)
+    {
+        if (std::memcmp(aBase + aAt, aWant, aLen) != 0)
+        {
+            failures.push_back(
+                {aName, std::string(aName) + " " + Offset(aAt) + " " + aWhat + ": " + Mismatch(aBase + aAt, aWant, aLen)});
+        }
+    };
+    const auto bound = [&](const char* aName, const uint8_t* aBase, size_t aAt, int aWant)
+    {
+        if (aBase[aAt] != aWant)
+        {
+            failures.push_back({aName,
+                                std::string(aName) + " " + Offset(aAt) + " bound: found " + std::to_string(aBase[aAt]) +
+                                    ", wanted " + std::to_string(aWant),
+                                true, aBase[aAt], aWant});
+        }
+    };
+    const int count = aBuild.vanillaCount;
+
+    // The turn-on block is wherever the enable routine's own jump says it is.
+    const uint8_t jump[] = {kTestDl[0], kTestDl[1], kTestDl[2], static_cast<uint8_t>(aBuild.enableJne ? 0x85 : 0x84)};
+    const size_t before = failures.size();
+    check("receiverEnable", aFn.receiverEnable, aBuild.enableTest, jump, sizeof(jump),
+          aBuild.enableJne ? "test dl, dl; jne rel32" : "test dl, dl; je rel32");
+    if (failures.size() == before)
+    {
+        int32_t disp = 0;
+        std::memcpy(&disp, aFn.receiverEnable + aBuild.enableTest + 4, sizeof(disp));
+        uint8_t* const next = aFn.receiverEnable + aBuild.enableTest + 8;
+        aSites.receiverOn = aBuild.enableJne ? next + disp : next;
+    }
+    // So is the load path's.
+    if (std::memcmp(aFn.vehicleLoad + kLoadJne, kJneRel32, sizeof(kJneRel32)) == 0)
+    {
+        int32_t disp = 0;
+        std::memcpy(&disp, aFn.vehicleLoad + kLoadJne + 2, sizeof(disp));
+        aSites.vehicleLoadCold = aFn.vehicleLoad + kLoadJneNext + disp;
+    }
+    else
+    {
+        check("vehicleLoad", aFn.vehicleLoad, kLoadJne, kJneRel32, sizeof(kJneRel32), "jne cold block");
+    }
+
+    check("resolve", aFn.resolve, kResolveLeaOpcode, kLeaR8, sizeof(kLeaR8), "lea r8, [rip+disp32]");
+    check("resolve", aFn.resolve, kResolveCmpOpcode, kCmpEax, sizeof(kCmpEax), "cmp eax, imm8");
+    check("indexToName", aFn.indexToName, kIndexCmpOpcode, kCmpEax, sizeof(kCmpEax), "cmp eax, imm8");
+    check("indexToName", aFn.indexToName, kIndexLeaOpcode, kLeaRdx, sizeof(kLeaRdx), "lea rdx, [rip+disp32]");
+    check("vehicleSet", aFn.vehicleSet, kVehicleCmpOpcode, kCmpEdi, sizeof(kCmpEdi), "cmp edi, imm8");
+    check("vehicleSet", aFn.vehicleSet, kVehicleStepFrom, kMovEcxRbx0c, sizeof(kMovEcxRbx0c), "mov ecx, [rbx+0xc]");
+    check("vehicleSet", aFn.vehicleSet, kVehicleStepToDial, kCallRel32, sizeof(kCallRel32), "call index->dial");
+    check("vehicleSet", aFn.vehicleSet, kVehicleStepInc, kLeaEcxRax1, sizeof(kLeaEcxRax1), "lea ecx, [rax+1]");
+    check("vehicleSet", aFn.vehicleSet, kVehicleStepMagic, aBuild.divMagic, sizeof(aBuild.divMagic), "mov eax, magic");
+    check("vehicleSet", aFn.vehicleSet, aBuild.stepImul, aBuild.imulCount, sizeof(aBuild.imulCount), "imul by the count");
+    check("vehicleSet", aFn.vehicleSet, aBuild.stepSub, kSubEcxEax, sizeof(kSubEcxEax), "sub ecx, eax");
+    check("vehicleSet", aFn.vehicleSet, aBuild.stepFromDial, kCallRel32, sizeof(kCallRel32), "call dial->id");
+    check("vehicleSet", aFn.vehicleSet, aBuild.stepBias, kLeaEdiRaxM8, sizeof(kLeaEdiRaxM8), "lea edi, [rax-8]");
+    check("vehicleSet", aFn.vehicleSet, aBuild.stepTo, kMovRbx0cEdi, sizeof(kMovRbx0cEdi), "mov [rbx+0xc], edi");
+    check("nameReader", aFn.nameReader, kNameMovR8, kMovR8Edx, sizeof(kMovR8Edx), "mov r8d, edx");
+    check("nameReader", aFn.nameReader, kNameDivFrom, aBuild.divMagic, sizeof(aBuild.divMagic), "mov eax, magic");
+    check("nameReader", aFn.nameReader, aBuild.nameImul, aBuild.imulCount, sizeof(aBuild.imulCount), "imul by the count");
+    check("nameReader", aFn.nameReader, aBuild.nameSub, kSubR8Eax, sizeof(kSubR8Eax), "sub r8d, eax");
+    check("nameReader", aFn.nameReader, aBuild.nameCmp, kCmpR8, sizeof(kCmpR8), "cmp r8d, imm8");
+    check("nameReader", aFn.nameReader, aBuild.nameLea, kLeaRdx, sizeof(kLeaRdx), "lea rdx, [rip+disp32]");
+    check("nameReader2", aFn.nameReader2, kName2MovEax, aBuild.divMagic, sizeof(aBuild.divMagic), "mov eax, magic");
+    check("nameReader2", aFn.nameReader2, kName2Keep, kIncRdi, sizeof(kIncRdi), "inc qword [rdi]");
+    check("nameReader2", aFn.nameReader2, kName2DivFrom, kMulEcx, sizeof(kMulEcx), "mul ecx");
+    check("nameReader2", aFn.nameReader2, aBuild.name2Imul, aBuild.imulCount, sizeof(aBuild.imulCount), "imul by the count");
+    check("nameReader2", aFn.nameReader2, aBuild.name2Sub, kSubEcxEax, sizeof(kSubEcxEax), "sub ecx, eax");
+    check("nameReader2", aFn.nameReader2, aBuild.name2Cmp, kCmpEcx, sizeof(kCmpEcx), "cmp ecx, imm8");
+    check("nameReader2", aFn.nameReader2, aBuild.name2Mov, kMovR14Rcx, sizeof(kMovR14Rcx), "mov rbx, [r14+rcx*8+disp32]");
+    check("handover", aFn.handover, kHandoverCall, kCallRel32, sizeof(kCallRel32), "call name->index");
+    check("handover", aFn.handover, kHandoverCmp, kCmpEax, sizeof(kCmpEax), "cmp eax, imm8");
+    check("handover", aFn.handover, kHandoverJae, kJaeRel8, sizeof(kJaeRel8), "jae");
+
+    bound("resolve", aFn.resolve, kResolveCmpImm, count);
+    bound("indexToName", aFn.indexToName, kIndexCmpImm, count - 1);
+    bound("vehicleSet", aFn.vehicleSet, kVehicleCmpImm, count);
+    bound("nameReader", aFn.nameReader, aBuild.nameCmp + 3, count - 1);
+    bound("nameReader2", aFn.nameReader2, aBuild.name2Cmp + 2, count - 1);
+    bound("handover", aFn.handover, kHandoverCmpImm, count);
+
+    if (const uint8_t* on = aSites.receiverOn)
+    {
+        check("receiverOn", on, 0, kOnBlockStart, sizeof(kOnBlockStart), "mov r8, [rcx]; mov rcx, r8");
+        check("receiverOn", on, kOnCmpOpcode, kCmpRdi0c, sizeof(kCmpRdi0c), "cmp dword [rdi+0xc], imm8");
+        check("receiverOn", on, aBuild.onPickStore, kMovRdi0cEax, sizeof(kMovRdi0cEax), "mov [rdi+0xc], eax");
+        check("receiverOn", on, aBuild.onPickCmp, kCmpRdi0c, sizeof(kCmpRdi0c), "pick cmp dword [rdi+0xc], imm8");
+        check("receiverOn", on, aBuild.onPickJae, kJaeRel32, sizeof(kJaeRel32), "pick jae");
+        bound("receiverOn", on, kOnCmpImm, count);
+        bound("receiverOn", on, aBuild.onPickCmp + 3, count);
+    }
+    if (const uint8_t* cold = aSites.vehicleLoadCold)
+    {
+        check("vehicleLoadCold", cold, kLoadColdCmpRcx, kCmpRcxRip, sizeof(kCmpRcxRip), "cmp rcx, [rip+disp32]");
+        check("vehicleLoadCold", cold, kLoadColdCall, kCallRel32, sizeof(kCallRel32), "call name->index");
+        check("vehicleLoadCold", cold, kLoadColdCmp, kCmpEax, sizeof(kCmpEax), "cmp eax, imm8");
+        check("vehicleLoadCold", cold, kLoadColdJae, kJaeRel32, sizeof(kJaeRel32), "jae");
+        bound("vehicleLoadCold", cold, kLoadColdCmpImm, count);
+    }
+    return failures;
+}
+
+// The code around every function that failed a check, so its new layout can be read from the log.
+void DumpRoster(const RosterFunctions& aFn, const RosterSites& aSites, const std::vector<std::string>& aFailed)
+{
+    struct Region
+    {
+        const char* name;
+        const uint8_t* base;
+        size_t from;
+        size_t to;
+    };
+    const Region regions[] = {
+        {"resolve", aFn.resolve, 0x00, 0x40},       {"indexToName", aFn.indexToName, 0x00, 0x20},
+        {"vehicleSet", aFn.vehicleSet, 0x50, 0xA0}, {"nameReader", aFn.nameReader, 0x00, 0x30},
+        {"nameReader2", aFn.nameReader2, 0x50, 0x90}, {"receiverEnable", aFn.receiverEnable, 0x00, 0x60},
+        {"receiverOn", aSites.receiverOn, 0x00, 0x180}, {"handover", aFn.handover, 0x40, 0x60},
+        {"vehicleLoad", aFn.vehicleLoad, 0x100, 0x120}, {"vehicleLoadCold", aSites.vehicleLoadCold, 0x00, 0x20},
+    };
+    for (const Region& r : regions)
+    {
+        if (r.base && std::find(aFailed.begin(), aFailed.end(), r.name) != aFailed.end())
+        {
+            radioxl::diag::Region(&Log, r.name, r.base, r.from, r.to);
+        }
+    }
+}
+
+std::string GameVersion()
+{
+    if (!g_sdk || !g_sdk->runtime)
+    {
+        return "an unknown version";
+    }
+    // The game names its patches by minor and patch run together, with no trailing zero: RED4ext's
+    // 2.3.1 is 2.31 and its 2.5.0 is 2.5.
+    const auto* v = g_sdk->runtime;
+    return std::to_string(v->major) + "." + std::to_string(v->minor) + (v->patch ? std::to_string(v->patch) : "");
+}
+
+// The build whose every check passes. None, or more than one, patches nothing.
+const radioxl::Build* SelectBuild(const RosterFunctions& aFn, RosterSites& aSites)
+{
+    struct Result
+    {
+        const radioxl::Build* build;
+        RosterSites sites;
+        std::vector<Failure> failures;
+    };
+    std::vector<Result> results;
+    std::vector<const Result*> matches;
+    for (const radioxl::Build* b : radioxl::kBuilds)
+    {
+        Result r{b, {}, {}};
+        r.failures = CheckRoster(aFn, *b, r.sites);
+        results.push_back(std::move(r));
+    }
+    for (const Result& r : results)
+    {
+        if (r.failures.empty())
+        {
+            matches.push_back(&r);
+        }
+    }
+    if (matches.size() == 1)
+    {
+        aSites = matches.front()->sites;
+        Log("game build " + std::string(matches.front()->build->name) + " (RED4ext reports game " + GameVersion() +
+            "): every byte check passed");
+        return matches.front()->build;
+    }
+    if (matches.size() > 1)
+    {
+        Log("more than one build table passes every check (RED4ext reports game " + GameVersion() +
+            ") - nothing patched");
+        return nullptr;
+    }
+
+    Log("no supported build matches this game (RED4ext reports game " + GameVersion() +
+        ") - nothing patched. Each build's failed checks:");
+    std::vector<std::string> failed;
+    RosterSites dumpSites;
+    for (const Result& r : results)
+    {
+        Log("build " + std::string(r.build->name) + ": " + std::to_string(r.failures.size()) + " check(s) failed");
+        bool allOnePast = true;
+        bool aboveCount = false;
+        for (const Failure& f : r.failures)
+        {
+            Log("  " + f.line);
+            if (std::find(failed.begin(), failed.end(), f.function) == failed.end())
+            {
+                failed.push_back(f.function);
+            }
+            allOnePast = allOnePast && f.bound && f.found == f.wanted + 1;
+            aboveCount = aboveCount || (f.bound && f.found > f.wanted + 1);
+        }
+        if (allOnePast)
+        {
+            Log("  every failure is a bound one past build " + std::string(r.build->name) +
+                "'s: the game has one more vanilla station, and needs a build table of its own");
+        }
+        if (aboveCount)
+        {
+            Log("  a bound reads above the vanilla count: another plugin may have patched the roster already");
+        }
+        dumpSites.receiverOn = dumpSites.receiverOn ? dumpSites.receiverOn : r.sites.receiverOn;
+        dumpSites.vehicleLoadCold = dumpSites.vehicleLoadCold ? dumpSites.vehicleLoadCold : r.sites.vehicleLoadCold;
+    }
+    DumpRoster(aFn, dumpSites, failed);
+    return nullptr;
+}
+
 void PatchRoster()
 {
     if (g_stations.empty())
@@ -840,46 +1122,32 @@ void PatchRoster()
         return;
     }
 
-    const auto roster = reinterpret_cast<uint64_t*>(ResolveByHash(kHashRoster));
-    const auto resolve = reinterpret_cast<uint8_t*>(ResolveByHash(kHashResolve));
-    const auto indexToName = reinterpret_cast<uint8_t*>(ResolveByHash(kHashIndexToName));
-    const auto vehicleSet = reinterpret_cast<uint8_t*>(ResolveByHash(kHashVehicleSet));
-    const auto nameTable = reinterpret_cast<uint64_t*>(ResolveByHash(kHashNameTable));
-    const auto nameReader = reinterpret_cast<uint8_t*>(ResolveByHash(kHashNameReader));
-    const auto nameReader2 = reinterpret_cast<uint8_t*>(ResolveByHash(kHashNameReader2));
-    const auto receiverEnable = reinterpret_cast<uint8_t*>(ResolveByHash(kHashReceiverEnable));
-    const auto handover = reinterpret_cast<uint8_t*>(ResolveByHash(kHashTrafficHandover));
-    const auto vehicleLoad = reinterpret_cast<uint8_t*>(ResolveByHash(kHashVehicleLoad));
-
-    if (!roster || !resolve || !indexToName || !vehicleSet || !nameTable || !nameReader ||
-        !nameReader2 || !receiverEnable || !handover || !vehicleLoad)
+    RosterFunctions fn;
+    if (!ResolveRoster(fn))
     {
-        Log("address resolution failed - is RED4ext's address database present for this build?");
         return;
     }
-
-    // The turn-on block is wherever the enable routine's own jump says it is.
-    if (std::memcmp(receiverEnable + kEnableTest, kTestDlJne, sizeof(kTestDlJne)) != 0)
+    RosterSites sites;
+    radioxl::g_build = SelectBuild(fn, sites);
+    if (!radioxl::g_build)
     {
-        Log("byte check FAILED at receiverEnable: test dl, dl; jne - nothing patched");
         return;
     }
-    int32_t onDisp = 0;
-    std::memcpy(&onDisp, receiverEnable + kEnableJne + 2, sizeof(onDisp));
-    const auto receiverOn = receiverEnable + kEnableJneNext + onDisp;
-
-    // So is the load path's.
-    if (std::memcmp(vehicleLoad + kLoadJne, kJneRel32, sizeof(kJneRel32)) != 0)
-    {
-        Log("byte check FAILED at vehicleLoad: jne cold block - nothing patched");
-        return;
-    }
-    int32_t loadDisp = 0;
-    std::memcpy(&loadDisp, vehicleLoad + kLoadJne + 2, sizeof(loadDisp));
-    const auto vehicleLoadCold = vehicleLoad + kLoadJneNext + loadDisp;
+    const radioxl::Build& build = *radioxl::g_build;
+    const int vanilla = build.vanillaCount;
+    uint64_t* const roster = fn.roster;
+    uint8_t* const resolve = fn.resolve;
+    uint8_t* const indexToName = fn.indexToName;
+    uint8_t* const vehicleSet = fn.vehicleSet;
+    uint64_t* const nameTable = fn.nameTable;
+    uint8_t* const nameReader = fn.nameReader;
+    uint8_t* const nameReader2 = fn.nameReader2;
+    uint8_t* const handover = fn.handover;
+    uint8_t* const receiverOn = sites.receiverOn;
+    uint8_t* const vehicleLoadCold = sites.vehicleLoadCold;
 
     // Both tables are filled by startup initialisers. Copying zeroes would erase every station.
-    for (int i = 0; i < kVanillaCount; ++i)
+    for (int i = 0; i < vanilla; ++i)
     {
         if (nameTable[i] == 0)
         {
@@ -893,76 +1161,11 @@ void PatchRoster()
         }
     }
 
-    struct Check
-    {
-        const uint8_t* at;
-        const uint8_t* want;
-        size_t len;
-        const char* what;
-    };
-    const Check checks[] = {
-        {resolve + kResolveLeaOpcode, kLeaR8, sizeof(kLeaR8), "resolve: lea r8, [rip+disp32]"},
-        {resolve + kResolveCmpOpcode, kCmpEax, sizeof(kCmpEax), "resolve: cmp eax, imm8"},
-        {indexToName + kIndexCmpOpcode, kCmpEax, sizeof(kCmpEax), "indexToName: cmp eax, imm8"},
-        {indexToName + kIndexLeaOpcode, kLeaRdx, sizeof(kLeaRdx), "indexToName: lea rdx, [rip+disp32]"},
-        {vehicleSet + kVehicleCmpOpcode, kCmpEdi, sizeof(kCmpEdi), "vehicleSet: cmp edi, imm8"},
-        {vehicleSet + kVehicleStepFrom, kMovEcxRbx0c, sizeof(kMovEcxRbx0c), "vehicleSet: mov ecx, [rbx+0xc]"},
-        {vehicleSet + kVehicleStepToDial, kCallRel32, sizeof(kCallRel32), "vehicleSet: call index->dial"},
-        {vehicleSet + kVehicleStepInc, kLeaEcxRax1, sizeof(kLeaEcxRax1), "vehicleSet: lea ecx, [rax+1]"},
-        {vehicleSet + kVehicleStepMagic, kMovEaxImm, sizeof(kMovEaxImm), "vehicleSet: mov eax, 0x24924925"},
-        {vehicleSet + kVehicleStepImul, kImulEax14, sizeof(kImulEax14), "vehicleSet: imul eax, eax, 14"},
-        {vehicleSet + kVehicleStepFromDial, kCallRel32, sizeof(kCallRel32), "vehicleSet: call dial->id"},
-        {vehicleSet + kVehicleStepBias, kLeaEdiRaxM8, sizeof(kLeaEdiRaxM8), "vehicleSet: lea edi, [rax-8]"},
-        {vehicleSet + kVehicleStepTo, kMovRbx0cEdi, sizeof(kMovRbx0cEdi), "vehicleSet: mov [rbx+0xc], edi"},
-        {nameReader + kNameMovR8, kMovR8Edx, sizeof(kMovR8Edx), "nameReader: mov r8d, edx"},
-        {nameReader + kNameDivFrom, kMovEaxImm, sizeof(kMovEaxImm), "nameReader: mov eax, 0x24924925"},
-        {nameReader + kNameImul, kImulEax14, sizeof(kImulEax14), "nameReader: imul eax, eax, 14"},
-        {nameReader + kNameSub, kSubR8Eax, sizeof(kSubR8Eax), "nameReader: sub r8d, eax"},
-        {nameReader + kNameCmp, kCmpR8, sizeof(kCmpR8), "nameReader: cmp r8d, imm8"},
-        {nameReader + kNameLea, kLeaRdx, sizeof(kLeaRdx), "nameReader: lea rdx, [rip+disp32]"},
-        {nameReader2 + kName2MovEax, kMovEaxImm, sizeof(kMovEaxImm), "nameReader2: mov eax, 0x24924925"},
-        {nameReader2 + kName2Keep, kIncRdi, sizeof(kIncRdi), "nameReader2: inc qword [rdi]"},
-        {nameReader2 + kName2DivFrom, kMulEcx, sizeof(kMulEcx), "nameReader2: mul ecx"},
-        {nameReader2 + kName2Imul, kImulEax14, sizeof(kImulEax14), "nameReader2: imul eax, eax, 14"},
-        {nameReader2 + kName2Sub, kSubEcxEax, sizeof(kSubEcxEax), "nameReader2: sub ecx, eax"},
-        {nameReader2 + kName2Cmp, kCmpEcx, sizeof(kCmpEcx), "nameReader2: cmp ecx, imm8"},
-        {nameReader2 + kName2Mov, kMovR14Rcx, sizeof(kMovR14Rcx), "nameReader2: mov rbx, [r14+rcx*8+disp32]"},
-        {receiverOn, kOnBlockStart, sizeof(kOnBlockStart), "receiverOn: mov r8, [rcx]; mov rcx, r8"},
-        {receiverOn + kOnCmpOpcode, kCmpRdi0c, sizeof(kCmpRdi0c), "receiverOn: cmp dword [rdi+0xc], imm8"},
-        {receiverOn + kOnPickStore, kMovRdi0cEax, sizeof(kMovRdi0cEax), "receiverOn: mov [rdi+0xc], eax"},
-        {receiverOn + kOnPickCmp, kCmpRdi0c, sizeof(kCmpRdi0c), "receiverOn: pick cmp dword [rdi+0xc], imm8"},
-        {receiverOn + kOnPickJae, kJaeRel32, sizeof(kJaeRel32), "receiverOn: pick jae"},
-        {handover + kHandoverCall, kCallRel32, sizeof(kCallRel32), "handover: call name->index"},
-        {handover + kHandoverCmp, kCmpEax, sizeof(kCmpEax), "handover: cmp eax, imm8"},
-        {handover + kHandoverJae, kJaeRel8, sizeof(kJaeRel8), "handover: jae"},
-        {vehicleLoadCold + kLoadColdCmpRcx, kCmpRcxRip, sizeof(kCmpRcxRip), "vehicleLoad cold: cmp rcx, [rip+disp32]"},
-        {vehicleLoadCold + kLoadColdCall, kCallRel32, sizeof(kCallRel32), "vehicleLoad cold: call name->index"},
-        {vehicleLoadCold + kLoadColdCmp, kCmpEax, sizeof(kCmpEax), "vehicleLoad cold: cmp eax, imm8"},
-        {vehicleLoadCold + kLoadColdJae, kJaeRel32, sizeof(kJaeRel32), "vehicleLoad cold: jae"},
-    };
-    for (const auto& c : checks)
-    {
-        if (std::memcmp(c.at, c.want, c.len) != 0)
-        {
-            Log(std::string("byte check FAILED at ") + c.what + " - nothing patched");
-            return;
-        }
-    }
-    if (resolve[kResolveCmpImm] != kVanillaCount || indexToName[kIndexCmpImm] != kVanillaCount - 1 ||
-        vehicleSet[kVehicleCmpImm] != kVanillaCount || nameReader[kNameCmpImm] != kVanillaCount - 1 ||
-        nameReader2[kName2CmpImm] != kVanillaCount - 1 || receiverOn[kOnCmpImm] != kVanillaCount ||
-        receiverOn[kOnPickCmpImm] != kVanillaCount || handover[kHandoverCmpImm] != kVanillaCount ||
-        vehicleLoadCold[kLoadColdCmpImm] != kVanillaCount)
-    {
-        Log("bounds are not the expected 14/13/14/13/13/14/14/14/14 - already patched, or a different build. Abandoned.");
-        return;
-    }
-
     // The roster runs to the last custom station's enum value, reserved slots included; the dial
-    // holds the fourteen and the custom stations only.
+    // holds the vanilla stations and the custom stations only.
     AssignEnums(g_stations.size());
     const int total = g_enumEnd;
-    const int dialCount = kVanillaCount + static_cast<int>(g_stations.size());
+    const int dialCount = vanilla + static_cast<int>(g_stations.size());
     if (total > kMaxStations)
     {
         Log("too many stations - the engine's bounds are 8-bit and custom stations start at enum 26, so " +
@@ -983,7 +1186,7 @@ void PatchRoster()
         return;
     }
 
-    // The dial order. The fourteen's order is asked of the game's own switch, whose address is read
+    // The dial order. The vanilla stations' order is asked of the game's own switch, whose address is read
     // from the block verified above rather than resolved by hash.
     BuildDial(reinterpret_cast<DialSwitch>(Rel32Target(vehicleSet + kVehicleStepToDial)));
 
@@ -997,7 +1200,7 @@ void PatchRoster()
         return;
     }
     auto* stub = static_cast<uint8_t*>(freshStub);
-    if (!BuildStepStub(stub, reinterpret_cast<uintptr_t>(vehicleSet + kVehicleStepTo), static_cast<uint32_t>(total),
+    if (!BuildStepStub(stub, reinterpret_cast<uintptr_t>(vehicleSet + build.stepTo), static_cast<uint32_t>(total),
                        static_cast<uint32_t>(dialCount)))
     {
         Log("the next-station stub cannot reach its site - nothing patched");
@@ -1017,24 +1220,23 @@ void PatchRoster()
         Log("the next-station stub is out of reach of its site - nothing patched");
         return;
     }
-    uint8_t detour[kVehicleStepTo - kVehicleStepFrom];
-    std::memset(detour, 0x90, sizeof(detour));
+    std::vector<uint8_t> detour(build.stepTo - kVehicleStepFrom, 0x90);
     detour[0] = 0xE9;
-    std::memcpy(detour + 1, &dispStub, sizeof(dispStub));
+    std::memcpy(detour.data() + 1, &dispStub, sizeof(dispStub));
 
     auto* table = static_cast<uint64_t*>(fresh);
-    std::memcpy(table, roster, kVanillaCount * sizeof(uint64_t));
+    std::memcpy(table, roster, vanilla * sizeof(uint64_t));
 
     // The name table holds a LOCALIZATION KEY, not the label itself - every vanilla slot is a
     // Gameplay-Devices-Radio-RadioStation* key that the UI looks up. Writing raw text here is what
     // made the station selector fail to match: it compares against a resolved string. So each
     // station gets a minted key, and the redscript half registers the text against it.
     auto* names = static_cast<uint64_t*>(freshNames);
-    std::memcpy(names, nameTable, kVanillaCount * sizeof(uint64_t));
+    std::memcpy(names, nameTable, vanilla * sizeof(uint64_t));
 
-    // Slots 14 to 25 hold no station: an empty name never matches one, and the label is the game's own
-    // "no station" key.
-    for (int32_t e = kVanillaCount; e < kFirstCustomEnum && e < total; ++e)
+    // The slots between the vanilla stations and the first custom one hold no station: an empty name
+    // never matches one, and the label is the game's own "no station" key.
+    for (int32_t e = vanilla; e < kFirstCustomEnum && e < total; ++e)
     {
         table[e] = 0;
         names[e] = Fnv1a64("Gameplay-Devices-Radio-NoneStation");
@@ -1044,7 +1246,7 @@ void PatchRoster()
         table[g_enumOf[i]] = Fnv1a64(g_stations[i].name);
         names[g_enumOf[i]] = Fnv1a64(StationKey(g_stations[i].name));
     }
-    for (const ReservedSlot& r : kReserved)
+    for (const ReservedSlot& r : Reserved())
     {
         if (r.enumValue < total)
         {
@@ -1059,7 +1261,7 @@ void PatchRoster()
     int32_t dispResolve = 0, dispIndex = 0, dispNames = 0;
     if (!Rel32(reinterpret_cast<uintptr_t>(resolve) + kResolveLeaDisp + 4, reinterpret_cast<uintptr_t>(table), dispResolve) ||
         !Rel32(reinterpret_cast<uintptr_t>(indexToName) + kIndexLeaDisp + 4, reinterpret_cast<uintptr_t>(table), dispIndex) ||
-        !Rel32(reinterpret_cast<uintptr_t>(nameReader) + kNameLeaDisp + 4, reinterpret_cast<uintptr_t>(names), dispNames))
+        !Rel32(reinterpret_cast<uintptr_t>(nameReader) + build.nameLea + 3 + 4, reinterpret_cast<uintptr_t>(names), dispNames))
     {
         Log("a roster table is out of rip-relative reach of one of its readers - nothing patched");
         return;
@@ -1069,9 +1271,7 @@ void PatchRoster()
 
     // Erasing the modulo leaves r8d holding the index the caller passed, which is what the bounds
     // check below already expects.
-    const uint8_t nops[kNameDivTo - kNameDivFrom] = {
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+    const std::vector<uint8_t> nops(build.nameDivTo - kNameDivFrom, 0x90);
 
     // The second reader addresses the table from the image base, not from itself, so its
     // displacement is measured from there.
@@ -1085,28 +1285,26 @@ void PatchRoster()
     }
     const int32_t dispNames2 = static_cast<int32_t>(fromBase);
 
-    const uint8_t nops2a[kName2Keep - kName2MovEax] = {0x90, 0x90, 0x90, 0x90, 0x90};
-    const uint8_t nops2b[kName2DivTo - kName2DivFrom] = {
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+    const std::vector<uint8_t> nops2a(kName2Keep - kName2MovEax, 0x90);
+    const std::vector<uint8_t> nops2b(build.name2DivTo - kName2DivFrom, 0x90);
 
     const bool ok = WriteBytes(resolve + kResolveLeaDisp, &dispResolve, sizeof(dispResolve)) &&
-                    WriteBytes(nameReader2 + kName2MovEax, nops2a, sizeof(nops2a)) &&
-                    WriteBytes(nameReader2 + kName2DivFrom, nops2b, sizeof(nops2b)) &&
-                    WriteBytes(nameReader2 + kName2CmpImm, &boundLast, 1) &&
-                    WriteBytes(nameReader2 + kName2MovDisp, &dispNames2, sizeof(dispNames2)) &&
+                    WriteBytes(nameReader2 + kName2MovEax, nops2a.data(), nops2a.size()) &&
+                    WriteBytes(nameReader2 + kName2DivFrom, nops2b.data(), nops2b.size()) &&
+                    WriteBytes(nameReader2 + build.name2Cmp + 2, &boundLast, 1) &&
+                    WriteBytes(nameReader2 + build.name2Mov + 4, &dispNames2, sizeof(dispNames2)) &&
                     WriteBytes(indexToName + kIndexLeaDisp, &dispIndex, sizeof(dispIndex)) &&
-                    WriteBytes(nameReader + kNameLeaDisp, &dispNames, sizeof(dispNames)) &&
-                    WriteBytes(nameReader + kNameDivFrom, nops, sizeof(nops)) &&
+                    WriteBytes(nameReader + build.nameLea + 3, &dispNames, sizeof(dispNames)) &&
+                    WriteBytes(nameReader + kNameDivFrom, nops.data(), nops.size()) &&
                     WriteBytes(resolve + kResolveCmpImm, &boundTotal, 1) &&
                     WriteBytes(indexToName + kIndexCmpImm, &boundLast, 1) &&
-                    WriteBytes(nameReader + kNameCmpImm, &boundLast, 1) &&
+                    WriteBytes(nameReader + build.nameCmp + 3, &boundLast, 1) &&
                     WriteBytes(vehicleSet + kVehicleCmpImm, &boundTotal, 1) &&
                     WriteBytes(receiverOn + kOnCmpImm, &boundTotal, 1) &&
-                    WriteBytes(receiverOn + kOnPickCmpImm, &boundTotal, 1) &&
+                    WriteBytes(receiverOn + build.onPickCmp + 3, &boundTotal, 1) &&
                     WriteBytes(handover + kHandoverCmpImm, &boundTotal, 1) &&
                     WriteBytes(vehicleLoadCold + kLoadColdCmpImm, &boundTotal, 1) &&
-                    WriteBytes(vehicleSet + kVehicleStepFrom, detour, sizeof(detour));
+                    WriteBytes(vehicleSet + kVehicleStepFrom, detour.data(), detour.size());
 
     if (!ok)
     {
@@ -1115,12 +1313,13 @@ void PatchRoster()
     }
 
     g_patched = true;
+    g_receiverOn = receiverOn;
     for (size_t i = 0; i < g_stations.size(); ++i)
     {
         Log("slot " + std::to_string(g_enumOf[i]) + " (enum " + std::to_string(g_enumOf[i]) + ", internal id " +
             std::to_string(g_enumOf[i] + 8) + "): " + g_stations[i].name);
     }
-    for (const ReservedSlot& r : kReserved)
+    for (const ReservedSlot& r : Reserved())
     {
         if (r.enumValue < total)
         {
@@ -1137,7 +1336,7 @@ void PatchRoster()
         Hex(reinterpret_cast<uintptr_t>(table)) + ", vehicle next-station step detoured to " +
         Hex(reinterpret_cast<uintptr_t>(stub)) + ", receiver turn-on bounds at " +
         Hex(reinterpret_cast<uintptr_t>(receiverOn + kOnCmpImm)) + " and " +
-        Hex(reinterpret_cast<uintptr_t>(receiverOn + kOnPickCmpImm)) + ", traffic hand-over bound at " +
+        Hex(reinterpret_cast<uintptr_t>(receiverOn + build.onPickCmp + 3)) + ", traffic hand-over bound at " +
         Hex(reinterpret_cast<uintptr_t>(handover + kHandoverCmpImm)) + ", save load bound at " +
         Hex(reinterpret_cast<uintptr_t>(vehicleLoadCold + kLoadColdCmpImm)) + ", dial order " + dial);
 }
@@ -1550,7 +1749,7 @@ void RadioXL_Frequency(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, floa
     {
         return;
     }
-    if (station >= 0 && station < kVanillaCount)
+    if (station >= 0 && station < VanillaCount())
     {
         *aOut = kVanillaFrequency[station];
         return;
@@ -1594,7 +1793,17 @@ void RadioXL_EnumEnd(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_
     ++aFrame->code;
     if (aOut)
     {
-        *aOut = g_patched ? g_enumEnd : kVanillaCount;
+        *aOut = g_patched ? g_enumEnd : VanillaCount();
+    }
+}
+
+// How many stations the game itself has: enum values 0 to this minus one are vanilla.
+void RadioXL_VanillaCount(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    ++aFrame->code;
+    if (aOut)
+    {
+        *aOut = VanillaCount();
     }
 }
 
@@ -1778,6 +1987,7 @@ void RegisterNatives()
     reg("RadioXL_SlotEnum", &RadioXL_SlotEnum, "Int32", 1);
     reg("RadioXL_EnumSlot", &RadioXL_EnumSlot, "Int32", 1);
     reg("RadioXL_EnumEnd", &RadioXL_EnumEnd, "Int32", 0);
+    reg("RadioXL_VanillaCount", &RadioXL_VanillaCount, "Int32", 0);
     reg("RadioXL_DialPosition", &RadioXL_DialPosition, "Int32", 1);
     reg("RadioXL_DialStation", &RadioXL_DialStation, "Int32", 1);
     reg("RadioXL_StationName", &RadioXL_StationName, "CName", 1);
@@ -1936,7 +2146,7 @@ RED4EXT_C_EXPORT void RED4EXT_CALL Query(RED4ext::v1::PluginInfo* aInfo)
 {
     aInfo->name = L"RadioXL";
     aInfo->author = L"Spuddeh";
-    aInfo->version = RED4EXT_V1_SEMVER(0, 8, 2);
+    aInfo->version = RED4EXT_V1_SEMVER(0, 9, 0);
     aInfo->runtime = RED4EXT_V1_RUNTIME_VERSION_LATEST;
     aInfo->sdk = RED4EXT_V1_SDK_VERSION_CURRENT;
 }
@@ -1958,14 +2168,12 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         PatchRoster();
         if (g_patched)
         {
-            // A car switched on with no station picks from its whole startup list, not its first 14.
+            // A car switched on with no station picks from its whole startup list, not only the
+            // entries the game's own buffer holds.
             radioxl::startup::g_log = &Log;
-            if (const auto enable = reinterpret_cast<uint8_t*>(ResolveByHash(kHashReceiverEnable));
-                enable && std::memcmp(enable + kEnableTest, kTestDlJne, sizeof(kTestDlJne)) == 0)
+            if (g_receiverOn)
             {
-                int32_t disp = 0;
-                std::memcpy(&disp, enable + kEnableJne + 2, sizeof(disp));
-                radioxl::startup::Install(enable + kEnableJneNext + disp, &AllocateNear, &WriteBytes);
+                radioxl::startup::Install(g_receiverOn, &AllocateNear, &WriteBytes);
             }
             // Custom stations broadcast past 255, where nothing else does. If the broadcaster cannot
             // be widened they keep the game's own formula for their channels.

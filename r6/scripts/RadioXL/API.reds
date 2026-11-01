@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API: what other mods read from RadioXL, ask it to do, and hear from it.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // ======================================================================================
 //
 // **This class is the promise.** Every other class, function and native in RadioXL is public only
@@ -117,7 +117,7 @@ public abstract class RadioXLAPI {
     return slot < 0 ? "" : RadioXL_StationSource(slot);
   }
 
-  // Whether the news reaches the station. True for all fourteen vanilla stations.
+  // Whether the news reaches the station. True for a vanilla station.
   public final static func StationHasNews(station: CName) -> Bool {
     let e: Int32 = RadioXLAPI.EnumOf(station);
     if e < 0 { return false; }

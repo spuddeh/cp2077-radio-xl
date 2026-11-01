@@ -2,20 +2,21 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Puts custom stations on the radio dial, in the UI and in the cycling order.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // Credits: RED4ext by WopsS.
 // ======================================================================================
 //
 // The engine plays a custom station once its identity is in the roster, and it LABELS one once the
 // name table holds its key. The DIAL is a third problem and an entirely script-side one:
-// `RadioStationDataProvider` holds the fourteen vanilla stations in hardcoded switch maps, and
-// `VehiclesManagerDataHelper` pushes fifteen literal TweakDB record ids. Neither has a table behind
-// it to extend, so these are wrapped - and that is the only reason anything here is a wrapper.
+// `RadioStationDataProvider` holds the vanilla stations in hardcoded switch maps, and
+// `VehiclesManagerDataHelper` pushes literal TweakDB record ids, No Station first. Neither has a
+// table behind it to extend, so these are wrapped - and that is the only reason anything here is a
+// wrapper. How many vanilla stations the game has comes from the plugin (`RadioXL_VanillaCount`).
 //
-// A custom station's enum value is its roster slot: the first is 14, the next 15, and so on.
+// A custom station's enum value comes from the plugin (`RadioXL_SlotEnum`), never from arithmetic.
 //
-// **Three of these are @replaceMethod and that is deliberate.** The cycling functions carry `% 14`
-// inside them, so wrapping cannot reach the modulus. It also means this framework is an alternative
+// **Three of these are @replaceMethod and that is deliberate.** The cycling functions carry a
+// modulo by the vanilla count inside them, so wrapping cannot reach the modulus. It also means this framework is an alternative
 // to RadioExt and RadioXL rather than a companion - all three rewrite the same functions.
 
 module RadioXL
@@ -58,7 +59,12 @@ public class RadioXLDial {
 
   // How many stations are on the dial.
   public final static func Total() -> Int32 {
-    return 14 + RadioXL_StationCount();
+    return RadioXL_VanillaCount() + RadioXL_StationCount();
+  }
+
+  // How many stations the game itself has: enum values 0 to this minus one.
+  public final static func VanillaCount() -> Int32 {
+    return RadioXL_VanillaCount();
   }
 
   // One past the highest enum value a station has: the bound for a loop over enum values, larger
@@ -82,11 +88,15 @@ public class RadioXLDial {
     return slot < 0 ? TDBID.None() : TDBID.Create(RadioXLDial.RecordName(slot));
   }
 
-  // The game's own RadioStation record for one of the fourteen, by enum value; "" past them.
+  // The game's own RadioStation record for a vanilla station, by enum value; "" past them. HKGN is
+  // the game's record for EDGE_RUNNERS, and only a build with that station has it.
   public final static func VanillaRecordName(station: Int32) -> String {
     let names: array<String> = ["AggroIndie", "ElectroIndie", "HipHop", "AggroTechno", "Downtempo", "AttRock", "Pop",
-                                "Latino", "Metal", "MinimTech", "Jazz", "GrowlFM", "DarkStar", "Impulse"];
-    return station >= 0 && station < ArraySize(names) ? "RadioStation." + names[station] : "";
+                                "Latino", "Metal", "MinimTech", "Jazz", "GrowlFM", "DarkStar", "Impulse", "HKGN"];
+    if station < 0 || station >= RadioXLDial.VanillaCount() || station >= ArraySize(names) {
+      return "";
+    }
+    return "RadioStation." + names[station];
   }
 
   // Any station's RadioStation record, vanilla or custom.
@@ -124,7 +134,7 @@ public class RadioXLRecords extends ScriptableTweak {
     }
   }
 
-  // The fourteen vanilla records carry their vanilla dial position as `index`, a fixed number. A
+  // The vanilla records carry their vanilla dial position as `index`, a fixed number. A
   // custom station inserted below one of them moves that station's position, so the record must
   // say the new one, or the popup finds two records on one index: both light up, and selecting
   // either plays whichever station now holds that position. Vanilla order is untouched when no
@@ -145,10 +155,12 @@ public class RadioXLRecords extends ScriptableTweak {
 
   private func Retune() -> Void {
     let station: Int32 = 0;
-    while station < 14 {
+    while station < RadioXLDial.VanillaCount() {
       let recordName: String = RadioXLDial.VanillaRecordName(station);
       let position: Int32 = RadioXL_DialPosition(station);
-      if position >= 0 {
+      if StrLen(recordName) == 0 {
+        RadioXLLog(s"vanilla station \(station) has no RadioStation record name - its dial position is not retuned");
+      } else if position >= 0 {
         TweakDBManager.SetFlat(TDBID.Create(recordName + ".index"), ToVariant(position));
         TweakDBManager.UpdateRecord(TDBID.Create(recordName));
       }
@@ -256,7 +268,7 @@ public final static func GetChannelName(radioStationType: ERadioStationList) -> 
 }
 
 // --- dial order ---------------------------------------------------------------------------------
-// The "UI index" is the DIAL POSITION: vanilla's maps put the fourteen in ascending frequency, and
+// The "UI index" is the DIAL POSITION: vanilla's maps put the vanilla stations in ascending frequency, and
 // the plugin's table does the same for every station, with each custom one inserted at its
 // frequency. The plugin owns the order so the vehicle's native step and these agree; the vanilla
 // maps are the fallback for an unpatched roster.
@@ -274,7 +286,8 @@ public final static func GetRadioStationByUIIndex(index: Int32) -> ERadioStation
 }
 
 // --- cycling -------------------------------------------------------------------------------------
-// Replaced rather than wrapped: the vanilla bodies carry `% 14`, which no wrapper can reach.
+// Replaced rather than wrapped: the vanilla bodies carry a modulo by the vanilla count, which no
+// wrapper can reach.
 //
 // Vanilla skips Samizdat Radio in both directions, by its position number: the station before it
 // steps over it forwards and the station after it steps over it backwards. That is a design
@@ -310,7 +323,7 @@ public final static func GetNextStationPocketRadio(currentIndex: Int32) -> ERadi
 }
 
 // --- the vehicle radio list ----------------------------------------------------------------------
-// The popup shows this array in order, and vanilla pushes No Station and then its fourteen in
+// The popup shows this array in order, and vanilla pushes No Station and then its stations in
 // dial order: 88.9, 89.3, 89.7, 91.9 and so on. So the list is the dial with one row in front, and
 // a custom station goes in at its dial position plus one. Walking the dial in position order keeps
 // every index valid as rows are inserted.
@@ -342,10 +355,10 @@ public final static func GetRadioStations(player: ref<GameObject>) -> array<ref<
 }
 
 // --- the world device's station logo -------------------------------------------------------------
-// The vanilla body is a switch over the fourteen that sets a texture PART on whatever atlas the
-// widget holds, which the .inkwidget fixes to the vanilla station atlas. A custom station's part
-// lives in its own atlas, so the widget is pointed at that atlas and the part set the same way. The
-// fourteen run the vanilla body untouched, with the vanilla atlas put back first in case a custom
+// The vanilla body is a switch over the vanilla stations that sets a texture PART on whatever atlas
+// the widget holds, which the .inkwidget fixes to the vanilla station atlas. A custom station's part
+// lives in its own atlas, so the widget is pointed at that atlas and the part set the same way.
+// Vanilla stations run the vanilla body untouched, with the vanilla atlas put back first in case a custom
 // station replaced it.
 
 @wrapMethod(RadioInkGameController)

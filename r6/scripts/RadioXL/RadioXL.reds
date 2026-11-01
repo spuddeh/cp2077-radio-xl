@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Builds each declared station out of the engine's own radio systems.
-// File Version: 0.8.2
+// File Version: 0.9.0
 // Credits: RED4ext by WopsS. AudioXL by DigitalVixen.
 // ======================================================================================
 
@@ -56,6 +56,7 @@ public native func RadioXL_StationCount() -> Int32;
 public native func RadioXL_SlotEnum(slot: Int32) -> Int32;
 public native func RadioXL_EnumSlot(station: Int32) -> Int32;
 public native func RadioXL_EnumEnd() -> Int32;
+public native func RadioXL_VanillaCount() -> Int32;
 public native func RadioXL_DialPosition(index: Int32) -> Int32;
 public native func RadioXL_DialStation(index: Int32) -> Int32;
 public native func RadioXL_StationName(index: Int32) -> CName;
