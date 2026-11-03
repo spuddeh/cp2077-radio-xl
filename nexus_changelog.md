@@ -1,3 +1,7 @@
+### v0.9.1
+
+- Fix: My station now works with HKGN when no custom stations are installed. The same fix applies to the Jump to my station key.
+
 ### v0.9.0
 
 - New: supports game 2.5.

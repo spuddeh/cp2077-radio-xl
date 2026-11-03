@@ -1,5 +1,22 @@
 # Changelog - RadioXL
 
+## [0.9.1] - 2026-11-03
+
+### Changed
+- The plugin is built on the portfolio's RED4ext plugin build standard (`MyMods/_shared/plugin`):
+  `plugin/builds.json` pins the 2.5 DLL to RED4ext.SDK `5246e659` and the 2.31 DLL to `f9ad5334`, and
+  each DLL's PDB is kept in `symbols/0.9.1/<game>/`, published with the public repo.
+
+### Fixed
+- With no station installed, `PatchRoster` returned before `SelectBuild`, so `VanillaCount()` fell
+  back to the 2.31 count of 14 and `RadioXL_EnumEnd` stopped before HKGN (enum 14) on 2.5. My
+  station set to HKGN logged `radio_station_15_edgerunners is not installed` and never tuned; the
+  jump-to-my-station key, the current-station bound checks in `MyStation.reds` and `Deck.reds`, and
+  `RadioXLAPI`'s name-to-enum lookup missed it the same way. The build is now identified in that case
+  too, nothing is patched and `g_build` stays null, and only its vanilla count is kept
+  (`g_unpatchedVanillaCount`). The plugin logs `no stations installed - roster left unpatched, N
+  vanilla stations`. Checked in game on 2.5 with no station mods: HKGN tuned on the Radioport. (2f578e2)
+
 ## [0.9.0] - 2026-11-02
 
 ### Added

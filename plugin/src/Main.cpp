@@ -177,9 +177,18 @@ constexpr int kMaxStations = 127;  // both bounds are 8-bit immediates
 
 // The selected build's vanilla station count. Before a build is selected, the lowest any supported
 // build has, which is every station the game is sure to have.
+// The vanilla count of the build whose checks passed when no station is installed. The roster is
+// left unpatched then and `g_build` stays null, but a loop over vanilla enum values still needs the
+// game's own count: 2.5 has a fifteenth station (HKGN) that the 2.31 fallback would leave out.
+int g_unpatchedVanillaCount = 0;
+
 int VanillaCount()
 {
-    return radioxl::g_build ? radioxl::g_build->vanillaCount : radioxl::kBuild231.vanillaCount;
+    if (radioxl::g_build)
+    {
+        return radioxl::g_build->vanillaCount;
+    }
+    return g_unpatchedVanillaCount ? g_unpatchedVanillaCount : radioxl::kBuild231.vanillaCount;
 }
 
 // **Two internal ids past the vanilla stations belong to stations outside the roster.**
@@ -1119,6 +1128,17 @@ void PatchRoster()
 {
     if (g_stations.empty())
     {
+        // Nothing to patch, but the build is still identified so VanillaCount() is the game's own.
+        RosterFunctions probe;
+        RosterSites probeSites;
+        if (ResolveRoster(probe))
+        {
+            if (const radioxl::Build* build = SelectBuild(probe, probeSites))
+            {
+                g_unpatchedVanillaCount = build->vanillaCount;
+            }
+        }
+        Log("no stations installed - roster left unpatched, " + std::to_string(VanillaCount()) + " vanilla stations");
         return;
     }
 
@@ -2146,7 +2166,7 @@ RED4EXT_C_EXPORT void RED4EXT_CALL Query(RED4ext::v1::PluginInfo* aInfo)
 {
     aInfo->name = L"RadioXL";
     aInfo->author = L"Spuddeh";
-    aInfo->version = RED4EXT_V1_SEMVER(0, 9, 0);
+    aInfo->version = RED4EXT_V1_SEMVER(0, 9, 1);
     aInfo->runtime = RED4EXT_V1_RUNTIME_VERSION_LATEST;
     aInfo->sdk = RED4EXT_V1_SDK_VERSION_CURRENT;
 }

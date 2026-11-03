@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: What differs between the game builds the plugin supports, one table per build.
-// File Version: 0.9.0
+// File Version: 0.9.1
 // ======================================================================================
 //
 // Every patched function is found by RED4ext hash on every build; what moves between builds is where
