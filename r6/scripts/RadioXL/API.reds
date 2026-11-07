@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API: what other mods read from RadioXL, ask it to do, and hear from it.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // ======================================================================================
 //
 // **This class is the promise.** Every other class, function and native in RadioXL is public only
@@ -678,6 +678,8 @@ public abstract class RadioXLAPI {
       case RadioXLMix.Voices: c.muteVoices = muted; break;
       case RadioXLMix.Megabuilding: c.muteMegabuilding = muted; break;
       case RadioXLMix.Menus: c.muteMenus = muted; break;
+      case RadioXLMix.PauseMenu: c.mutePauseMenu = muted; break;
+      case RadioXLMix.Popups: c.mutePopups = muted; break;
     }
     c.ApplyMix();
     RadioXLConfig.Persist();

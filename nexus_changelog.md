@@ -1,3 +1,12 @@
+### v0.10.0
+
+- New: "The pause menu is open" mute switch, so the radio can keep playing in the pause menu.
+- New: "A wheel or popup is open" mute switch, so the radio can keep playing in the radial menu and the RCF menu.
+- Change: "A menu is open" is now "A gameplay menu is open".
+- Fix: The equalizer, mute switches and volume boost now work with no custom stations installed.
+- Fix: A 24-bit WAV played silence. It is now left out of the station and named in RadioXL's log. WAVs must be 16-bit PCM.
+- Fix: A WAV that AudioXL cannot play is now named in RadioXL's log in every case.
+
 ### v0.9.1
 
 - Fix: My station now works with HKGN when no custom stations are installed. The same fix applies to the Jump to my station key.

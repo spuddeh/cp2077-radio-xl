@@ -1,5 +1,42 @@
 # Changelog - RadioXL
 
+## [0.10.0] - 2026-11-07
+
+### Added
+- "The pause menu is open" mute switch (`mutePauseMenu`, `RadioXLMix.PauseMenu`, mix switch 5), on by default.
+  Off, the radio plays through the pause menu and its songs change, checked in game. The menu's pause-all
+  action 696755343 is written as a pause of one object aimed at id 0. The pause menu runs the gameplay menus'
+  pause first, so `MenuScenario_PauseMenu.OnEnterScenario` calls `RadioXL_SetPauseMenuOpen` before it, and the
+  shared lifts follow `MenuPauseMutes()`. All three switch combinations checked by ear.
+
+- "A wheel or popup is open" mute switch (`mutePopups`, `RadioXLMix.Popups`, mix switch 6), on by default. The
+  `radialMenu` time dilation posts `global_menu_radial_open`, whose mute actions 187962740 (`Music_Diagetic`) and
+  1014189458 (`Music_Radio_Car_Player_DVR`) silence the radio. Off, both are aimed at id 0. Checked by ear on the
+  radial menu, RCF's menu and NCZB DG.
+
+- Version markers `RadioXL.Api0_9` and `RadioXL.Api0_10` for RedRequire, documented in `docs/script-api.md`. A mod
+  that imports one tells a player on an older RadioXL which version it needs.
+
+### Changed
+- `muteMenus` reads "A gameplay menu is open". Its key is unchanged, so saved settings carry over.
+- `WavRefusal` takes 16-bit only. AudioXL 0.9.1 accepts 24-bit, but `CAkResampler::Init` (`0x141bf30f0`, 2.5)
+  returns `AK_Fail` for any depth but 16 and 32, so the track played silence with nothing logged. Heard on
+  Testing: 16-bit tones and music played, plain 24-bit ones from the same source did not. Docs follow.
+
+### Fixed
+- With no custom station installed, the equalizer, every mute switch and the volume boost did nothing.
+  `eq::Init`, `mix::Init`, the broadcaster's curve loader hook and the game-state tick that drives both
+  sat behind `g_patched`, and `g_build` stayed null, so the schedule natives also answered empty: Next
+  and Previous never used the station's remaining list and `RadioXL_StationTracks` never refreshed.
+  `PatchRoster` now selects the build before its no-station return, and `Main` gates those systems on
+  `g_build`; the startup stub and the channel table stay behind `g_patched`.
+  `g_unpatchedVanillaCount` is gone. Checked in game on 2.5 with no station mods: the EQ changes the
+  sound, where 0.9.1 did not.
+- `WavRefusal` now applies every check in AudioXL's `ValidateWav`: the 500 MB limit, sample rate, byte
+  rate and block align, and the chunk walk, which has no pad byte, so an odd-sized chunk ahead of `data`
+  is refused. A file AudioXL would refuse is dropped at load with the reason, rather than left on a
+  station that stays silent on that track. `TestWavRefusal` covers it.
+
 ## [0.9.1] - 2026-11-03
 
 ### Changed

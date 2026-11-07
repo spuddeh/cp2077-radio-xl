@@ -177,18 +177,9 @@ constexpr int kMaxStations = 127;  // both bounds are 8-bit immediates
 
 // The selected build's vanilla station count. Before a build is selected, the lowest any supported
 // build has, which is every station the game is sure to have.
-// The vanilla count of the build whose checks passed when no station is installed. The roster is
-// left unpatched then and `g_build` stays null, but a loop over vanilla enum values still needs the
-// game's own count: 2.5 has a fifteenth station (HKGN) that the 2.31 fallback would leave out.
-int g_unpatchedVanillaCount = 0;
-
 int VanillaCount()
 {
-    if (radioxl::g_build)
-    {
-        return radioxl::g_build->vanillaCount;
-    }
-    return g_unpatchedVanillaCount ? g_unpatchedVanillaCount : radioxl::kBuild231.vanillaCount;
+    return radioxl::g_build ? radioxl::g_build->vanillaCount : radioxl::kBuild231.vanillaCount;
 }
 
 // **Two internal ids past the vanilla stations belong to stations outside the roster.**
@@ -548,7 +539,7 @@ void LoadManifests()
                 if (!why.empty())
                 {
                     Log(station.source + ": '" + it->file + "' is a WAV AudioXL will not play (" + why +
-                        ") - dropped; export it as 16 or 24-bit PCM");
+                        ") - dropped; export it as 16-bit PCM");
                     it = station.tracks.erase(it);
                     continue;
                 }
@@ -1126,22 +1117,6 @@ const radioxl::Build* SelectBuild(const RosterFunctions& aFn, RosterSites& aSite
 
 void PatchRoster()
 {
-    if (g_stations.empty())
-    {
-        // Nothing to patch, but the build is still identified so VanillaCount() is the game's own.
-        RosterFunctions probe;
-        RosterSites probeSites;
-        if (ResolveRoster(probe))
-        {
-            if (const radioxl::Build* build = SelectBuild(probe, probeSites))
-            {
-                g_unpatchedVanillaCount = build->vanillaCount;
-            }
-        }
-        Log("no stations installed - roster left unpatched, " + std::to_string(VanillaCount()) + " vanilla stations");
-        return;
-    }
-
     RosterFunctions fn;
     if (!ResolveRoster(fn))
     {
@@ -1151,6 +1126,13 @@ void PatchRoster()
     radioxl::g_build = SelectBuild(fn, sites);
     if (!radioxl::g_build)
     {
+        return;
+    }
+    // The build is identified with or without stations: the equaliser, the mix switches and the
+    // schedule natives read it and serve the vanilla stations too.
+    if (g_stations.empty())
+    {
+        Log("no stations installed - roster left unpatched, " + std::to_string(VanillaCount()) + " vanilla stations");
         return;
     }
     const radioxl::Build& build = *radioxl::g_build;
@@ -1908,6 +1890,17 @@ void RadioXL_SetMixSwitch(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, b
         *aOut = radioxl::mix::g_ready;
 }
 
+// Script says the pause menu is opening or has closed, ahead of the audio pause it causes.
+void RadioXL_SetPauseMenuOpen(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    bool open = false;
+    RED4ext::GetParameter(aFrame, &open);
+    ++aFrame->code;
+    radioxl::mix::SetPauseMenuOpen(open);
+    if (aOut)
+        *aOut = radioxl::mix::g_ready;
+}
+
 // The player radio's boost above the game's own level, in dB (0 to 12).
 void RadioXL_SetMixBoost(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
 {
@@ -2104,6 +2097,14 @@ void RegisterNatives()
         rtti->RegisterFunction(fn);
     }
     {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_SetPauseMenuOpen", "RadioXL_SetPauseMenuOpen",
+                                                    &RadioXL_SetPauseMenuOpen);
+        fn->flags.isNative = true;
+        fn->AddParam("Bool", "open");
+        fn->SetReturnType("Bool");
+        rtti->RegisterFunction(fn);
+    }
+    {
         auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_SetProcessingValue", "RadioXL_SetProcessingValue",
                                                     &RadioXL_SetProcessingValue);
         fn->flags.isNative = true;
@@ -2166,7 +2167,7 @@ RED4EXT_C_EXPORT void RED4EXT_CALL Query(RED4ext::v1::PluginInfo* aInfo)
 {
     aInfo->name = L"RadioXL";
     aInfo->author = L"Spuddeh";
-    aInfo->version = RED4EXT_V1_SEMVER(0, 9, 1);
+    aInfo->version = RED4EXT_V1_SEMVER(0, 10, 0);
     aInfo->runtime = RED4EXT_V1_RUNTIME_VERSION_LATEST;
     aInfo->sdk = RED4EXT_V1_SDK_VERSION_CURRENT;
 }
@@ -2195,6 +2196,12 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
             {
                 radioxl::startup::Install(g_receiverOn, &AllocateNear, &WriteBytes);
             }
+        }
+        // The equaliser and the mix switches act on the player radio whichever station plays, so they
+        // need an identified build and no custom station. They reach the bank's curves through the
+        // broadcaster's curve loader hook.
+        if (radioxl::g_build)
+        {
             // Custom stations broadcast past 255, where nothing else does. If the broadcaster cannot
             // be widened they keep the game's own formula for their channels.
             radioxl::broadcast::g_log = &Log;
@@ -2212,13 +2219,16 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
                     aSdk->gameStates->Add(aHandle, RED4ext::EGameStateType::Running, &mixState);
                     radioxl::mix::HookRadioUpdate(&ResolveByHash, aSdk, aHandle);
                 }
-                std::vector<int> ids;
-                for (const int32_t e : g_enumOf)
+                if (g_patched)
                 {
-                    ids.push_back(e + 8);
+                    std::vector<int> ids;
+                    for (const int32_t e : g_enumOf)
+                    {
+                        ids.push_back(e + 8);
+                    }
+                    radioxl::channels::Init(ids, static_cast<int>(radioxl::broadcast::kChannels), &Log);
+                    radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
                 }
-                radioxl::channels::Init(ids, static_cast<int>(radioxl::broadcast::kChannels), &Log);
-                radioxl::channels::Patch(&ResolveByHash, &AllocateNear, &WriteBytes);
             }
             else
             {

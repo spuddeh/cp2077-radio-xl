@@ -16,7 +16,7 @@
       "primary_mod_manager_download": true,
       "show_requirements_pop_up": true,
       "update_mod_version": true,
-      "currentVersion": "0.9.1"
+      "currentVersion": "0.10.0"
     },
     "compat231": {
       "displayName": "RadioXL - Game 2.31 Compatibility",
@@ -29,7 +29,7 @@
       "show_requirements_pop_up": false,
       "update_mod_version": false,
       "post_changelog": false,
-      "currentVersion": "0.9.1"
+      "currentVersion": "0.10.0"
     },
     "builder": {
       "displayName": "RadioXL Station Builder",
@@ -42,7 +42,7 @@
       "show_requirements_pop_up": false,
       "update_mod_version": false,
       "post_changelog": true,
-      "currentVersion": "0.4.1sb"
+      "currentVersion": "0.5.0sb"
     }
   },
   "$compat_note": "compat231 is the game 2.31 build of the plugin DLL alone, named RadioXL.dll and installed over the main download's (the 2.5 build), so one DLL is ever in the plugin folder. It is released with the same version as radioxl, under its own tag (compat231-v<version>). plugin/build.ps1 writes it to compat/2.31/.",

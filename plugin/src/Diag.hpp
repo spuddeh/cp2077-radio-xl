@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The byte dumps a failed check logs, so a moved site can be re-found from one launch.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // ======================================================================================
 //
 // A byte check that fails names the site, the bytes found and the bytes wanted, and the code around

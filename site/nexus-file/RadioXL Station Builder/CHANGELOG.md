@@ -3,6 +3,13 @@
 One entry per builder version. The version is in `package.json` and printed at the foot of the page.
 `scripts/nexus-builder-file.py` turns the newest entry into the Nexus misc file's description.
 
+## 0.5.0
+- A WAV that won't play in game is named on its track as it is added or opened, and can be converted to
+  16-bit PCM from the page, one at a time or all together. Build .zip waits until each is converted or
+  removed. A WAV has to be 16-bit: a 24-bit file passes AudioXL's check and plays silence.
+- The HKGN FM logo is one of the station icons to choose from, and HKGN FM is on the Radioport preview's
+  dial. The icon is in game 2.5 only.
+
 ## 0.4.1
 - A stream station has no News switch, and its station.json never asks for news.
 

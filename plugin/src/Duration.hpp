@@ -472,10 +472,12 @@ inline float OggDuration(const std::filesystem::path& aPath)
 
 } // namespace detail
 
-// Why AudioXL will refuse this WAV, or empty when it will take it. AudioXL accepts a WAV only as plain
-// PCM (format tag 1) at 16 or 24 bits, 1 to 8 channels, with the fmt chunk first, and it says so in
-// its own log only once the file is loaded, after the station is built. A file that fails here is
-// dropped at load like a missing one.
+// Why AudioXL will refuse this WAV, or empty when it will take it. These are the checks of AudioXL's
+// ValidateWav, in its order, and it reports a failure only in its own log, once the file is loaded and
+// the station is built. A file that fails here is dropped at load like a missing one. AudioXL steps
+// from chunk to chunk without RIFF's pad byte, so an odd-sized chunk before the data chunk hides it.
+// 16-bit is stricter than AudioXL, which takes 24: the game's resampler (CAkResampler::Init) fails on
+// any depth but 16 and 32, so a 24-bit file passes AudioXL and plays silence.
 inline std::string WavRefusal(const std::filesystem::path& aPath)
 {
     std::ifstream in(aPath, std::ios::binary);
@@ -483,6 +485,11 @@ inline std::string WavRefusal(const std::filesystem::path& aPath)
     if (!in || !in.read(reinterpret_cast<char*>(h), sizeof(h)))
     {
         return "too short to be a WAV";
+    }
+    const uint64_t fileSize = detail::FileSize(aPath);
+    if (fileSize < 0x40 || fileSize > 0x1f400000)
+    {
+        return "over AudioXL's 500 MB limit for a WAV, or under 64 bytes";
     }
     if (std::memcmp(h, "RIFF", 4) != 0 || std::memcmp(h + 8, "WAVE", 4) != 0 || std::memcmp(h + 12, "fmt ", 4) != 0)
     {
@@ -503,11 +510,43 @@ inline std::string WavRefusal(const std::filesystem::path& aPath)
     {
         return std::to_string(channels) + " channels, not 1 to 8";
     }
-    if (bits != 16 && bits != 24)
+    if (bits != 16)
     {
-        return std::to_string(bits) + "-bit, not 16 or 24";
+        return std::to_string(bits) + "-bit, not 16";
     }
-    return {};
+    const uint32_t rate = detail::LE32(h + 24);
+    if (rate == 0 || rate > 192000)
+    {
+        return std::to_string(rate) + " Hz, not 1 to 192000";
+    }
+    const uint32_t frameBits = static_cast<uint32_t>(channels) * bits;
+    if (detail::LE32(h + 28) != (frameBits * rate) / 8 || detail::LE16(h + 32) != frameBits / 8)
+    {
+        return "byte rate or block align disagrees with its channels, bits and rate";
+    }
+    const uint32_t fmtSize = detail::LE32(h + 16);
+    if (fmtSize < 16)
+    {
+        return "fmt chunk too short";
+    }
+    uint64_t at = 20 + static_cast<uint64_t>(fmtSize);
+    uint8_t chunk[8];
+    while (at + 8 <= fileSize)
+    {
+        in.clear();
+        in.seekg(static_cast<std::streamoff>(at));
+        if (!in.read(reinterpret_cast<char*>(chunk), sizeof(chunk)))
+        {
+            break;
+        }
+        const uint32_t size = detail::LE32(chunk + 4);
+        if (std::memcmp(chunk, "data", 4) == 0)
+        {
+            return at + 8 + size > fileSize ? "data chunk runs past the end of the file" : std::string{};
+        }
+        at += 8 + static_cast<uint64_t>(size);
+    }
+    return "no data chunk AudioXL can reach (a chunk before it may have an odd size)";
 }
 
 // Seconds, or 0 when the file is missing, unsupported, or has no readable length.

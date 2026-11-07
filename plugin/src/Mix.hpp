@@ -5,12 +5,14 @@
 // File Version: 0.8.0
 // ======================================================================================
 //
-// Five switches, each on by default (the game's own behaviour):
+// Seven switches, each on by default (the game's own behaviour):
 //   combat music  - Music_Systemic_Combat ducks the player radio bus by -96 dB while it plays
 //   police music  - Music_Systemic_Police, the same duck
 //   voices        - five side-chain curves lower the player radio while anyone speaks
 //   megabuilding  - H10's building music turns the Radioport down through rms_loudness_pocket_radio_mb
-//   menus         - a menu or the pause screen pauses the player radio, and its states lower and muffle it
+//   menus         - a gameplay menu pauses the player radio, and its states lower and muffle it
+//   pause menu    - the pause menu does the same through the same call, then pauses all audio
+//   wheels, popups - the radialMenu time dilation posts global_menu_radial_open, which mutes the radio's buses
 // And a boost: a bus volume above 0 dB on the player radio's top bus, which neither game slider can reach.
 // A duck is switched by writing its entry's volume on the ducking bus; a curve by loading it again
 // through the bank's own curve loader, flat or as shipped. Every Wwise address is reached from a
@@ -46,6 +48,8 @@ enum Switch : int
     kVoices,
     kMegabuilding,
     kMenus,
+    kPauseMenu,
+    kPopups,
     kSwitchCount
 };
 
@@ -89,11 +93,25 @@ struct Pause
 {
     uint32_t action;
     uint32_t bus;
+    uint16_t type = 0x0202;
 };
 constexpr Pause kPauses[] = {
     {592197528, 4067771226},  // Music_Radio_Car_Player_DVR
     {890107075, 666212655},   // Music_Diagetic
 };
+
+// global_menu_radial_open mutes these two of its 27 buses for the radio: type 0x0602, one object, a bus. Aimed at
+// id 0 they mute nothing, and global_menu_radial_close's unmutes are left alone.
+constexpr Pause kPopupMutes[] = {
+    {187962740, 666212655, 0x0602},   // Music_Diagetic
+    {1014189458, 4067771226, 0x0602},  // Music_Radio_Car_Player_DVR
+};
+
+// The pause menu's pause of all audio: type 0x0204, no target. Written as a pause of one object aimed
+// at id 0, it pauses nothing. The game's other pause actions still stop what they stop.
+constexpr uint32_t kPauseAllAction = 696755343;
+constexpr uint16_t kTypePauseAll = 0x0204;
+constexpr uint16_t kTypePauseOne = 0x0202;
 
 constexpr uint32_t kPlayerRadioBus = 3776664628;  // Music_Diagetic_Radios_Vehicle_Player_DVR
 
@@ -222,7 +240,9 @@ inline uintptr_t* g_indexVar = nullptr;
 inline LPCRITICAL_SECTION g_lock = nullptr;
 inline std::mutex g_captureMutex;
 inline Captured g_captured[kCurveCount];
-inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true, true};
+inline std::atomic<bool> g_mutes[kSwitchCount] = {true, true, true, true, true, true, true};
+// The pause menu runs the gameplay menus' pause before its own, so script says it is opening first.
+inline std::atomic<bool> g_pauseMenuOpen{false};
 inline std::atomic<bool> g_pending{false};
 inline bool g_ready = false;
 inline SetFn g_set = nullptr;
@@ -253,6 +273,8 @@ inline const char* Name(Switch aSwitch)
     case kVoices: return "voices";
     case kMegabuilding: return "megabuilding music";
     case kMenus: return "menus";
+    case kPauseMenu: return "pause menu";
+    case kPopups: return "wheels and popups";
     default: return "?";
     }
 }
@@ -400,7 +422,7 @@ inline bool ApplyPause(const Pause& aPause, bool aMute)
         return false;
     }
     const auto target = Read<uint32_t>(action + 0x30);
-    if (Read<uint16_t>(action + 0x34) != 0x0202 || !(Read<uint8_t>(action + 0x36) & 0x40) ||
+    if (Read<uint16_t>(action + 0x34) != aPause.type || !(Read<uint8_t>(action + 0x36) & 0x40) ||
         (target != aPause.bus && target != 0))
     {
         Log("the menu pause " + std::to_string(aPause.action) + " is not the game's - left alone");
@@ -411,6 +433,34 @@ inline bool ApplyPause(const Pause& aPause, bool aMute)
     {
         *reinterpret_cast<uint32_t*>(action + 0x30) = want;
         Log("menu pause " + std::to_string(aPause.action) + (aMute ? " pauses its bus again" : " pauses nothing"));
+    }
+    return true;
+}
+
+// What the gameplay menus and the pause menu share: on unless the switch for the open menu is off.
+inline bool MenuPauseMutes()
+{
+    return g_mutes[kMenus].load() && (g_mutes[kPauseMenu].load() || !g_pauseMenuOpen.load());
+}
+
+inline bool ApplyPauseAll(bool aMute)
+{
+    const uintptr_t action = Find(kActions, kPauseAllAction, 0);
+    if (!action)
+    {
+        return false;
+    }
+    const auto type = Read<uint16_t>(action + 0x34);
+    if (Read<uint32_t>(action + 0x30) != 0 || (type != kTypePauseAll && type != kTypePauseOne))
+    {
+        Log("the pause menu's pause is not the game's - left alone");
+        return true;
+    }
+    const uint16_t want = aMute ? kTypePauseAll : kTypePauseOne;
+    if (type != want)
+    {
+        *reinterpret_cast<uint16_t*>(action + 0x34) = want;
+        Log(aMute ? "the pause menu pauses all audio again" : "the pause menu's pause of all audio pauses nothing");
     }
     return true;
 }
@@ -603,7 +653,7 @@ inline bool ApplyBoost()
 inline void RadioUpdate(void* aSystem, float aDelta, void* aInfo)
 {
     uint8_t* flag = nullptr;
-    if (!g_mutes[kMenus].load() && g_soundSystemVar && *g_soundSystemVar)
+    if (!MenuPauseMutes() && g_soundSystemVar && *g_soundSystemVar)
     {
         flag = reinterpret_cast<uint8_t*>(*g_soundSystemVar + 0x1e0);
         if (*flag == 0)
@@ -649,11 +699,16 @@ inline void Tick()
     }
     for (const State& st : kStates)
     {
-        done = ApplyState(st, g_mutes[kMenus].load()) && done;
+        done = ApplyState(st, MenuPauseMutes()) && done;
     }
     for (const Pause& pause : kPauses)
     {
-        done = ApplyPause(pause, g_mutes[kMenus].load()) && done;
+        done = ApplyPause(pause, MenuPauseMutes()) && done;
+    }
+    done = ApplyPauseAll(g_mutes[kPauseMenu].load()) && done;
+    for (const Pause& mute : kPopupMutes)
+    {
+        done = ApplyPause(mute, g_mutes[kPopups].load()) && done;
     }
     done = ApplyBoost() && done;
     done = ApplyCarReverb() && done;
@@ -675,6 +730,16 @@ inline void Set(int aSwitch, bool aMute)
         Log(std::string(Name(static_cast<Switch>(aSwitch))) + (aMute ? " lowers the radio" : " no longer lowers the radio"));
     }
     g_pending = true;
+}
+
+inline void SetPauseMenuOpen(bool aOpen)
+{
+    if (g_pauseMenuOpen.exchange(aOpen) != aOpen)
+    {
+        Log(aOpen ? "the pause menu is opening" : "the pause menu has closed");
+    }
+    g_pending = true;
+    Tick();
 }
 
 inline void SetBoost(float aDb)

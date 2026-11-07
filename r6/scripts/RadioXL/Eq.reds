@@ -11,7 +11,7 @@
 //              Flat. Processing is Off, Broadcast (all three stages) or Custom (each stage's own
 //              switch). Applied when a setting changes and whenever the radio the player hears
 //              changes station.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // ======================================================================================
 
 module RadioXL

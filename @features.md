@@ -22,12 +22,13 @@
   Nothing runs on a script timer, so a station picked from an open selector resumes too. Verified
   in game: a tune-back after a minute away landed on the next song as the schedule said, and swaps
   from an open selector resumed every time.
-- "Mute the radio when..." - eleven switches in the Redscript Configuration Framework panel, all on
+- "Mute the radio when..." - thirteen switches in the Redscript Configuration Framework panel, all on
   by default (= the game), acting on every station. Six situations decide the Radioport's
-  restrictions by cause (calls, scenes, driving scenes, clubs, weapons-free areas, quests); five
+  restrictions by cause (calls, scenes, driving scenes, clubs, weapons-free areas, quests); seven
   mix switches in the plugin lift Wwise rules (combat music, police music, voices, H10's building
-  music, menus). Verified in game: apartment, club, scene, combat, wanted star, voices, H10 and the
-  inventory, map and hub. RCF is optional.
+  music, gameplay menus, the pause menu, wheels and popups). Verified in game: apartment, club, scene,
+  combat, wanted star, voices, H10, the inventory, map and hub, the pause menu, and the radial menu,
+  RCF and NCZB DG. RCF is optional.
 - Equaliser (#70): nine bands, a preset or Custom, on the car, Radioport and metro radio buses.
   Presets are JSON files in `red4ext/plugins/RadioXL/presets`, 16 shipped, level-trimmed. Verified
   in game: heard switching; probe bands match every station's preset across 19 stations.
@@ -204,7 +205,6 @@
 - Panel translations beyond English (`translations/`).
 - Replace the two roster readers rather than patching their bounds, which lifts the 101-custom-station
   ceiling (127 roster slots, custom stations from 26). The vehicle step already carries a 32-bit total.
-- The Escape menu still silences the radio: it adds a pause-all action and direct voice pauses.
-- Build a playlist station in game from any installed song, saved as a manifest and read at the next launch (#19).
-- Open enhancement issues: stream song titles (#51), radio processing presets (#52), a shared ident
-  pool (#56), an all-news station (#57), a rotating song subset (#58), a segment-started event (#61).
+- Build a playlist station in game from any installed song, saved as a manifest and read at the next launch.
+- Stream song titles, a shared ident pool, an all-news station, a rotating song subset, and a
+  script event when a DJ line, news bulletin or ident starts.

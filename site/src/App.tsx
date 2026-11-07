@@ -13,6 +13,7 @@ import { importRadioExt } from './importRadioExt'
 import { BuildError, buildZip, checkReadable, iconArchiveFile, iconTextureSize, modFolder, pickSaveTarget, zipName } from './build'
 import { archiveHasPath, iconFromArchive } from './readArchive'
 import { stationLogo, VANILLA_STATIONS } from './vanilla'
+import { checkWav } from './wav'
 import { gainLabel, parseGain } from './loudness'
 
 const SOURCES: { value: Source; label: string }[] = [
@@ -94,7 +95,13 @@ function saveSwitch(key: string, value: boolean): boolean {
 
 export function App() {
   const s = useStation()
-  const faults = useMemo(() => checkManifest(s), [s])
+  const faults = useMemo(() => {
+    const manifest = checkManifest(s)
+    const unplayable = s.tracks.filter((t) => t.wavFault).length
+    return unplayable > 0
+      ? [...manifest, { field: 'wav', message: `${unplayable} WAV ${unplayable === 1 ? 'file' : 'files'} to convert or remove` }]
+      : manifest
+  }, [s])
   // With auto level on, a build that starts while files are still measuring would write those
   // tracks at 100%, so it waits for the last measurement. Off, nothing is measured.
   const unmeasured = s.tracks.filter((t) => !t.url && t.source && t.level === undefined)
@@ -239,6 +246,13 @@ export function App() {
 
   const startBuild = async () => {
     if (faults.length > 0 || measuring > 0 || build) return
+    // A file added a moment ago may not have had its check back yet.
+    for (const t of s.tracks) {
+      if (t.url || !t.source || !/\.wav$/i.test(t.file) || t.wavFault !== undefined) continue
+      const wavFault = await checkWav(t.source)
+      s.updateTrack(t.id, { wavFault })
+      if (wavFault) return
+    }
     const folder = s.folder ?? modFolder(s.stationName, s.cname)
     const file = zipName(folder)
     let target = null

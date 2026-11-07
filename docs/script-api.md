@@ -44,7 +44,11 @@ returned `CName` reads as text through `.value`.
 3. **Check `IsReady()`, or wait for `RadioXL/Ready`**, before reading. The station list is built
    when the first session is ready.
 4. **Check `Version()`.** It goes up only when something here changes in a way that breaks a caller.
-   It is `1`.
+   It is `2`.
+5. **Require a RadioXL version with a marker.** Import it unguarded, as `import RadioXL.Api0_10.*`. A player on
+   an older RadioXL who has RedRequire (bundled with RedFunctions) is told which version your mod needs; anyone
+   else gets redscript's own error. `Api0_9` is the API as of 0.9, and `Api0_10` adds `RadioXLMix.PauseMenu` and
+   `RadioXLMix.Popups`. A marker is never removed, and a new one comes only with a release that adds to the API.
 
 ## Reading
 
@@ -117,7 +121,7 @@ Every mute switch defaults to true, the game's own behaviour.
 | Function | Returns |
 | --- | --- |
 | `SituationMuted(situation)` | `Bool`, whether the radio is silenced in a `RadioXLSituation`, as the game does: `Calls`, `Scenes`, `DrivingScenes`, `Clubs`, `SafeAreas`, `Quests` |
-| `MixMuted(mix)` | `Bool`, whether the radio is lowered or muted in a `RadioXLMix` part of the mix, as the game does: `CombatMusic`, `PoliceMusic`, `Voices`, `Megabuilding`, `Menus` |
+| `MixMuted(mix)` | `Bool`, whether the radio is lowered or muted in a `RadioXLMix` part of the mix, as the game does: `CombatMusic`, `PoliceMusic`, `Voices`, `Megabuilding`, `Menus`, `PauseMenu`, `Popups` |
 | `TrafficStations()` | `RadioXLTrafficMode`: `Shared` (cars whose list holds the stations most cars share), `All`, `Off` |
 | `RandomWorldRadios()` | `Bool`, whether a world radio or jukebox that starts at random may land on a custom station |
 | `RandomStreams()` | `Bool`, whether that pick may land on a stream station |

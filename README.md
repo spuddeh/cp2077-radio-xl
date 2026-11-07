@@ -92,12 +92,12 @@ the game when a save loads.
   switches: Even out loudness, Soften peaks and Limiter. None on is off, all three is the processing
   a radio station puts on its sound before it goes out, and any mix is custom. Processing applies to
   the radio as a whole, not per station.
-- **Mute** - station idents, DJ announcements, and **Mute the radio when...**: eleven switches,
+- **Mute** - station idents, DJ announcements, and **Mute the radio when...**: thirteen switches,
   all on by default, which is what the game does. Six are situations that silence the Radioport (a
-  call, a scene, a driving scene, a club, a weapons-free area, a quest blocking the radio); four
+  call, a scene, a driving scene, a club, a weapons-free area, a quest blocking the radio); six
   lower or silence the car radio and the Radioport (combat music, police chase music, someone
-  speaking, an open menu); one turns the Radioport down in Megabuilding H10. They apply to every
-  station, the game's own included. The Escape menu still pauses the radio.
+  speaking, a gameplay menu, the pause menu, a wheel or popup such as the RCF menu); one turns the
+  Radioport down in Megabuilding H10. They apply to every station, the game's own included.
 
 ### The equaliser panel
 

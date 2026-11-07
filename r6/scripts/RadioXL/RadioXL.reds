@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Builds each declared station out of the engine's own radio systems.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // Credits: RED4ext by WopsS. AudioXL by DigitalVixen.
 // ======================================================================================
 
@@ -90,10 +90,12 @@ public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
 // catalog reads is a snapshot. Empty when the plugin cannot see the station.
 public native func RadioXL_StationTracks(station: CName) -> array<CName>;
 public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool, refill: Bool) -> Int32;
-// A switch in Wwise's mix: 0 combat music, 1 police music, 2 voices, 3 H10's building music, 4 menus. `mute`
+// A switch in Wwise's mix: 0 combat music, 1 police music, 2 voices, 3 H10's building music, 4 gameplay menus,
+// 5 the pause menu, 6 wheels and popups. `mute`
 // true is the game's own behaviour. False when the plugin could not reach the mix.
 public native func RadioXL_SetMixSwitch(which: Int32, mute: Bool) -> Bool;
 public native func RadioXL_SetMixBoost(db: Float) -> Bool;
+public native func RadioXL_SetPauseMenuOpen(open: Bool) -> Bool;
 public native func RadioXL_SetEqEnabled(on: Bool) -> Bool;
 public native func RadioXL_SetEqBand(band: Int32, db: Float) -> Bool;
 public native func RadioXL_SetProcessing(stage: Int32, on: Bool) -> Bool;

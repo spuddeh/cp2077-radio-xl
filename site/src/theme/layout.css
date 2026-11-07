@@ -528,6 +528,7 @@
 .open-notes { margin: 10px 0 0; padding-left: 18px; color: var(--neutral); font-size: var(--font-readable-xsmall); opacity: 0.8; }
 .open-notes li + li { margin-top: 3px; }
 .track-file.missing { color: var(--red); opacity: 1; }
+.track-wav { grid-column: 1 / -1; font-size: var(--font-readable-xsmall); color: var(--red); line-height: 1.35; }
 
 /* --- tracks tools --------------------------------------------------------------------------- */
 

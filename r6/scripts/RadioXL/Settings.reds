@@ -20,7 +20,7 @@
 //
 //              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
 //              plugin, because this mod matches the key itself on Codeware's Input/Key event.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // Credits: Redscript Configuration Framework by DigitalVixen.
 // ======================================================================================
 //
@@ -48,7 +48,22 @@ public enum RadioXLMix {
   PoliceMusic = 1,
   Voices = 2,
   Megabuilding = 3,
-  Menus = 4
+  Menus = 4,
+  PauseMenu = 5,
+  Popups = 6
+}
+
+@wrapMethod(MenuScenario_PauseMenu)
+protected cb func OnEnterScenario(prevScenario: CName, userData: ref<IScriptable>) -> Bool {
+  RadioXL_SetPauseMenuOpen(true);
+  return wrappedMethod(prevScenario, userData);
+}
+
+@wrapMethod(PauseMenuBackgroundGameController)
+protected cb func OnUninitialize() -> Bool {
+  let result: Bool = wrappedMethod();
+  RadioXL_SetPauseMenuOpen(false);
+  return result;
 }
 
 public class RadioXLConfig extends ScriptableSystem {
@@ -70,6 +85,8 @@ public class RadioXLConfig extends ScriptableSystem {
   public let muteVoices: Bool = true;
   public let muteMegabuilding: Bool = true;
   public let muteMenus: Bool = true;
+  public let mutePauseMenu: Bool = true;
+  public let mutePopups: Bool = true;
   // dB above the game's own level on the car radio and the Radioport, 0 to RadioXL_MaxBoost().
   public let boostDb: Int32 = 0;
   // Processing: 0 off, 1 Broadcast (every stage), 2 custom (each stage's own switch).
@@ -84,6 +101,8 @@ public class RadioXLConfig extends ScriptableSystem {
     RadioXL_SetMixSwitch(2, this.muteVoices);
     RadioXL_SetMixSwitch(3, this.muteMegabuilding);
     RadioXL_SetMixSwitch(4, this.muteMenus);
+    RadioXL_SetMixSwitch(5, this.mutePauseMenu);
+    RadioXL_SetMixSwitch(6, this.mutePopups);
     RadioXL_SetMixBoost(Cast<Float>(this.boostDb));
     RadioXLEqualiser.Apply();
   }
@@ -114,6 +133,8 @@ public class RadioXLConfig extends ScriptableSystem {
       case RadioXLMix.Voices: return this.muteVoices;
       case RadioXLMix.Megabuilding: return this.muteMegabuilding;
       case RadioXLMix.Menus: return this.muteMenus;
+      case RadioXLMix.PauseMenu: return this.mutePauseMenu;
+      case RadioXLMix.Popups: return this.mutePopups;
     }
     return true;
   }
@@ -399,6 +420,10 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tip("RadioXL.tipMuteMegabuilding");
     b.Toggle("muteMenus", "RadioXL.muteMenus");
     b.Tip("RadioXL.tipMuteMenus");
+    b.Toggle("mutePauseMenu", "RadioXL.mutePauseMenu");
+    b.Tip("RadioXL.tipMutePauseMenu");
+    b.Toggle("mutePopups", "RadioXL.mutePopups");
+    b.Tip("RadioXL.tipMutePopups");
 
     return b.Build();
   }
@@ -625,6 +650,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "muteVoices") { return c.muteVoices; }
       if Equals(key, "muteMegabuilding") { return c.muteMegabuilding; }
       if Equals(key, "muteMenus") { return c.muteMenus; }
+      if Equals(key, "mutePauseMenu") { return c.mutePauseMenu; }
+      if Equals(key, "mutePopups") { return c.mutePopups; }
       if Equals(key, "procAgc") { return RadioXLEqualiser.StageOn(0); }
       if Equals(key, "procPeak") { return RadioXLEqualiser.StageOn(1); }
       if Equals(key, "procLimiter") { return RadioXLEqualiser.StageOn(2); }
@@ -681,6 +708,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "muteVoices") { c.muteVoices = value; }
       if Equals(key, "muteMegabuilding") { c.muteMegabuilding = value; }
       if Equals(key, "muteMenus") { c.muteMenus = value; }
+      if Equals(key, "mutePauseMenu") { c.mutePauseMenu = value; }
+      if Equals(key, "mutePopups") { c.mutePopups = value; }
       c.ApplyMix();
       // A switch changed while a restriction is in force takes effect now, not at the next scene.
       RadioXLRestrictions.Refresh();

@@ -16,8 +16,10 @@ import { measureFile, preview } from '../measure'
 import { Bool, CopyBlock, Fault, Notice, Slider } from './Controls'
 import { followStream, hostOf, iniLines, type StreamCheck } from '../streamCheck'
 import { Tooltip } from './Tooltip'
+import { checkWav, convertWav } from '../wav'
 
 const AUDIO = /\.(wav|mp3|ogg|flac)$/i
+const WAV = /\.wav$/i
 
 /** The level the suggestion aims at, set at build time from tools/level-target/target.json. */
 const TARGET = __LEVEL_TARGET__
@@ -36,6 +38,9 @@ function atSuggestion(t: Track): boolean {
 /** Tracks whose measurement has been started, so a re-render never starts a second one. */
 const measuring = new Set<number>()
 
+/** WAV tracks whose check has been started, by the file checked, so a replaced file is checked again. */
+const wavChecks = new Map<number, Blob>()
+
 export function Tracks() {
   const { tracks, addFiles, addStream, set, updateTrack, updateTracks, autoLevel } = useStation()
   const [confirming, setConfirming] = useState(false)
@@ -44,6 +49,8 @@ export function Tracks() {
   const [skipped, setSkipped] = useState<string[]>([])
   const [stream, setStream] = useState('')
   const [playing, setPlaying] = useState<number | null>(null)
+  const [converting, setConverting] = useState<{ done: number; total: number } | null>(null)
+  const [convertError, setConvertError] = useState('')
   const streamOk = /^https?:\/\/\S+$/i.test(stream.trim())
   const addStreamTrack = () => {
     if (!streamOk) return
@@ -100,6 +107,40 @@ export function Tracks() {
     if (autoLevel) useSuggested()
   }, [autoLevel])
 
+  // Every WAV is checked as it arrives, whichever way it came: dropped, opened or imported.
+  useEffect(() => {
+    for (const t of tracks) {
+      if (t.url || !t.source || !WAV.test(t.file) || t.wavFault !== undefined || wavChecks.get(t.id) === t.source) continue
+      const source = t.source
+      wavChecks.set(t.id, source)
+      void checkWav(source)
+        .catch(() => ({ reason: 'the page could not read the file', convertible: false }))
+        .then((wavFault) => {
+          const now = useStation.getState().tracks.find((x) => x.id === t.id)
+          if (now?.source === source) updateTrack(t.id, { wavFault })
+        })
+    }
+  }, [tracks, updateTrack])
+
+  const convert = async (ids: number[]) => {
+    if (converting) return
+    setConvertError('')
+    preview.stop()
+    for (let i = 0; i < ids.length; i++) {
+      setConverting({ done: i, total: ids.length })
+      const t = useStation.getState().tracks.find((x) => x.id === ids[i])
+      if (!t?.source) continue
+      try {
+        const source = await convertWav(t.source)
+        updateTrack(t.id, { source, wavFault: null, level: undefined })
+      } catch {
+        setConvertError(`Could not convert ${t.file}. Check the file is still where it was, then try again.`)
+        break
+      }
+    }
+    setConverting(null)
+  }
+
   // A removed track that was playing stops.
   useEffect(() => {
     if (playing !== null && !tracks.some((t) => t.id === playing)) preview.stop()
@@ -123,6 +164,7 @@ export function Tracks() {
   const audioBytes = tracks.reduce((sum, t) => sum + (t.source?.size ?? 0), 0)
   const inMemoryWarning = !streamsToDisk && audioBytes > 400 * 1048576
   const pending = autoLevel ? tracks.filter((t) => !t.url && t.source && t.level === undefined).length : 0
+  const convertible = tracks.filter((t) => t.wavFault?.convertible)
   const suggestible = tracks.filter((t) => suggestionFor(t) !== null && !atSuggestion(t)).length
   function useSuggested() {
     updateTracks(
@@ -222,6 +264,19 @@ export function Tracks() {
           write the zip straight to disk.
         </Notice>
       )}
+      {convertible.length > 0 && (
+        <Fault>
+          {convertible.length === 1 ? '1 WAV' : `${convertible.length} WAVs`} won&apos;t play in game. WAVs must be 16-bit PCM.{' '}
+          {converting ? (
+            `Converting ${converting.done + 1} of ${converting.total}...`
+          ) : (
+            <button type="button" className="link track-use" onClick={() => void convert(convertible.map((t) => t.id))}>
+              Convert {convertible.length === 1 ? 'it' : 'all'} to 16-bit
+            </button>
+          )}
+        </Fault>
+      )}
+      {convertError && <Fault>{convertError}</Fault>}
       {tracks.length > 0 && (
         <>
           <div className="tracks-tools">
@@ -268,7 +323,7 @@ export function Tracks() {
             <SortableContext items={tracks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
               <ol className="tracks">
                 {tracks.map((t, i) => (
-                  <TrackRow key={t.id} track={t} index={i} playing={playing === t.id} auto={autoLevel} onPlaying={() => setPlaying(preview.playing)} />
+                  <TrackRow key={t.id} track={t} index={i} playing={playing === t.id} auto={autoLevel} busy={converting !== null} onConvert={() => void convert([t.id])} onPlaying={() => setPlaying(preview.playing)} />
                 ))}
               </ol>
             </SortableContext>
@@ -279,7 +334,15 @@ export function Tracks() {
   )
 }
 
-function TrackRow(props: { track: Track; index: number; playing: boolean; auto: boolean; onPlaying: () => void }) {
+function TrackRow(props: {
+  track: Track
+  index: number
+  playing: boolean
+  auto: boolean
+  busy: boolean
+  onConvert: () => void
+  onPlaying: () => void
+}) {
   const { updateTrack, removeTrack } = useStation()
   const t = props.track
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: t.id })
@@ -374,6 +437,16 @@ function TrackRow(props: { track: Track; index: number; playing: boolean; auto: 
           format={gainLabel}
           parse={parseGain}
         />
+        {t.wavFault && (
+          <span className="track-wav">
+            Won&apos;t play in game: {t.wavFault.reason}.{' '}
+            {t.wavFault.convertible && !props.busy && (
+              <button type="button" className="link track-use" onClick={props.onConvert}>
+                Convert to 16-bit
+              </button>
+            )}
+          </span>
+        )}
         <span className="track-reading">
           {t.url ? (
             <>

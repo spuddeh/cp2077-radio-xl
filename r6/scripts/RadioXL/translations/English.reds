@@ -5,7 +5,7 @@
 //              language. The key is the first text on each line and never changes; the second is
 //              what the player reads. Station names and song titles are not here: those are the
 //              station author's text and go through RadioXLTexts unchanged.
-// File Version: 0.9.1
+// File Version: 0.10.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -193,8 +193,12 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipMuteVoices", "Default: on. The radio is turned down and muffled while anyone speaks: conversations, calls, the police scanner. In the car and on the Radioport.");
     this.Text("RadioXL.muteMegabuilding", "Megabuilding H10's music is playing");
     this.Text("RadioXL.tipMuteMegabuilding", "Default: on. In H10's halls and lifts the building's own music turns the Radioport down until it is silent.");
-    this.Text("RadioXL.muteMenus", "A menu is open");
-    this.Text("RadioXL.tipMuteMenus", "Default: on. The radio is turned down and muffled while a menu is open, and muffled while the game is paused. In the car and on the Radioport. Changed with a menu open, it applies from the next one.");
+    this.Text("RadioXL.muteMenus", "A gameplay menu is open");
+    this.Text("RadioXL.mutePauseMenu", "The pause menu is open");
+    this.Text("RadioXL.mutePopups", "A wheel or popup is open");
+    this.Text("RadioXL.tipMutePopups", "Default: on. The radio is silent while the radial menu, the weapon wheel, the RCF menu, a game popup or a menu another mod opens over the game is open. In the car and on the Radioport.");
+    this.Text("RadioXL.tipMutePauseMenu", "Default: on. The radio is silent while the pause menu (Esc) is open. In the car and on the Radioport. Changed with the pause menu open, it applies from the next time it opens.");
+    this.Text("RadioXL.tipMuteMenus", "Default: on. The radio is turned down and muffled while the inventory, map or another gameplay menu is open. In the car and on the Radioport. Changed with a menu open, it applies from the next one.");
     this.Text("RadioXL.tipMuteQuests", "Default: on. A story moment in which a quest switches the radio off, blocks fast travel or takes your weapons away.");
   }
 }

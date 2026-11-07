@@ -168,12 +168,13 @@ guide on the modding wiki walks through the WolvenKit side of steps 3 and 4 with
 ## The audio
 
 Put the files beside the manifest. **AudioXL is what loads them**, so it is a hard requirement for
-any station with files: MP3, OGG, FLAC, or WAV as plain PCM at 16 or 24 bits. A WAV in 32-bit
-float, or any tag other than plain PCM, is refused. This framework does not decode, stream or mix
-anything.
+any station with files: MP3, OGG, FLAC, or WAV as 16-bit PCM. This framework does not decode, stream
+or mix anything.
 
-A WAV that is not 16 or 24-bit PCM is dropped at load, and RadioXL's log names it with the reason;
-re-export it as PCM. A station with no
+Any other WAV is dropped at load, and RadioXL's log names it with the reason. That covers 24-bit,
+which AudioXL accepts and the game's audio engine plays as silence, 32-bit float, a WAV with format tag
+65534 (ffmpeg writes it above 48 kHz), one with a chunk ahead of `fmt` or an odd-sized chunk ahead of
+`data`, and one over 500 MB. The station builder page converts a WAV to 16-bit. A station with no
 playable tracks is skipped rather than registered empty.
 
 ## Adding songs by dropping them in

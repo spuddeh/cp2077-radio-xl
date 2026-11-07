@@ -7,7 +7,7 @@ export interface VanillaStation {
   part: string
 }
 
-/** The fourteen, in dial order. The frequency is the front of each display name. */
+/** The fifteen on game 2.5, in dial order. The frequency is the front of each display name. */
 export const VANILLA_STATIONS: VanillaStation[] = [
   { frequency: 88.9, name: 'Pacific Dreams', icon: 'UIIcon.RadioDowntempo', part: 'pacific_dreams' },
   { frequency: 89.3, name: 'Radio Vexelstrom', icon: 'UIIcon.RadioAggroIndie', part: 'vexElsTrom' },
@@ -19,6 +19,7 @@ export const VANILLA_STATIONS: VanillaStation[] = [
   { frequency: 98.7, name: 'Body Heat Radio', icon: 'UIIcon.RadioPop', part: 'body_heat' },
   { frequency: 99.9, name: 'Impulse', icon: 'UIIcon.RadioImpulse', part: 'impulse_999' },
   { frequency: 101.9, name: 'The Dirge', icon: 'UIIcon.RadioHipHop', part: 'the_dirge' },
+  { frequency: 102.0, name: 'HKGN FM', icon: 'UIIcon.RadioHKGN', part: 'hkgn' },
   { frequency: 103.5, name: 'Radio PEBKAC', icon: 'UIIcon.RadioAggroTechno', part: 'radio_pebkac' },
   { frequency: 106.9, name: '30 Principales', icon: 'UIIcon.RadioLatino', part: '30_principales' },
   { frequency: 107.3, name: 'Morro Rock Radio', icon: 'UIIcon.RadioAttitudeRock', part: 'morro_rock' },

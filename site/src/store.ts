@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import type { ImportedStation, UnlistedFile } from './importStation'
+import type { WavFault } from './wav'
 import type { Measurement } from './loudness'
 
 export type Source = 'new' | 'radioext'
@@ -31,6 +32,8 @@ export interface Track {
    * absent while the measurement is still to come. A stream is never measured.
    */
   level?: Measurement | null
+  /** Why a WAV will not play in game, null when it will, and absent until the file is checked. */
+  wavFault?: WavFault | null
 }
 
 interface StationState {
