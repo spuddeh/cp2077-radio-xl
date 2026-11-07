@@ -46,7 +46,7 @@ returned `CName` reads as text through `.value`.
 4. **Check `Version()`.** It goes up only when something here changes in a way that breaks a caller.
    It is `2`.
 5. **Require a RadioXL version with a marker.** Import it unguarded, as `import RadioXL.Api0_10.*`. A player on
-   an older RadioXL who has RedRequire (bundled with RedFunctions) is told which version your mod needs; anyone
+   an older RadioXL who has RedRequire (bundled with RedFunctions 0.15.0 or later) is told which version your mod needs; anyone
    else gets redscript's own error. `Api0_9` is the API as of 0.9, and `Api0_10` adds `RadioXLMix.PauseMenu` and
    `RadioXLMix.Popups`. A marker is never removed, and a new one comes only with a release that adds to the API.
 
