@@ -20,7 +20,11 @@
 //              bands, each station's own preset (absent = the global one) and each station's own custom
 //              bands are kept here. A station's bands outlive a change to a preset, so switching back to
 //              Custom finds them as they were.
-// File Version: 0.10.0
+//
+//              The player's shards are kept here too: each a name, its songs as track events and
+//              whether it plays in order, plus the name of the slotted one ("" is All songs, which
+//              is built in and never stored).
+// File Version: 0.11.0
 // Credits: DV (RedFunctions)
 // ======================================================================================
 
@@ -40,13 +44,16 @@ public class RadioXLState extends ScriptableService {
   public let eqBands: array<Int32>;
   // On, every station plays its own equaliser; off, every station plays the global one.
   public let perStationEq: Bool = false;
-  // The equalizer panel beside the station selection UI is shown.
-  public let showEq: Bool = true;
+  // The station selection UI offers the Equalizer tab.
   private let m_stationEq: array<CName>;
   private let m_stationEqPreset: array<String>;
   // Nine values per station, in the order of m_stationBandKeys.
   private let m_stationBandKeys: array<CName>;
   private let m_stationBands: array<Int32>;
+  // The player's shards, in list order.
+  private let m_shards: array<ref<RadioXLShard>>;
+  // The slotted shard's name; "" is All songs.
+  public let slottedShard: String = "";
 
   private let m_loaded: Bool;
 
@@ -94,12 +101,21 @@ public class RadioXLState extends ScriptableService {
   }
 
   // A station's saved preset name, or "" when none is saved.
+  // The shard slot keeps an equaliser per shard: its key is the slot's name and the shard's. All songs
+  // keeps the slot's own.
+  private func EqKey(station: CName) -> CName {
+    if !Equals(station, RadioXLAPI.ShardStation()) || StrLen(this.slottedShard) == 0 { return station; }
+    return StringToName(NameToString(station) + ":" + this.slottedShard);
+  }
+
   public func StationEq(station: CName) -> String {
+    station = this.EqKey(station);
     let i: Int32 = ArrayFindFirst(this.m_stationEq, station);
     return i >= 0 ? this.m_stationEqPreset[i] : "";
   }
 
   public func SetStationEq(station: CName, name: String) -> Void {
+    station = this.EqKey(station);
     let i: Int32 = ArrayFindFirst(this.m_stationEq, station);
     if i >= 0 {
       ArrayErase(this.m_stationEq, i);
@@ -113,16 +129,17 @@ public class RadioXLState extends ScriptableService {
   }
 
   public func HasStationBands(station: CName) -> Bool {
-    return ArrayContains(this.m_stationBandKeys, station);
+    return ArrayContains(this.m_stationBandKeys, this.EqKey(station));
   }
 
   public func StationBand(station: CName, band: Int32) -> Int32 {
-    let i: Int32 = ArrayFindFirst(this.m_stationBandKeys, station);
+    let i: Int32 = ArrayFindFirst(this.m_stationBandKeys, this.EqKey(station));
     return i >= 0 && band >= 0 && band < 9 ? this.m_stationBands[i * 9 + band] : 0;
   }
 
   // Stores the station's nine bands in one write.
   public func SetStationBands(station: CName, bands: array<Int32>) -> Void {
+    station = this.EqKey(station);
     let i: Int32 = ArrayFindFirst(this.m_stationBandKeys, station);
     if i < 0 {
       i = ArraySize(this.m_stationBandKeys);
@@ -138,8 +155,63 @@ public class RadioXLState extends ScriptableService {
     this.Write();
   }
 
-  public func SetShowEq(on: Bool) -> Void {
-    this.showEq = on;
+  // --- shards -----------------------------------------------------------------------------------
+
+  public func Shards() -> array<ref<RadioXLShard>> {
+    return this.m_shards;
+  }
+
+  public func Shard(name: String) -> ref<RadioXLShard> {
+    for shard in this.m_shards {
+      if Equals(shard.name, name) { return shard; }
+    }
+    return null;
+  }
+
+  // Adds the shard, or replaces the one with its name in place.
+  public func PutShard(shard: ref<RadioXLShard>) -> Void {
+    let i: Int32 = 0;
+    while i < ArraySize(this.m_shards) {
+      if Equals(this.m_shards[i].name, shard.name) {
+        this.m_shards[i] = shard;
+        this.Write();
+        return;
+      }
+      i += 1;
+    }
+    ArrayPush(this.m_shards, shard);
+    this.Write();
+  }
+
+  public func RemoveShard(name: String) -> Bool {
+    let i: Int32 = 0;
+    while i < ArraySize(this.m_shards) {
+      if Equals(this.m_shards[i].name, name) {
+        ArrayErase(this.m_shards, i);
+        if Equals(this.slottedShard, name) { this.slottedShard = ""; }
+        this.Write();
+        return true;
+      }
+      i += 1;
+    }
+    return false;
+  }
+
+  // Renames a shard where it stands in the list; the slot follows it. False when the old name is not a
+  // shard or the new one already is.
+  public func RenameShard(from: String, to: String) -> Bool {
+    if StrLen(to) == 0 || IsDefined(this.Shard(to)) { return false; }
+    let shard = this.Shard(from);
+    if !IsDefined(shard) { return false; }
+    shard.name = to;
+    if Equals(this.slottedShard, from) { this.slottedShard = to; }
+    this.Write();
+    return true;
+  }
+
+  public func SetSlottedShard(name: String) -> Void {
+    if Equals(name, this.slottedShard) { return; }
+    this.slottedShard = name;
     this.Write();
   }
 
@@ -189,7 +261,6 @@ public class RadioXLState extends ScriptableService {
     if obj.Contains("muteNews") { this.muteNews = obj.Bool("muteNews"); }
     if obj.Contains("eqPreset") { this.eqPreset = obj.Text("eqPreset"); }
     if obj.Contains("perStationEq") { this.perStationEq = obj.Bool("perStationEq"); }
-    if obj.Contains("showEq") { this.showEq = obj.Bool("showEq"); }
     ArrayClear(this.eqBands);
     let b: Int32 = 0;
     while b < 9 {
@@ -221,6 +292,30 @@ public class RadioXLState extends ScriptableService {
         }
       }
     }
+    ArrayClear(this.m_shards);
+    if obj.Contains("shards") {
+      let list = obj.List("shards");
+      let s: Int32 = 0;
+      while IsDefined(list) && s < list.Size() {
+        let item = list.MapAt(s);
+        if IsDefined(item) && StrLen(item.Text("name")) > 0 && !IsDefined(this.Shard(item.Text("name"))) {
+          let shard = new RadioXLShard();
+          shard.name = item.Text("name");
+          shard.ordered = item.Bool("ordered", false);
+          let songs = item.List("songs");
+          let t: Int32 = 0;
+          while IsDefined(songs) && t < songs.Size() {
+            let song: CName = StringToName(songs.TextAt(t));
+            if IsNameValid(song) && !ArrayContains(shard.songs, song) { ArrayPush(shard.songs, song); }
+            t += 1;
+          }
+          ArrayPush(this.m_shards, shard);
+        }
+        s += 1;
+      }
+    }
+    this.slottedShard = obj.Text("slottedShard", "");
+    if StrLen(this.slottedShard) > 0 && !IsDefined(this.Shard(this.slottedShard)) { this.slottedShard = ""; }
     RadioXLLog(s"state read: station \(this.rememberStation), idents muted \(this.muteIdents), announcements muted \(this.muteNews)");
   }
 
@@ -234,7 +329,6 @@ public class RadioXLState extends ScriptableService {
     obj.PutBool("muteNews", this.muteNews);
     obj.PutText("eqPreset", this.eqPreset);
     obj.PutBool("perStationEq", this.perStationEq);
-    obj.PutBool("showEq", this.showEq);
     let b: Int32 = 0;
     while b < 9 {
       obj.PutInt(s"eqBand\(b)", this.EqBand(b));
@@ -260,6 +354,20 @@ public class RadioXLState extends ScriptableService {
       i += 1;
     }
     obj.Put("stationEqBands", bandMap);
+    let shards = JsonList.Make();
+    for shard in this.m_shards {
+      let item = JsonMap.Make();
+      item.PutText("name", shard.name);
+      item.PutBool("ordered", shard.ordered);
+      let songs = JsonList.Make();
+      for song in shard.songs {
+        songs.PushText(NameToString(song));
+      }
+      item.Put("songs", songs);
+      shards.Push(item);
+    }
+    obj.Put("shards", shards);
+    obj.PutText("slottedShard", this.slottedShard);
     let ok: Bool = storage.WriteJson("state.json", obj);
     RadioXLLog(s"state written (\(ok)): station \(this.rememberStation), idents muted \(this.muteIdents), announcements muted \(this.muteNews)");
   }

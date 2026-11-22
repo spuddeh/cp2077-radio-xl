@@ -136,6 +136,16 @@ inline bool g_procSentValid = false;
 inline std::atomic<float> g_gains[kBandCount] = {};
 inline float g_gainsSent[kBandCount] = {};
 inline std::atomic<bool> g_gainsPending{true};
+// While someone speaks and the "Someone is speaking" switch keeps the game's duck, the AGC passes the radio through
+// unchanged, so the duck the game applies before it is heard as the game makes it. The AGC sits after the game's
+// voice ducks and would otherwise raise the ducked radio back up. A threshold of 0 dB is never reached and an output
+// gain of 0 adds nothing.
+inline std::atomic<bool> g_speaking{false};
+inline std::atomic<bool> g_voicesDuck{true};
+inline std::atomic<int32_t> g_holdGlideMs{1000};
+inline bool g_held = false;
+constexpr float kHeldValues[2] = {0.0f, 0.0f};  // threshold, output gain
+constexpr int32_t kMinHoldGlideMs = 500;
 
 inline void Log(const std::string& aText)
 {
@@ -312,19 +322,40 @@ inline bool LoadBank()
 
 inline void SendProcessing()
 {
+    const bool held = g_speaking.load() && g_voicesDuck.load();
+    const bool changed = g_procSentValid && held != g_held;
+    if (changed)
+    {
+        Log(held ? "someone is speaking: the AGC lets the game's duck through" : "nobody is speaking: the AGC levels again");
+    }
+    g_held = held;
     for (int st = 0; st < kStageCount; ++st)
     {
         for (int k = 0; k < 2; ++k)
         {
-            const float v = g_procValues[st][k].load();
+            const float v = st == kAgc && held ? kHeldValues[k] : g_procValues[st][k].load();
             if (!g_procSentValid || v != g_procSent[st][k])
             {
-                g_setRtpc(kProcessors[st].rtpc[k], v, kGlobalObject, kGainGlideMs, kCurveLinear, false);
+                const int32_t glide = st == kAgc && changed ? g_holdGlideMs.load() : kGainGlideMs;
+                g_setRtpc(kProcessors[st].rtpc[k], v, kGlobalObject, glide, kCurveLinear, false);
                 g_procSent[st][k] = v;
             }
         }
     }
     g_procSentValid = true;
+}
+
+// From the game parameter hook: vo_dialog_active written on every game object, with the game's own fade.
+inline void SetSpeaking(bool aSpeaking, int32_t aFadeMs)
+{
+    g_holdGlideMs = (std::max)(aFadeMs, kMinHoldGlideMs);
+    g_speaking = aSpeaking;
+}
+
+// The "Someone is speaking" switch: true keeps the game's duck.
+inline void SetVoicesDuck(bool aDuck)
+{
+    g_voicesDuck = aDuck;
 }
 
 inline void SendGains()

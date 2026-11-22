@@ -77,6 +77,7 @@ struct Station
     std::vector<std::pair<std::string, std::string>> extensions;    // consuming mod, its value as JSON text
     std::string source;        // which manifest it came from, for logging
     std::string folder;        // the manifest's own directory, which track files are relative to
+    bool shard = false;        // the built-in shard slot: no manifest, no files, its tracks written by script
 };
 
 // A frequency as the dial shows it: one decimal, two when the number has them (104.9, 101.0, 88.85).

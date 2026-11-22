@@ -1,5 +1,80 @@
 # Changelog - RadioXL
 
+## [0.11.0] - 2026-11-22
+
+### Added
+- A built-in shard slot station, `radio_station_radioxl_shard`, registered by the plugin after every manifest
+  (`AddShardSlot`): no frequency, last on the dial, off traffic lists and the RCF Stations tab. New natives
+  `RadioXL_StationSetRemaining` (replaces a station's remaining list and zeroes its pick counter) and
+  `RadioXL_ShardSlot`. `kMaxTracks` is 8192 and the natives read into heap buffers, so a list of several
+  hundred songs reads back (it read as empty past 256).
+- The shard service, `RadioXLShards` (Shards.reds): shards stored in `state.json`, Slot and Eject, in-order play
+  (one queued entry in the remaining list), All songs (every song once, without police/Kurtz noise, the Body Heat
+  `_completed_sq017` copy, stream rows and, unless `impulseInAllSongs` is on, Impulse's DJ set), API and events.
+- Runtime text for a localization key: `RadioXL_SetText` and a hook on `OnScreensRepositoryBase::GetString`,
+  so every UI naming the shard slot shows the slotted shard's name.
+- Station selection UI tabs (Switcher.reds): Radioport, Library and Equalizer behind the hub menu's top bar, LB/RB
+  or a click, with a sliding swap animation.
+- The Library panel (Library.reds, `tools/library-panel-ink.py`): a cartridge strip of All songs and the shards,
+  or every station (`showAll` swaps), the songs of the cartridge picked, a filter box (Codeware `HubTextInput`),
+  and Play, which slots the shard or tunes the station and starts the song.
+- Each shard keeps its own equalizer (state key: slot name and shard name).
+- The shard builder (Builder.reds, `tools/shard-builder-ink.py`, `radioxl\gui\shard_builder.inkwidget` item
+  `builder`): a full-screen screen spawned on the popup's root and shown in place of its frame. Shard tabs (hub
+  menu top bar, nine and + NEW), three columns (sources as Library cartridges, songs with the filter and an
+  `atlas_shapes_sync` checkbox per row, the shard with place numbers, move arrows and the settings menu's on/off
+  switch for play order), the column's own input hints. R on a shard or + NEW in the Library opens it; Back
+  returns to the Library on the shard (`ShowShard`). Every change saves through `RadioXLShards.Save`; a shard
+  left empty is deleted on a tab change, Back or popup close. Stream stations (`RadioXLAPI.IsStreamStation`)
+  are not sources. Source logos are scaled into one 110 x 60 box and centred; a logo is requested only when its
+  cartridge's source changes. Rename is a popup moved to the popup's root above the builder (the columns drew
+  over it inside the builder), its frame lit without its fill and filled with `#31181e`, with Save (Enter) and
+  Cancel (Esc) hints under it from `UI_smart_frame_confirm` / `UI_smart_frame_close`. The rename key acts on its
+  release, as its press is lost after a click on a source. While the popup is open the builder ignores the
+  pointer. The move arrows fill (`arrow_rect_bg`) under the pointer. Delete opens a confirmation popup (the
+  same modal, `modal()` in the composer): X on a keyboard (`mod_notification_confirm`), L3 on a pad
+  (`popup_goto_messenger`), each answering only on its own device, as the pad's X is Add and Modular Controls
+  gives `popup_goto_messenger` the rename key. Proceed confirms on its press or release, whichever comes first,
+  as its press also clicks the dimmed screen behind, which cancels. The builder then shows the shard that took
+  its place, or the Library when none is left.
+
+### Changed
+- The script API is version 3 (`RadioXLAPI.Version()`): the shard functions (`ShardStation`, `Shards`,
+  `ShardSongs`, `IsShardInOrder`, `SlottedShard`, `SlotShard`, `EjectShard`) and `RadioXL/ShardSlotted`,
+  `ShardEjected` and `ShardsChanged` are documented in `docs/script-api.md`. A new marker module,
+  `RadioXL.Api0_11` (`Api0_11.reds`), lets a mod require 0.11.0 by importing it.
+
+### Removed
+- The game 2.31 build. `plugin/builds.json` builds 2.5 only, `release-manifest.json` has no `compat231` artifact,
+  `compat/` and the 2.31 symbols for 0.11.0 are gone, and `publish.json` no longer publishes `compat/`. The 2.31
+  table in `Build.hpp` stays, unused by a 2.5-only build. On 2.31, RadioXL 0.10.0 and its compatibility file stay
+  on Nexus under Old files.
+- The "Show the equalizer" setting (`showEq`, #74). The equaliser is a tab of the station selection UI, so the
+  Equalizer tab is always offered: `RadioXLTabAvailable` is gone from `Switcher.reds`, LB / RB step round all
+  three tabs, and `state.json` no longer reads or writes `showEq`. A saved value is ignored.
+- The Library's edit mode, its rename window, row buttons and their strings and ink, replaced by the shard builder.
+- The Songs tab, replaced by the Library.
+
+### Fixed
+- Even out loudness lets the game's voice duck through while someone speaks (dev #9). The AGC sits in slot 3 of
+  `Music_Diagetic_Radios_Vehicle_Player_DVR`, after every voice-level turn-down, and raised a ducked radio back up.
+  The `_SetRTPCValue` hook reports `vo_dialog_active` written on every game object (`mix::g_onSpeaking`); while it
+  is above 0 and the voices switch keeps the game's duck (`eq::SetVoicesDuck` from `RadioXL_SetMixSwitch`), the
+  AGC's threshold and output gain glide to 0 dB over the game's fade (at least 500 ms), which passes the radio
+  through, and glide back when it clears. Measured on a tone station in Judy's van: held, it reads as with the AGC off.
+- `plugin/src/Turndown.hpp` keeps every volume curve the banks load and logs, once the session is up, the ones whose
+  owner reaches the AGC's bus (25 of 6647 in vanilla). Nothing is applied from it.
+- The pause menu switch keeps a car radio playing (dev #26). The pause menu sets `veh_player_mounted` and
+  `veh_interior` to 0 on every game object, which faded the car radio's interior sound to silence; while the radio
+  plays through the pause menu, a hook on `AK::SoundEngine::_SetRTPCValue` (hash 1716460472) drops those two writes.
+  The prologue check accepts another plugin's jump in its first five bytes. A save loaded from the pause menu writes
+  neither parameter again, so a dropped 0 the game has not overwritten 1.5 s after the menu closed is written then
+  (`ReleaseHeldMount`, from the mix update); without it V's Radioport stayed silent on foot after such a load.
+
+### Notes
+- A click reaches `OnRelease` twice, as `click` and as `mouse_left`; every panel acts on `click` only.
+- `IsVisible()` reads false straight after `SetVisible(true)`; the builder keeps its own open flag.
+
 ## [0.10.0] - 2026-11-07
 
 ### Added

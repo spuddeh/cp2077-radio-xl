@@ -5,7 +5,7 @@
 //              language. The key is the first text on each line and never changes; the second is
 //              what the player reads. Station names and song titles are not here: those are the
 //              station author's text and go through RadioXLTexts unchanged.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -27,12 +27,53 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.secSound", "Sound");
     this.Text("RadioXL.optBoost", "Volume boost (dB)");
     this.Text("RadioXL.secEqualiser", "Equalizer");
-    this.Text("RadioXL.labEqualiser", "The equalizer opens in its own panel beside the Radioport's station list.");
+    this.Text("RadioXL.labEqualiser", "The equalizer is the Equalizer tab of the station selection UI.");
     this.Text("RadioXL.optEqPreset", "Preset");
     this.Text("RadioXL.tipEqPreset", "Default: Flat, the game's own sound. Applies to the car radio, the Radioport and the metro. A station set to its own preset on the Stations tab plays that one instead. Custom shows nine sliders, one per band.");
     this.Text("RadioXL.eqCustom", "Custom");
     this.Text("RadioXL.eqGlobal", "Global");
     this.Text("RadioXL.eqTitle", "Equalizer");
+    this.Text("RadioXL.songsPlay", "Play");
+    this.Text("RadioXL.libTitle", "Library");
+    this.Text("RadioXL.tabRadio", "Radioport");
+    this.Text("RadioXL.libAll", "All songs");
+    this.Text("RadioXL.libCount", "{n}");
+    this.Text("RadioXL.libPosition", "{i} of {n}");
+    this.Text("RadioXL.libInOrder", "in order");
+    // What the Library's cartridge strip lists: its title bar, and the footer hint that swaps it.
+    this.Text("RadioXL.libShards", "Shards");
+    this.Text("RadioXL.libStations", "Stations");
+    this.Text("RadioXL.libFilter", "Filter");
+    this.Text("RadioXL.libNoMatch", "No song matches the filter");
+    // Edit mode.
+    this.Text("RadioXL.libEdit", "Edit");
+    this.Text("RadioXL.libNew", "New shard");
+    this.Text("RadioXL.libNewName", "Shard {n}");
+    this.Text("RadioXL.libCreate", "Create");
+    this.Text("RadioXL.libRemove", "Remove");
+    this.Text("RadioXL.libClose", "Close");
+    this.Text("RadioXL.libShuffled", "Shuffle");
+    this.Text("RadioXL.libRename", "Rename");
+    this.Text("RadioXL.bldSources", "Sources");
+    this.Text("RadioXL.bldSongs", "Songs");
+    this.Text("RadioXL.bldShard", "Shard");
+    this.Text("RadioXL.bldNewTab", "+ New");
+    this.Text("RadioXL.bldOrder", "Play order");
+    this.Text("RadioXL.bldInOrder", "In order");
+    this.Text("RadioXL.bldAdd", "Add");
+    this.Text("RadioXL.bldUp", "Move up");
+    this.Text("RadioXL.bldDown", "Move down");
+    this.Text("RadioXL.bldBack", "Back");
+    this.Text("RadioXL.bldSongCount", "{n} songs");
+    this.Text("RadioXL.bldRenameTitle", "Rename shard");
+    this.Text("RadioXL.bldRenameHint", "Enter saves the name, Esc keeps the old one");
+    this.Text("RadioXL.bldSave", "Save");
+    this.Text("RadioXL.bldCancel", "Cancel");
+    this.Text("RadioXL.bldDelete", "Delete");
+    this.Text("RadioXL.bldDeleteTitle", "Delete shard");
+    this.Text("RadioXL.bldDeleteText", "Delete {name} and its {n} songs?");
+    this.Text("RadioXL.bldDeleteHint", "The songs stay on their stations and in your other shards.");
+    this.Text("RadioXL.bldEmpty", "No songs yet. A shard with no songs is deleted when you leave.");
     this.Text("RadioXL.eqThisStation", "This station");
     this.Text("RadioXL.eqPerStation", "Per-station EQ");
     this.Text("RadioXL.eqReset", "Reset");
@@ -40,12 +81,6 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.eqStation", "Station");
     this.Text("RadioXL.eqNoStation", "Radio off");
     this.Text("RadioXL.eqSave", "Save as preset");
-    this.Text("RadioXL.eqFocusPanel", "Equalizer");
-    this.Text("RadioXL.eqFocusList", "Stations");
-    this.Text("RadioXL.optShowEq", "Show the equalizer");
-    this.Text("RadioXL.tipShowEq", "Off, the station selection UI opens without the equalizer panel. The key at the foot of the station list (U by default, L3 on a controller) shows or hides it there, and sets this switch.");
-    this.Text("RadioXL.eqShow", "Equalizer");
-    this.Text("RadioXL.eqHide", "Hide equalizer");
     this.Text("RadioXL.eqBoost", "Volume boost");
     this.Text("RadioXL.eqSuggested", "{preset} (suggested)");
     this.Text("RadioXL.eqBand0", "63 Hz");
@@ -153,6 +188,8 @@ public class RadioXLEnglish extends ModLocalizationPackage {
     this.Text("RadioXL.tipRandomWorldRadios", "Radios and jukeboxes around the city that start on a random station can land on a custom one. A radio picks once, the first time it is set up, and keeps that station in your save, so one already set up keeps the station it has. A jukebox picks again each time it loads.");
     this.Text("RadioXL.optRandomStreams", "Include stations that stream");
     this.Text("RadioXL.tipRandomStreams", "Traffic cars and world radios can pick a station that streams. While one plays it, that station's connection stays open.");
+    this.Text("RadioXL.optImpulseInAllSongs", "Impulse's DJ set in All songs");
+    this.Text("RadioXL.tipImpulseInAllSongs", "All songs is the shard that holds every song on every station. Impulse plays one long DJ set as a single track, and it joins All songs only while this is on.");
     this.Text("RadioXL.optSkipStation", "Keys step over this station");
     this.Text("RadioXL.tipSkipStation", "The next and previous station keys skip it. It can still be picked from the radio itself.");
     this.Text("RadioXL.songOn", "On");

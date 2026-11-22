@@ -9,7 +9,7 @@
 //              wires its controls. It is spawned inside the popup's root, so it opens and closes
 //              with it. Every control writes through RadioXLAPI, so a change is heard at once, and
 //              the panel redraws on RadioXL/EqChanged and on a station change.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -93,9 +93,6 @@ public class RadioXLEqPanel extends IScriptable {
   // Each fader's frame, and its opacity as drawn; the frame of the fader under the cursor is drawn whole.
   private let m_bandFrames: array<wref<inkWidget>>;
   private let m_bandFrameOpacity: Float;
-  private let m_focusHint: wref<inkText>;
-  // The show / hide hint at the foot of the popup's station list, outside the panel.
-  private let m_showHint: wref<inkText>;
   // The cursor is on the panel (else on the station list), on which row, and on which fader.
   private let m_focused: Bool;
   // The popup's pointer mode: a row under the cursor takes the focus only after the mouse or the stick
@@ -116,8 +113,7 @@ public class RadioXLEqPanel extends IScriptable {
     if !IsDefined(root) { return; }
     root.SetAnchor(inkEAnchor.Centered);
     root.SetAnchorPoint(0.5, 0.5);
-    // The popup's frame is 1170 wide in the middle; the panel sits 60 to its right.
-    root.SetTranslation(new Vector2(585.0 + 60.0 + 450.0, 0.0));
+    // Shown in the popup's frame in place of the Radioport, when the switcher brings it forward.
     this.m_root = root;
     this.m_owner = owner;
 
@@ -162,61 +158,31 @@ public class RadioXLEqPanel extends IScriptable {
     this.Clickable(this.At(boost + "/layout/container/btnLeft"), this.m_actBoostDown);
     this.Clickable(this.At(boost + "/layout/container/btnRight"), this.m_actBoostUp);
 
-    // Save as preset is not offered; its hint shows the key that moves the focus between list and panel.
-    let display: wref<inkWidget> = this.At(content + "inputHints/hintSave/inputDisplayController");
-    let input: wref<inkInputDisplayController> = IsDefined(display) ? display.GetController() as inkInputDisplayController : null;
-    if IsDefined(input) { input.SetInputAction(n"secondaryAction"); }
-    this.m_focusHint = this.At(content + "inputHints/hintSave/text") as inkText;
+    // Save as preset is not offered.
+    let save: wref<inkWidget> = this.At(content + "inputHints/hintSave");
+    if IsDefined(save) { save.SetVisible(false); }
     this.SetText(this.At(content + "inputHints/hintReset/text"), RadioXLText("RadioXL.eqReset"));
+    // Close reads as the Radioport's own hint does.
+    let close = owner.GetRootCompoundWidget().GetWidgetByPathName(n"containerRoot/wrapper/setup/list/inputHints/inputClose/text") as inkText;
+    if IsDefined(close) && StrLen(close.GetText()) > 0 { this.SetText(this.At(content + "inputHints/hintClose/text"), close.GetText()); }
     this.Clickable(this.At(content + "inputHints/hintReset"), this.m_actReset);
-
-    // The key that shows and hides the panel is hinted beside the station list's own hints, so the hint
-    // stays on screen while the panel is hidden.
-    let footer = this.AtFrom(owner.GetRootCompoundWidget(), "containerRoot/wrapper/setup/list/inputHints") as inkCompoundWidget;
-    if IsDefined(footer) {
-      let hint = owner.SpawnFromExternal(footer, r"radioxl\\gui\\eq_hint.inkwidget", n"hint") as inkCompoundWidget;
-      if IsDefined(hint) { this.m_showHint = hint.GetWidget(n"text") as inkText; }
-    }
 
     GameInstance.GetCallbackSystem().RegisterCallback(n"RadioXL/EqChanged", this, n"OnEqChanged");
     GameInstance.GetCallbackSystem().RegisterCallback(n"RadioXL/StationChanged", this, n"OnStationChanged");
     this.Focus(false, false);
     this.SetPointer(false);
     this.Draw();
-    if RadioXLState.Get().showEq {
-      RadioXLEqAnim.Open(root);
-    } else {
-      root.SetVisible(false);
-    }
-    this.DrawShowHint();
+    root.SetVisible(false);
+  }
+
+  public func Root() -> wref<inkWidget> {
+    return this.m_root;
   }
 
   public func Shown() -> Bool {
     return IsDefined(this.m_root) && this.m_root.IsVisible();
   }
 
-  // The panel shows or hides, and the choice is kept. Hiding is at once: the popup stops game time, so
-  // nothing waiting on it would finish.
-  public func ToggleShown() -> Void {
-    if !IsDefined(this.m_root) { return; }
-    let show: Bool = !this.m_root.IsVisible();
-    RadioXLState.Get().SetShowEq(show);
-    if show {
-      this.m_root.SetVisible(true);
-      this.Draw();
-      RadioXLEqAnim.Open(this.m_root);
-    } else {
-      if this.m_focused { this.Focus(false, true); }
-      this.m_root.SetVisible(false);
-    }
-    this.DrawShowHint();
-  }
-
-  private func DrawShowHint() -> Void {
-    if IsDefined(this.m_showHint) {
-      this.m_showHint.SetText(RadioXLText(this.Shown() ? "RadioXL.eqHide" : "RadioXL.eqShow"));
-    }
-  }
 
   public func Close() -> Void {
     RadioXLEqAnim.Close(this.m_root);
@@ -455,8 +421,7 @@ public class RadioXLEqPanel extends IScriptable {
 
   // An action the popup heard; true when the panel took it, so the station list does not move too.
   // Keys and the pad move the cursor, as the game's menus do, and the pointer's click (pad A, Enter, F)
-  // presses what it is on. R / pad X moves the cursor between the station list and the panel. On the
-  // panel, up and down move it between rows, left and right between faders on the band rows and change
+  // presses what it is on. Up and down move it between rows, left and right between faders on the band rows and change
   // the value on the others. The left stick moves the cursor freely, so its scroll actions reach neither
   // the list nor the panel.
   public func Act(name: CName, type: gameinputActionType) -> Bool {
@@ -465,16 +430,7 @@ public class RadioXLEqPanel extends IScriptable {
     if Equals(name, n"popup_moveUp_left_stick_up") || Equals(name, n"popup_moveUp_left_stick_down") {
       return true;
     }
-    // U / pad L3: the game's context help action, which the radio popup leaves unused.
-    if Equals(name, n"context_help") {
-      if press { this.ToggleShown(); }
-      return true;
-    }
     if !this.Shown() { return false; }
-    if Equals(name, n"secondaryAction") {
-      if press { this.Focus(!this.m_focused, true); }
-      return true;
-    }
     // Proceed shares its buttons with the pointer's click: over a panel control, while the panel has the
     // focus, the press is the click's alone.
     if Equals(name, n"proceed") && this.m_overControl && this.m_focused { return true; }
@@ -500,20 +456,11 @@ public class RadioXLEqPanel extends IScriptable {
     return false;
   }
 
-  // The focus moves to the panel or back to the list; with `move`, the cursor goes with it.
+  // The focus comes to the panel or leaves it; with `move`, the cursor goes with it.
   private func Focus(on: Bool, move: Bool) -> Void {
     this.m_focused = on;
-    if IsDefined(this.m_focusHint) {
-      this.m_focusHint.SetText(RadioXLText(on ? "RadioXL.eqFocusList" : "RadioXL.eqFocusPanel"));
-    }
     this.Light();
-    if !move { return; }
-    if on {
-      this.MoveCursor();
-    } else {
-      let popup = this.m_owner as VehicleRadioPopupGameController;
-      if IsDefined(popup) { popup.RadioXLCursorToStation(); }
-    }
+    if on && move { this.MoveCursor(false); }
   }
 
   // The pointer and the keys share one focus: a panel row under the cursor takes it, and a station row
@@ -543,12 +490,31 @@ public class RadioXLEqPanel extends IScriptable {
     return this.m_focused;
   }
 
-  public func OverControl(over: Bool) -> Void {
-    this.m_overControl = over;
+  // Another tab came forward.
+  public func Blur() -> Void {
+    if this.m_focused { this.Focus(false, false); }
   }
 
-  public func ListHovered() -> Void {
-    if this.m_focused { this.Focus(false, false); }
+  public func FocusPanel(move: Bool) -> Void {
+    this.Focus(true, move);
+  }
+
+  // Wheel notches moved the cursor a row each, as an up or down would; it goes back.
+  public func UndoSteps(up: Bool, count: Int32) -> Void {
+    if !this.m_focused { return; }
+    let i: Int32 = 0;
+    while i < count {
+      this.Vertical(up ? 1 : -1);
+      i += 1;
+    }
+  }
+
+  public func MoveCursorNow() -> Void {
+    if this.m_focused { this.MoveCursor(false); }
+  }
+
+  public func OverControl(over: Bool) -> Void {
+    this.m_overControl = over;
   }
 
   private func Row() -> String {
@@ -574,8 +540,11 @@ public class RadioXLEqPanel extends IScriptable {
     return this.At(content + row + "/layout/container");
   }
 
-  // Snapped, as the game's lists move the cursor to their selection; the cursor then draws as the outline.
-  private func MoveCursor() -> Void {
+  // Snapped, as the game's lists move the cursor to their selection; the cursor then draws as the outline,
+  // which is the panel's only mark of the control picked. A key step moves it; otherwise only the pad does.
+  private func MoveCursor(stepped: Bool) -> Void {
+    if this.m_pointer || !IsDefined(this.m_owner) { return; }
+    if !stepped && !this.m_owner.GetPlayerControlledObject().PlayerLastUsedPad() { return; }
     let target: wref<inkWidget> = this.Target();
     if IsDefined(target) && IsDefined(this.m_owner) {
       this.m_owner.SetCursorOverWidget(target, 0.0, true);
@@ -585,7 +554,7 @@ public class RadioXLEqPanel extends IScriptable {
   private func Vertical(step: Int32) -> Void {
     this.m_row = Clamp(this.m_row + step, 0, ArraySize(this.m_rows) - 1);
     this.Light();
-    this.MoveCursor();
+    this.MoveCursor(true);
   }
 
   private func Horizontal(step: Int32) -> Void {
@@ -593,7 +562,7 @@ public class RadioXLEqPanel extends IScriptable {
     if this.OnBands() {
       this.m_band = Clamp(this.m_band + step, 0, RadioXL_EqBandCount() - 1);
       this.Light();
-      this.MoveCursor();
+      this.MoveCursor(true);
     } else if Equals(row, "preset") {
       this.Click(step < 0 ? this.m_actPrevPreset : this.m_actNextPreset);
     } else if Equals(row, "boost") {
@@ -651,7 +620,12 @@ public class RadioXLEqPanel extends IScriptable {
     let station: CName = this.Station();
     let own: Bool = this.Own();
     if IsDefined(this.m_station) {
-      this.m_station.SetText(Equals(station, n"None") ? RadioXLText("RadioXL.eqNoStation") : RadioXLAPI.StationName(station));
+      let heading: String = Equals(station, n"None") ? RadioXLText("RadioXL.eqNoStation") : RadioXLAPI.StationName(station);
+      if Equals(station, RadioXLAPI.ShardStation()) {
+        let shard: String = RadioXLAPI.SlottedShard();
+        heading = StrLen(shard) > 0 ? shard : RadioXLText("RadioXL.libAll");
+      }
+      this.m_station.SetText(heading);
     }
     this.Switch("setup/content/scope", RadioXLAPI.PerStationEq());
 
@@ -697,12 +671,11 @@ protected cb func OnPlayerAttach(playerPuppet: ref<GameObject>) -> Bool {
   this.m_radioXLEq = panel;
   // The popup hears only the actions it listens for; the base class drops every listener on detach.
   this.GetPlayerControlledObject().RegisterInputListener(this, n"showAll");
-  this.GetPlayerControlledObject().RegisterInputListener(this, n"secondaryAction");
-  this.GetPlayerControlledObject().RegisterInputListener(this, n"context_help");
   for moved in [n"mouse_x", n"mouse_y", n"popup_axisX", n"popup_axisY"] {
     this.GetPlayerControlledObject().RegisterInputListener(this, moved);
   }
   this.RadioXLMouseSetup();
+  this.RadioXLSwitcherSetup();
   return result;
 }
 
@@ -711,13 +684,30 @@ protected cb func OnPlayerAttach(playerPuppet: ref<GameObject>) -> Bool {
 protected cb func OnVehicleRadioEvent(evt: ref<UIVehicleRadioEvent>) -> Bool {
   let result: Bool = wrappedMethod(evt);
   if IsDefined(this.m_radioXLEq) { this.m_radioXLEq.Draw(); }
+  if IsDefined(this.m_radioXLLibrary) {
+    // A station the Library tuned: the popup selects its row, which it otherwise does only as it opens.
+    if this.m_radioXLLibrary.TakeTuned() { this.RadioXLSelectPlaying(); }
+    this.m_radioXLLibrary.RadioReported(false);
+  }
   return result;
 }
 
 @wrapMethod(VehicleRadioPopupGameController)
 protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsumer) -> Bool {
+  // The shard builder, while it shows, takes every action; the pointer still switches mouse and keys.
+  if IsDefined(this.m_radioXLBuilder) && this.m_radioXLBuilder.Shown() {
+    this.RadioXLPointerInput(action);
+    this.RadioXLBuilderAct(action);
+    return true;
+  }
+  // While the Library's filter box has the keyboard, a typed letter is not a popup key.
+  if IsDefined(this.m_radioXLLibrary) && this.m_radioXLLibrary.Typing() { return true; }
   this.RadioXLPointerInput(action);
   if this.RadioXLWheel(action) { return true; }
+  if this.RadioXLRing(action) { return true; }
+  if IsDefined(this.m_radioXLLibrary) && this.m_radioXLLibrary.Act(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
+    return true;
+  }
   if IsDefined(this.m_radioXLEq) && this.m_radioXLEq.Act(ListenerAction.GetName(action), ListenerAction.GetType(action)) {
     return true;
   }
@@ -733,6 +723,8 @@ protected cb func OnAction(action: ListenerAction, consumer: ListenerActionConsu
 @wrapMethod(VehicleRadioPopupGameController)
 protected func OnClose() -> Void {
   if IsDefined(this.m_radioXLEq) { this.m_radioXLEq.Close(); }
+  if IsDefined(this.m_radioXLBuilder) { this.m_radioXLBuilder.Shutdown(); }
+  if IsDefined(this.m_radioXLLibrary) { this.m_radioXLLibrary.Close(); }
   wrappedMethod();
 }
 

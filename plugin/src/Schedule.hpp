@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #include "Clock.hpp"
 
@@ -45,7 +46,9 @@ constexpr size_t kDynArraySize = 0xc;             // a DynArray is { entries, ca
 // probe's `remain` line.
 using Entry = uint32_t;
 
-constexpr uint32_t kMaxTracks = 256;
+// A bound on what a read believes, not a limit of the engine's: a count past it means the read is
+// not of a track list. The shard slot holds every installed song, several hundred and growing.
+constexpr uint32_t kMaxTracks = 8192;
 
 // audioRadioStationMetadata.tracks, from RTTI on first use. Zero until then.
 inline size_t g_tracksOffset = 0;
@@ -264,6 +267,70 @@ inline int Consume(uint64_t aStation, uint64_t aTrack, bool aCount, bool aRefill
     return erased;
 }
 
+// Replaces a station's remaining list with the given tracks, in order, and sets the pick counter
+// to 0. A name the station does not list is skipped. An empty list leaves the engine to refill
+// with every track on its next pick, which is how a shard swap clears the entries the old track
+// list left: they index the new list and would play arbitrary songs first. Returns the number of
+// entries written, or -1 when the station is not in the manager.
+inline int SetRemaining(uint64_t aStation, const std::vector<uint64_t>& aTracks, size_t aTracksOffset)
+{
+    const auto station = FindStation(aStation);
+    if (!station || !aTracksOffset)
+    {
+        return -1;
+    }
+    const auto metadata = clock::Read<uintptr_t>(station + kStationMetadata);
+    if (!metadata)
+    {
+        return -1;
+    }
+    const auto tracks = clock::Read<uintptr_t>(metadata + aTracksOffset);
+    const auto trackCount = clock::Read<uint32_t>(metadata + aTracksOffset + kDynArraySize);
+    if (trackCount > kMaxTracks || (trackCount > 0 && !tracks))
+    {
+        return -1;
+    }
+    std::vector<Entry> entries;
+    entries.reserve(aTracks.size());
+    for (const uint64_t name : aTracks)
+    {
+        for (uint32_t i = 0; i < trackCount; ++i)
+        {
+            if (clock::Read<uint64_t>(tracks + static_cast<size_t>(i) * 8) == name)
+            {
+                entries.push_back(static_cast<Entry>(i));
+                break;
+            }
+        }
+    }
+    auto* list = reinterpret_cast<RED4ext::DynArray<Entry>*>(station + kStationRemaining);
+    list->Clear();
+    if (!entries.empty())
+    {
+        list->Reserve(static_cast<uint32_t>(entries.size()));
+        for (const Entry e : entries)
+        {
+            list->PushBack(e);
+        }
+    }
+    *reinterpret_cast<uint8_t*>(station + kStationPicks) = 0;
+    return static_cast<int>(entries.size());
+}
+
+inline bool SafeSetRemaining(uint64_t aStation, const std::vector<uint64_t>& aTracks, size_t aTracksOffset,
+                             int* aOut)
+{
+    __try
+    {
+        *aOut = SetRemaining(aStation, aTracks, aTracksOffset);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
 inline bool SafeReadRemaining(uint64_t aStation, size_t aTracksOffset, uint64_t* aNames, uint32_t aMax, int* aOut)
 {
     __try
@@ -333,9 +400,9 @@ inline void RadioXL_StationRemaining(RED4ext::IScriptable*, RED4ext::CStackFrame
     {
         return;
     }
-    uint64_t names[radioxl::schedule::kMaxTracks] = {};
+    std::vector<uint64_t> names(radioxl::schedule::kMaxTracks);
     int n = 0;
-    if (!radioxl::schedule::SafeReadRemaining(station.hash, radioxl::schedule::TracksOffset(), names,
+    if (!radioxl::schedule::SafeReadRemaining(station.hash, radioxl::schedule::TracksOffset(), names.data(),
                                               radioxl::schedule::kMaxTracks, &n))
     {
         radioxl::schedule::Fail("read");
@@ -365,9 +432,9 @@ inline void RadioXL_StationTracks(RED4ext::IScriptable*, RED4ext::CStackFrame* a
     {
         return;
     }
-    uint64_t names[radioxl::schedule::kMaxTracks] = {};
+    std::vector<uint64_t> names(radioxl::schedule::kMaxTracks);
     int n = 0;
-    if (!radioxl::schedule::SafeReadTracks(station.hash, radioxl::schedule::TracksOffset(), names,
+    if (!radioxl::schedule::SafeReadTracks(station.hash, radioxl::schedule::TracksOffset(), names.data(),
                                            radioxl::schedule::kMaxTracks, &n))
     {
         radioxl::schedule::Fail("read");
@@ -406,6 +473,41 @@ inline void RadioXL_StationConsume(RED4ext::IScriptable*, RED4ext::CStackFrame* 
     int result = -1;
     if (!radioxl::schedule::SafeConsume(station.hash, track.hash, countPick, refill,
                                         radioxl::schedule::TracksOffset(), &result))
+    {
+        radioxl::schedule::Fail("write");
+        return;
+    }
+    if (aOut)
+    {
+        *aOut = result;
+    }
+}
+
+// Replaces `station`'s remaining list with `tracks`, in order, and zeroes its pick counter; an empty
+// array clears it so the engine refills from the whole track list on its next pick. The number of
+// entries written, or -1 for a station not in the manager or a faulted write.
+inline void RadioXL_StationSetRemaining(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    RED4ext::CName station;
+    RED4ext::DynArray<RED4ext::CName> tracks;
+    RED4ext::GetParameter(aFrame, &station);
+    RED4ext::GetParameter(aFrame, &tracks);
+    ++aFrame->code;
+    if (aOut)
+    {
+        *aOut = -1;
+    }
+    if (radioxl::schedule::g_failed)
+    {
+        return;
+    }
+    std::vector<uint64_t> names;
+    for (const auto& track : tracks)
+    {
+        names.push_back(track.hash);
+    }
+    int result = -1;
+    if (!radioxl::schedule::SafeSetRemaining(station.hash, names, radioxl::schedule::TracksOffset(), &result))
     {
         radioxl::schedule::Fail("write");
         return;

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Registers the station name and song titles through Codeware's localization system.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: Codeware by psiberx.
 // ======================================================================================
 //
@@ -57,6 +57,7 @@ public class RadioXLTexts extends ModLocalizationPackage {
     let count: Int32 = RadioXL_StationCount();
     while station < count {
       let name: String = RadioXL_StationDisplayName(station);
+      if station == RadioXL_ShardSlot() && IsDefined(RadioXLShards.Get()) { name = RadioXLShards.Get().SlotName(); }
       if StrLen(name) > 0 {
         this.Text(NameToString(RadioXL_StationKey(station)), name);
         added += 1;

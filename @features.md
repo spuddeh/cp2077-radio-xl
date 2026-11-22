@@ -2,8 +2,8 @@
 
 ## Implemented
 
-- Game 2.5 and 2.31 are both supported: the main download for 2.5, an optional file with the 2.31
-  plugin over it. The plugin finds the game's patch sites by their bytes in one table per build.
+- Game 2.5 only from 0.11.0. RadioXL 0.10.0 and its 2.31 compatibility file stay on Nexus under Old files; the
+  2.31 table in `Build.hpp` is kept, unused by a 2.5-only build.
 - Custom stations are real engine stations: the compiled roster and station name table are extended
   at plugin load, so the Radioport, world radios and the vehicle radio all play them unwrapped.
 - A station is one manifest per mod, plus its audio files and at most an icon archive. Any number of
@@ -38,8 +38,6 @@
   ("Radio off" with none), the Per-station EQ switch, the preset selector, nine band faders with up
   and down arrows, the three processing switches, Volume boost, the Reset hint. Reset is the popup's
   `showAll` action (Z, pad Y). Picking a station redraws it at once. Verified in game.
-- Show or hide the equaliser panel (#74): the RCF Sound tab switch "Show the equalizer" and the
-  `context_help` key (U, pad L3) on the station selection UI, hinted beside the list's own hints.
 - The panel with keys and the pad (#70): R / pad X moves between the station list and the panel; the
   arrows or d-pad move the game's cursor between its controls, Enter / A press them. The popup opens
   on the station list. Verified in game with the keyboard, the mouse and a pad.
@@ -53,7 +51,8 @@
 - Processing (#70, #52): AGC, peak compressor and limiter, three switches with no mode selector;
   none on is Off, all three Broadcast, any mix Custom. Applies to the radio as a whole, not per
   station. On the Sound tab under a Processing heading and in the panel. Verified in game:
-  level-matched with the probe, heard.
+  level-matched with the probe, heard. While `vo_dialog_active` is set and the voices switch is on, the AGC
+  passes the radio through (dev #9). Verified in game on a tone station in Judy's van.
 - Script API version 2: Sound, mute situations, mix switches and traffic settings, `RadioXL/EqChanged`.
   Verified in game by `tests/api`: 103 of 103 on foot and in a car.
 - Volume boost (Sound tab, #70): 0 to 12 dB on the two player radio buses, after both game sliders; the
@@ -145,9 +144,6 @@
 - On 2.5 (Testing, 2026-11-02): `game build 2.5 ... every byte check passed`, police at slot 16,
   every subsystem patched; HKGN, vanilla and custom stations heard; Tool FM resumed mid-song; a world
   radio fell off with distance; next-station in a car stepped through HKGN in dial order.
-- On 2.31 (Gameplay, 2026-11-02), with the compatibility file over the main one: one RadioXL load,
-  `game build 2.31 ... every byte check passed`, police at slot 15, the station walk reached 19.
-
 - Traffic cars pick custom stations (4 of 34, then 149 of 337 with the player's car on one);
   Off applies mid-session (0 in 36); jukeboxes started on OutrunWaves and PHONKWAVE (#63).
 - 113 song settings migrated to file-based names; removing Tool FM's first file left the others'
@@ -197,6 +193,15 @@
 - The never-again key says "Switched off: <song>" on screen; the panel's long labels are one-line
   rows.
 
+
+- Shards: playlists of any installed songs, played on one built-in slot station, Shard, last on the dial.
+  Slotting a shard swaps the slot's track list live, so any number of shards exist with no restart. In order or
+  shuffled, each with its own equalizer. All songs holds every song once.
+- The station selection UI shows one panel at a time behind a tab header: Radioport, Library, Equalizer.
+- The Library: All songs and the shards, or every station, with their songs, a filter box, and Play.
+- The shard builder: a full-screen screen from the Library with shard tabs, sources (All songs and every
+  station but streams), songs with a checkbox each, and the shard in play order. Add, remove, reorder, play
+  order, rename and delete (after a confirmation), with keys, mouse and pad. A shard left empty is deleted.
 
 ## Planned
 

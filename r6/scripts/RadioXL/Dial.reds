@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Puts custom stations on the radio dial, in the UI and in the cycling order.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: RED4ext by WopsS.
 // ======================================================================================
 //
@@ -172,6 +172,10 @@ public class RadioXLRecords extends ScriptableTweak {
     let iconName: String = RadioXLDial.IconName(slot);
     let part: String = RadioXL_StationIcon(slot);
     let atlas: String = RadioXL_StationAtlas(slot);
+    if slot == RadioXL_ShardSlot() {
+      part = "shard";
+      atlas = "base\\gameplay\\gui\\widgets\\notifications\\notification_assets.inkatlas";
+    }
 
     // An `icon` naming a UIIcon record is used as it is, and no record of the station's own is made.
     // Yaml records are imported before any OnApply runs, so a record another mod ships is visible here.

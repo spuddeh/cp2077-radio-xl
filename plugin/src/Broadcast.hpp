@@ -173,10 +173,16 @@ inline CurveLoaderFn g_origCurveLoader = nullptr;
 inline int (*g_mixMatch)(uint32_t, const CurveDesc*) = nullptr;
 inline const GraphPoint* (*g_mixPoints)(int, const CurveDesc*, const GraphPoint*, std::vector<GraphPoint>&) = nullptr;
 inline void (*g_mixRemember)(int, const CurveDesc*, const GraphPoint*, uintptr_t) = nullptr;
+// The turn-down finder (Turndown.hpp) sees every curve as the bank ships it.
+inline void (*g_collect)(void*, uint32_t, uint64_t, const CurveDesc*, const GraphPoint*) = nullptr;
 
 inline int CurveLoader(void* aContainer, uint32_t aTarget, uint64_t aUnused, CurveDesc* aDesc, GraphPoint* aPoints,
                        void** aOut)
 {
+    if (g_collect)
+    {
+        g_collect(aContainer, aTarget, aUnused, aDesc, aPoints);
+    }
     if (aDesc && aPoints && aDesc->count == 2 &&
         (aDesc->rtpc == kRtpcMono || aDesc->rtpc == kRtpcRight || aDesc->rtpc == kRtpcLeft) &&
         aPoints[0].from == 0.0f && aPoints[0].to == 0.0f && aPoints[1].from == 255.0f && aPoints[1].to == 255.0f)

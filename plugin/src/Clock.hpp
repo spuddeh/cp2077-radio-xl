@@ -116,6 +116,7 @@ struct Watched
     uint64_t lastUnmatched = 0;       // a returned key that matched no track, logged once
     bool refused = false;             // AudioXL last refused this station's offset
     bool reported = false;            // the one "resuming" line has been written
+    bool borrows = false;             // the shard slot: its songs are other stations' rows
 };
 
 struct State
@@ -273,6 +274,23 @@ inline int CurrentTrack(Watched& aStation)
     return -1;
 }
 
+// The engine's current track key for a station, 0 when it has not posted yet.
+inline uint64_t CurrentKey(const Watched& aStation)
+{
+    RED4ext::CName key;
+    RED4ext::CName station(aStation.nameHash);
+    if (!RED4ext::ExecuteGlobalFunction("GetRadioStationCurrentTrackName", &key, station))
+    {
+        return 0;
+    }
+    return key.hash;
+}
+
+// The station and track a key belongs to, among every station that owns rows. The shard slot plays
+// other stations' songs, so its row is found on the station that registered it. False for a key
+// no custom station owns, which is a vanilla song: the engine plays those itself.
+inline bool FindOwner(uint64_t aKey, const Watched*& aOwner, size_t& aTrack);
+
 // Whether AudioXL has a live voice on a row. False when AudioXL or the native is missing.
 inline bool IsPlaying(const std::string& aRow)
 {
@@ -429,6 +447,20 @@ inline void Tick()
             }
             station.identPlaying[i] = playing;
         }
+        if (station.borrows)
+        {
+            const uint64_t key = CurrentKey(station);
+            const Watched* owner = nullptr;
+            size_t borrowed = 0;
+            if (key == 0 || !FindOwner(key, owner, borrowed))
+            {
+                station.lastTrack = -1;
+                continue;
+            }
+            const float length = owner->durations[borrowed];
+            Arm(owner->rows[borrowed], (length > 0.0f && clock >= length) ? 0.0f : clock);
+            continue;
+        }
         const int track = CurrentTrack(station);
         if (track != station.lastTrack && track >= 0)
         {
@@ -465,6 +497,27 @@ inline void Tick()
     }
 }
 
+inline bool FindOwner(uint64_t aKey, const Watched*& aOwner, size_t& aTrack)
+{
+    for (const auto& other : g_state.stations)
+    {
+        if (other.borrows)
+        {
+            continue;
+        }
+        for (size_t i = 0; i < other.trackKeys.size(); ++i)
+        {
+            if (other.trackKeys[i] == aKey)
+            {
+                aOwner = &other;
+                aTrack = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 inline bool OnUpdate(RED4ext::CGameApplication*)
 {
     if (!g_state.failed && !g_state.stations.empty())
@@ -493,6 +546,7 @@ inline void Start(const RED4ext::v1::Sdk* aSdk, RED4ext::v1::PluginHandle aHandl
         Watched w;
         w.name = s.name;
         w.nameHash = RED4ext::CName(s.name.c_str()).hash;
+        w.borrows = s.shard;
         for (size_t i = 0; i < s.tracks.size(); ++i)
         {
             // An ident has no title row, so the engine can never name it as the current track.

@@ -20,7 +20,7 @@
 //
 //              THE KEY ROWS ARE LOCAL-ONLY. RCF stores the key and never pushes it to its input
 //              plugin, because this mod matches the key itself on Codeware's Input/Key event.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: Redscript Configuration Framework by DigitalVixen.
 // ======================================================================================
 //
@@ -111,6 +111,8 @@ public class RadioXLConfig extends ScriptableSystem {
   public let trafficStations: Int32 = 0;
   public let randomWorldRadios: Bool = true;
   public let randomStreams: Bool = false;
+  // Impulse's single long DJ set is left out of All songs unless this is on.
+  public let impulseInAllSongs: Bool = false;
 
   private func TrafficMode() -> RadioXLTrafficMode {
     if this.trafficStations == 1 { return RadioXLTrafficMode.All; }
@@ -284,11 +286,11 @@ public func RadioXL_KeyPlayOnVehiclePowerOn() -> String { return "playOnVehicleP
 public func RadioXL_KeyPlayOnPocketPowerOn() -> String { return "playOnPocketPowerOn"; }
 public func RadioXL_KeyIgnorePocketRadio() -> String { return "ignorePocketRadio"; }
 public func RadioXL_KeyMuteIdents() -> String { return "muteIdents"; }
-public func RadioXL_KeyShowEq() -> String { return "showEq"; }
 public func RadioXL_KeyMuteNews() -> String { return "muteNews"; }
 public func RadioXL_KeyTrafficStations() -> String { return "trafficStations"; }
 public func RadioXL_MaxBoost() -> Int32 { return 12; }
 public func RadioXL_KeyRandomWorldRadios() -> String { return "randomWorldRadios"; }
+public func RadioXL_KeyImpulseInAllSongs() -> String { return "impulseInAllSongs"; }
 public func RadioXL_KeyRandomStreams() -> String { return "randomStreams"; }
 // A song row's key is the event name behind a fixed prefix; a station's step-over row is its
 // event name behind another. The name comes back out of each unchanged.
@@ -372,8 +374,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tab("RadioXL.tabSound");
     b.Section("RadioXL.secSound");
     b.Label("RadioXL.labEqualiser");
-    b.Toggle(RadioXL_KeyShowEq(), "RadioXL.optShowEq");
-    b.Tip("RadioXL.tipShowEq");
     b.Slider("boostDb", "RadioXL.optBoost", 0.0, Cast<Float>(RadioXL_MaxBoost()), 1.0, true);
     b.Tip("RadioXL.tipBoost");
     b.Group("RadioXL.secProcessing");
@@ -516,6 +516,8 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     b.Tip("RadioXL.tipRandomWorldRadios");
     b.Toggle(RadioXL_KeyRandomStreams(), "RadioXL.optRandomStreams");
     b.Tip("RadioXL.tipRandomStreams");
+    b.Toggle(RadioXL_KeyImpulseInAllSongs(), "RadioXL.optImpulseInAllSongs");
+    b.Tip("RadioXL.tipImpulseInAllSongs");
   }
 
   private func TrafficOptions() -> array<String> {
@@ -575,7 +577,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       let enumValue: ERadioStationList = RadioStationDataProvider.GetRadioStationByUIIndex(position);
       let name: CName = RadioStationDataProvider.GetStationName(enumValue);
       position += 1;
-      if IsNameValid(name) {
+      if IsNameValid(name) && !RadioXLIsShard(name) {
         let station = catalog.Station(name);
         b.Section(this.StationLabel(enumValue));
         b.Toggle(RadioXL_SkipPrefix() + NameToString(name), "RadioXL.optSkipStation");
@@ -657,6 +659,7 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
       if Equals(key, "procLimiter") { return RadioXLEqualiser.StageOn(2); }
       if Equals(key, RadioXL_KeyRandomWorldRadios()) { return c.randomWorldRadios; }
       if Equals(key, RadioXL_KeyRandomStreams()) { return c.randomStreams; }
+      if Equals(key, RadioXL_KeyImpulseInAllSongs()) { return c.impulseInAllSongs; }
     }
     let s = RadioXLControls.Get();
     if !IsDefined(s) { return false; }
@@ -674,7 +677,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     if Equals(key, RadioXL_KeyIgnorePocketRadio()) { return s.ignorePocketRadio; }
     if Equals(key, RadioXL_KeyMuteIdents()) { return RadioXLState.Get().muteIdents; }
     if Equals(key, RadioXL_KeyMuteNews()) { return RadioXLState.Get().muteNews; }
-    if Equals(key, RadioXL_KeyShowEq()) { return RadioXLState.Get().showEq; }
     return false;
   }
 
@@ -685,6 +687,12 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     if IsDefined(c) && Equals(key, RadioXL_KeyRandomWorldRadios()) {
       c.randomWorldRadios = value;
       c.ApplyTraffic();
+      return;
+    }
+    if IsDefined(c) && Equals(key, RadioXL_KeyImpulseInAllSongs()) {
+      c.impulseInAllSongs = value;
+      let shards = RadioXLShards.Get();
+      if IsDefined(shards) { shards.AllSongsChanged(); }
       return;
     }
     if IsDefined(c) && Equals(key, RadioXL_KeyRandomStreams()) {
@@ -738,7 +746,6 @@ public class RadioXLConfigProvider extends DVRCF_Provider {
     // ignored so a stale copy in its JSON cannot overwrite the file.
     else if Equals(key, RadioXL_KeyMuteIdents()) { if !this.m_restoring { RadioXLState.Get().SetMuteIdents(value); } }
     else if Equals(key, RadioXL_KeyMuteNews()) { if !this.m_restoring { RadioXLState.Get().SetMuteNews(value); } }
-    else if Equals(key, RadioXL_KeyShowEq()) { if !this.m_restoring { RadioXLState.Get().SetShowEq(value); } }
   }
 
   // Key rows travel on the Int channel as an EInputKey cast to Int32. 0 is IK_None: a key not

@@ -37,7 +37,7 @@
 //              flagged as not streaming-friendly, and the two Kerry USC songs stay hidden until
 //              the quest fact that unlocks them is set, the same two filters the game applies to
 //              its own picks.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -305,13 +305,11 @@ public class RadioXLDeck extends ScriptableService {
   public func Tune(gi: GameInstance, station: Int32, source: String) -> Bool {
     let player = GameInstance.GetPlayerSystem(gi).GetLocalPlayerMainGameObject() as PlayerPuppet;
     if !IsDefined(player) { return false; }
+    // With no radio on, the event switches one on, as picking a station in the popup does.
     let r = this.Receiver(gi);
-    if !IsDefined(r.vehicle) && !IsDefined(r.pocket) {
-      RadioXLLog(s"\(source): no receiver is playing");
-      return false;
-    }
+    let on: Bool = IsDefined(r.vehicle) || IsDefined(r.pocket);
     let name: CName = RadioStationDataProvider.GetStationName(IntEnum<ERadioStationList>(station));
-    if r.stationIndex == station {
+    if on && r.stationIndex == station {
       RadioXLLog(s"\(source): already on \(name)");
       return false;
     }

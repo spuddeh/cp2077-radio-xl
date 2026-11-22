@@ -3,7 +3,7 @@
 // Author: Spuddeh
 // Description: The script API's events: one Codeware callback event per kind, and one method per
 //              event on RadioXLEvents for CET mods to Observe.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 //
@@ -185,6 +185,40 @@ public class RadioXLEqChangedEvent extends CallbackSystemEvent {
   }
 }
 
+// A shard was slotted. `Name()` is the shard's name; "" is All songs.
+public class RadioXLShardSlottedEvent extends CallbackSystemEvent {
+  private let name: String;
+  public func Name() -> String { return this.name; }
+  public static func Create(name: String) -> ref<RadioXLShardSlottedEvent> {
+    let e = new RadioXLShardSlottedEvent();
+    e.name = name;
+    return e;
+  }
+}
+
+// The slotted shard came out, because another station was picked on the same radio or the shard
+// was removed. The slot holds All songs again.
+public class RadioXLShardEjectedEvent extends CallbackSystemEvent {
+  private let name: String;
+  public func Name() -> String { return this.name; }
+  public static func Create(name: String) -> ref<RadioXLShardEjectedEvent> {
+    let e = new RadioXLShardEjectedEvent();
+    e.name = name;
+    return e;
+  }
+}
+
+// A shard was added, changed or removed. `Name()` is the one that changed.
+public class RadioXLShardsChangedEvent extends CallbackSystemEvent {
+  private let name: String;
+  public func Name() -> String { return this.name; }
+  public static func Create(name: String) -> ref<RadioXLShardsChangedEvent> {
+    let e = new RadioXLShardsChangedEvent();
+    e.name = name;
+    return e;
+  }
+}
+
 public class RadioXLEvents extends ScriptableService {
   // What was last announced, so a receiver read that has not changed announces nothing.
   private let m_kind: RadioXLReceiverKind;
@@ -211,6 +245,9 @@ public class RadioXLEvents extends ScriptableService {
     cs.RegisterEvent(n"RadioXL/MyStationChanged", n"RadioXL.RadioXLMyStationChangedEvent");
     cs.RegisterEvent(n"RadioXL/StationSkipChanged", n"RadioXL.RadioXLStationSkipChangedEvent");
     cs.RegisterEvent(n"RadioXL/EqChanged", n"RadioXL.RadioXLEqChangedEvent");
+    cs.RegisterEvent(n"RadioXL/ShardSlotted", n"RadioXL.RadioXLShardSlottedEvent");
+    cs.RegisterEvent(n"RadioXL/ShardEjected", n"RadioXL.RadioXLShardEjectedEvent");
+    cs.RegisterEvent(n"RadioXL/ShardsChanged", n"RadioXL.RadioXLShardsChangedEvent");
   }
 
   // --- for CET to Observe: each is called with the event's fields, and does nothing ---------------
@@ -226,6 +263,9 @@ public class RadioXLEvents extends ScriptableService {
   public func OnMyStationChanged(station: CName) -> Void {}
   public func OnStationSkipChanged(station: CName, skipped: Bool) -> Void {}
   public func OnEqChanged(station: CName, preset: String) -> Void {}
+  public func OnShardSlotted(name: String) -> Void {}
+  public func OnShardEjected(name: String) -> Void {}
+  public func OnShardsChanged(name: String) -> Void {}
 
   // --- dispatch --------------------------------------------------------------------------------
 
@@ -282,6 +322,24 @@ public class RadioXLEvents extends ScriptableService {
     GameInstance.GetCallbackSystem().DispatchEventAs(n"RadioXL/StationSkipChanged", RadioXLStationSkipChangedEvent.Create(station, skipped));
     let self = RadioXLEvents.Get();
     if IsDefined(self) { self.OnStationSkipChanged(station, skipped); }
+  }
+
+  public final static func ShardSlotted(name: String) -> Void {
+    GameInstance.GetCallbackSystem().DispatchEventAs(n"RadioXL/ShardSlotted", RadioXLShardSlottedEvent.Create(name));
+    let self = RadioXLEvents.Get();
+    if IsDefined(self) { self.OnShardSlotted(name); }
+  }
+
+  public final static func ShardEjected(name: String) -> Void {
+    GameInstance.GetCallbackSystem().DispatchEventAs(n"RadioXL/ShardEjected", RadioXLShardEjectedEvent.Create(name));
+    let self = RadioXLEvents.Get();
+    if IsDefined(self) { self.OnShardEjected(name); }
+  }
+
+  public final static func ShardsChanged(name: String) -> Void {
+    GameInstance.GetCallbackSystem().DispatchEventAs(n"RadioXL/ShardsChanged", RadioXLShardsChangedEvent.Create(name));
+    let self = RadioXLEvents.Get();
+    if IsDefined(self) { self.OnShardsChanged(name); }
   }
 
   // --- the receiver -----------------------------------------------------------------------------

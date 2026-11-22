@@ -35,6 +35,8 @@
 #include "Folder.hpp"
 #include "Manifest.hpp"
 #include "Schedule.hpp"
+#include "Text.hpp"
+#include "Turndown.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -612,6 +614,25 @@ void LoadManifests()
     }
 }
 
+// The shard slot: one station the framework always registers, after every manifest, whose track
+// list script replaces with the slotted shard's songs. It has no frequency, so it sits last on the
+// dial and its label is the name alone. Its songs are other stations' events, vanilla and custom,
+// already registered by those stations, so it brings no files and no event rows of its own.
+constexpr const char* kShardStation = "radio_station_radioxl_shard";
+
+void AddShardSlot()
+{
+    Station shard;
+    shard.name = kShardStation;
+    shard.displayName = "Shard";
+    shard.showFrequency = false;
+    shard.frequency = -1.0f;
+    shard.source = "RadioXL (built in)";
+    shard.shard = true;
+    g_stations.push_back(std::move(shard));
+    Log("shard slot: '" + std::string(kShardStation) + "', last on the dial");
+}
+
 std::vector<int32_t> g_dial;      // dial position -> ERadioStationList value
 std::vector<int32_t> g_position;  // ERadioStationList value -> dial position
 
@@ -663,8 +684,17 @@ void BuildDial(DialSwitch aIndexToDial)
     std::stable_sort(customs.begin(), customs.end(),
                      [&](int32_t a, int32_t b) { return frequencyOf(a) < frequencyOf(b); });
 
+    int32_t shard = -1;
     for (const int32_t station : customs)
     {
+        // The shard slot has no frequency and goes after everything else, once every station with
+        // one is placed; inserted with the others, a station above every vanilla frequency would
+        // land behind it.
+        if (g_stations[g_slotOf[station]].shard)
+        {
+            shard = station;
+            continue;
+        }
         const float f = frequencyOf(station);
         auto at = order.end();
         if (f >= 0.0f)
@@ -678,6 +708,10 @@ void BuildDial(DialSwitch aIndexToDial)
             }
         }
         order.insert(at, station);
+    }
+    if (shard >= 0)
+    {
+        order.push_back(shard);
     }
 
     g_dial = order;
@@ -1380,6 +1414,29 @@ void RadioXL_StationCount(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, i
     }
 }
 
+// The shard slot's station index, or -1 when the roster is not patched.
+void RadioXL_ShardSlot(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
+{
+    ++aFrame->code;
+    if (!aOut)
+    {
+        return;
+    }
+    *aOut = -1;
+    if (!g_patched)
+    {
+        return;
+    }
+    for (size_t i = 0; i < g_stations.size(); ++i)
+    {
+        if (g_stations[i].shard)
+        {
+            *aOut = static_cast<int32_t>(i);
+            return;
+        }
+    }
+}
+
 // The dial order, for the script-side receivers. -1 when the roster is not patched or the value
 // is off the dial, and the caller falls back to the vanilla maps.
 void RadioXL_DialPosition(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, int32_t* aOut, int64_t)
@@ -1512,6 +1569,21 @@ void RadioXL_EqPresetBand(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, f
     const auto* p = radioxl::presets::At(index);
     if (aOut)
         *aOut = p && band >= 0 && band < static_cast<int32_t>(radioxl::presets::kBands) ? p->bands[band] + p->trim : 0.0f;
+}
+
+// Sets the text the game shows for a localization key, under both hash widths; empty text gives
+// the key back to its loaded row. False when the lookup is not hooked.
+void RadioXL_SetText(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, bool* aOut, int64_t)
+{
+    RED4ext::CString key;
+    RED4ext::CString text;
+    RED4ext::GetParameter(aFrame, &key);
+    RED4ext::GetParameter(aFrame, &text);
+    ++aFrame->code;
+    const std::string k = key.c_str();
+    const bool ok = !k.empty() && radioxl::text::Set(k, Fnv1a32(k), Fnv1a64(k), text.c_str());
+    if (aOut)
+        *aOut = ok;
 }
 
 // Writes a new preset file from nine band gains and reloads the presets; the new preset's index, or
@@ -1886,6 +1958,10 @@ void RadioXL_SetMixSwitch(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, b
     RED4ext::GetParameter(aFrame, &mute);
     ++aFrame->code;
     radioxl::mix::Set(which, mute);
+    if (which == radioxl::mix::kVoices)
+    {
+        radioxl::eq::SetVoicesDuck(mute);
+    }
     if (aOut)
         *aOut = radioxl::mix::g_ready;
 }
@@ -1967,7 +2043,9 @@ void RadioXL_SetProcessing(RED4ext::IScriptable*, RED4ext::CStackFrame* aFrame, 
 bool MixUpdate(RED4ext::CGameApplication*)
 {
     radioxl::mix::Tick();
+    radioxl::mix::ReleaseHeldMount();
     radioxl::eq::Tick();
+    radioxl::turndown::Tick();
     return false;
 }
 
@@ -1997,6 +2075,7 @@ void RegisterNatives()
     };
 
     reg("RadioXL_StationCount", &RadioXL_StationCount, "Int32", 0);
+    reg("RadioXL_ShardSlot", &RadioXL_ShardSlot, "Int32", 0);
     reg("RadioXL_SlotEnum", &RadioXL_SlotEnum, "Int32", 1);
     reg("RadioXL_EnumSlot", &RadioXL_EnumSlot, "Int32", 1);
     reg("RadioXL_EnumEnd", &RadioXL_EnumEnd, "Int32", 0);
@@ -2124,6 +2203,14 @@ void RegisterNatives()
         rtti->RegisterFunction(fn);
     }
     {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_SetText", "RadioXL_SetText", &RadioXL_SetText);
+        fn->flags.isNative = true;
+        fn->AddParam("String", "key");
+        fn->AddParam("String", "text");
+        fn->SetReturnType("Bool");
+        rtti->RegisterFunction(fn);
+    }
+    {
         auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_SavePreset", "RadioXL_SavePreset",
                                                     &RadioXL_SavePreset);
         fn->flags.isNative = true;
@@ -2160,6 +2247,15 @@ void RegisterNatives()
         fn->SetReturnType("Int32");
         rtti->RegisterFunction(fn);
     }
+    {
+        auto* fn = RED4ext::CGlobalFunction::Create("RadioXL.RadioXL_StationSetRemaining", "RadioXL_StationSetRemaining",
+                                                    &RadioXL_StationSetRemaining);
+        fn->flags.isNative = true;
+        fn->AddParam("CName", "station");
+        fn->AddParam("array:CName", "tracks");
+        fn->SetReturnType("Int32");
+        rtti->RegisterFunction(fn);
+    }
 }
 } // namespace
 
@@ -2167,7 +2263,7 @@ RED4EXT_C_EXPORT void RED4EXT_CALL Query(RED4ext::v1::PluginInfo* aInfo)
 {
     aInfo->name = L"RadioXL";
     aInfo->author = L"Spuddeh";
-    aInfo->version = RED4EXT_V1_SEMVER(0, 10, 0);
+    aInfo->version = RED4EXT_V1_SEMVER(0, 11, 0);
     aInfo->runtime = RED4EXT_V1_RUNTIME_VERSION_LATEST;
     aInfo->sdk = RED4EXT_V1_SDK_VERSION_CURRENT;
 }
@@ -2186,6 +2282,9 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
         g_handle = aHandle;
 
         LoadManifests();
+        AddShardSlot();
+        radioxl::text::g_log = &Log;
+        radioxl::text::Hook(&ResolveByHash, aSdk, aHandle);
         PatchRoster();
         if (g_patched)
         {
@@ -2215,9 +2314,14 @@ RED4EXT_C_EXPORT bool RED4EXT_CALL Main(RED4ext::v1::PluginHandle aHandle,
                     radioxl::broadcast::g_mixMatch = &radioxl::mix::Match;
                     radioxl::broadcast::g_mixPoints = &radioxl::mix::Points;
                     radioxl::broadcast::g_mixRemember = &radioxl::mix::Remember;
+                    radioxl::mix::g_onSpeaking = &radioxl::eq::SetSpeaking;
+                    radioxl::turndown::g_log = &Log;
+                    radioxl::turndown::Init(&ResolveByHash);
+                    radioxl::broadcast::g_collect = &radioxl::turndown::Collect;
                     static RED4ext::v1::GameState mixState{.OnEnter = nullptr, .OnUpdate = MixUpdate, .OnExit = nullptr};
                     aSdk->gameStates->Add(aHandle, RED4ext::EGameStateType::Running, &mixState);
                     radioxl::mix::HookRadioUpdate(&ResolveByHash, aSdk, aHandle);
+                    radioxl::mix::HookSetRtpc(&ResolveByHash, aSdk, aHandle);
                 }
                 if (g_patched)
                 {

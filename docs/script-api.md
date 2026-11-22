@@ -1,10 +1,10 @@
 # RadioXL script API
 
-Read RadioXL's stations and songs, change what plays, and hear when things change, from redscript or
-CET. Everything is on one class, `RadioXLAPI`, and ten events.
+Other mods can read RadioXL's stations and songs, change what plays, and hear when something changes, from redscript
+or CET. Everything is on one class, `RadioXLAPI`, plus fourteen events.
 
-**Only `RadioXLAPI` and the events are a promise.** Every other class, function and native in
-RadioXL is public because RadioXL needs it to be, and changes between releases without notice.
+**Only `RadioXLAPI` and the events are a promise.** Every other class, function and native in RadioXL is public
+because RadioXL needs it to be, and can change in any release without notice.
 
 ## Quick start
 
@@ -31,24 +31,25 @@ for _, track in ipairs(API.Tracks("radio_station_12_growl_fm")) do
 end
 ```
 
-In CET the class is `RadioXL_RadioXLAPI`. A Lua string works wherever a `CName` is asked for, and a
-returned `CName` reads as text through `.value`.
+In CET the class is `RadioXL_RadioXLAPI`. A Lua string works anywhere a `CName` is asked for, and a returned
+`CName` reads as text through `.value`.
 
-## Four rules
+## Five rules
 
-1. **Stations and songs are named, never numbered.** A station is its CName
-   (`radio_station_12_growl_fm`), a song its track event (`mus_radio_12_killshot`, or
-   `radio_station_20_tool_3fa29c01` for a custom one, named from the track's file). A dial position moves when a station mod is added.
-2. **Put a returned array into a `let` before `ArraySize`, `ArrayContains` or an index.** Redscript
-   otherwise reads it from uninitialised memory, which can crash the game.
-3. **Check `IsReady()`, or wait for `RadioXL/Ready`**, before reading. The station list is built
-   when the first session is ready.
-4. **Check `Version()`.** It goes up only when something here changes in a way that breaks a caller.
-   It is `2`.
-5. **Require a RadioXL version with a marker.** Import it unguarded, as `import RadioXL.Api0_10.*`. A player on
-   an older RadioXL who has RedRequire (bundled with RedFunctions 0.15.0 or later) is told which version your mod needs; anyone
-   else gets redscript's own error. `Api0_9` is the API as of 0.9, and `Api0_10` adds `RadioXLMix.PauseMenu` and
-   `RadioXLMix.Popups`. A marker is never removed, and a new one comes only with a release that adds to the API.
+1. **Stations and songs are named, never numbered.** A station is its CName (`radio_station_12_growl_fm`), a song
+   its track event (`mus_radio_12_killshot`, or `radio_station_20_tool_3fa29c01` for a custom one, named from the
+   track's file). A dial position moves whenever someone adds a station mod.
+2. **Put a returned array into a `let` before `ArraySize`, `ArrayContains` or an index.** Otherwise redscript reads
+   it from uninitialised memory, which can crash the game.
+3. **Check `IsReady()`, or wait for `RadioXL/Ready`, before reading.** The station list is built when the first
+   session is ready.
+4. **Check `Version()`.** It goes up whenever the API gains or changes something, and it is `3`. The
+   [version history](#version-history) says what each one added.
+5. **To require a RadioXL version, import its marker.** Import it unguarded, as `import RadioXL.Api0_11.*`. A player
+   on an older RadioXL who has RedRequire (bundled with RedFunctions 0.15.0 or later) is told which version your mod
+   needs, and anyone else gets redscript's own error. `Api0_9` is the API as of 0.9, `Api0_10` adds
+   `RadioXLMix.PauseMenu` and `RadioXLMix.Popups`, and `Api0_11` adds shards. A marker is never removed, and a new
+   one comes only with a release that adds to the API.
 
 ## Reading
 
@@ -126,6 +127,16 @@ Every mute switch defaults to true, the game's own behaviour.
 | `RandomWorldRadios()` | `Bool`, whether a world radio or jukebox that starts at random may land on a custom station |
 | `RandomStreams()` | `Bool`, whether that pick may land on a stream station |
 
+### Shards
+
+| Function | Returns |
+| --- | --- |
+| `ShardStation()` | `CName`, the station shards play on |
+| `Shards()` | `array<String>`, the player's shards by name, in their list order. All songs (`""`) isn't listed |
+| `ShardSongs(name)` | `array<CName>`, a shard's songs as track names. `""` gives every song All songs holds now |
+| `IsShardInOrder(name)` | `Bool`, true when the shard plays in order, false when it shuffles |
+| `SlottedShard()` | `String`, the shard in the slot. `""` is All songs |
+
 ### What is playing
 
 | Function | Returns |
@@ -139,9 +150,9 @@ Every mute switch defaults to true, the game's own behaviour.
 
 ## Changing things
 
-Each returns `Bool`: false when nothing happened (no radio on, an unknown name, a refused request, or
-the value was already set). Song changes go through RadioXL's own song keys, so the station's
-schedule, its idents and the history stay right.
+Each one returns `Bool`: false when nothing happened (no radio on, an unknown name, a refused request, or the value
+was already set). Song changes go through RadioXL's own song keys, so the station's schedule, its idents and the
+history all stay right.
 
 | Function | Does |
 | --- | --- |
@@ -165,6 +176,8 @@ schedule, its idents and the history stay right.
 | `SetSituationMuted(situation, muted)` | a restriction in force takes the change at once. Saved |
 | `SetMixMuted(mix, muted)` | saved |
 | `SetTrafficStations(mode)`, `SetRandomWorldRadios(on)`, `SetRandomStreams(on)` | saved |
+| `SlotShard(name)` | slots the shard, tunes the radio that is playing to the shard station and starts a song from it. `""` slots All songs |
+| `EjectShard()` | puts All songs back in the slot. The radio stays where it is. False when All songs is already there |
 
 ## Events
 
@@ -181,9 +194,12 @@ schedule, its idents and the history stay right.
 | `RadioXL/MyStationChanged` | `RadioXLMyStationChangedEvent` | `Station()` |
 | `RadioXL/StationSkipChanged` | `RadioXLStationSkipChangedEvent` | `Station()`, `Skipped()` |
 | `RadioXL/EqChanged` | `RadioXLEqChangedEvent` | `Station()`, `Preset()`: the preset the radio plays, whenever it or the station changes |
+| `RadioXL/ShardSlotted` | `RadioXLShardSlottedEvent` | `Name()`: the shard slotted, `""` for All songs |
+| `RadioXL/ShardEjected` | `RadioXLShardEjectedEvent` | `Name()`: the shard that came out, because another station was picked on the same radio or the shard was removed |
+| `RadioXL/ShardsChanged` | `RadioXLShardsChangedEvent` | `Name()`: a shard added, changed or removed |
 
-**Redscript:** register by name. Register `RadioXL/Ready` with `sticky` set, so a mod that loads after
-RadioXL still gets it.
+**Redscript:** register by name. Register `RadioXL/Ready` with `sticky` set, so your mod still gets it if it loads
+after RadioXL.
 
 ```swift
 public class MyRadioListener extends ScriptableService {
@@ -199,8 +215,8 @@ public class MyRadioListener extends ScriptableService {
 }
 ```
 
-**CET:** CET cannot receive these events, so `Observe` the matching method on the `RadioXLEvents`
-service. It is called with the event's fields, in the order the table gives them.
+**CET:** CET can't receive these events, so `Observe` the matching method on the `RadioXLEvents` service instead.
+It's called with the event's fields, in the order the table lists them.
 
 ```lua
 Observe("RadioXL.RadioXLEvents", "OnSongChanged", function(self, station, track, receiver, requested)
@@ -210,7 +226,7 @@ end)
 
 The methods are `OnReady`, `OnSongChanged`, `OnStationChanged`, `OnRadioPower`,
 `OnCatalogRefreshed`, `OnSongStateChanged`, `OnMutesChanged`, `OnSilenced`, `OnMyStationChanged`,
-`OnStationSkipChanged` and `OnEqChanged`. A CET mod that starts after `Ready` has fired reads `IsReady()` instead.
+`OnStationSkipChanged`, `OnEqChanged`, `OnShardSlotted`, `OnShardEjected` and `OnShardsChanged`. A CET mod that starts after `Ready` has fired checks `IsReady()` instead.
 
 ## Station data for your mod
 
@@ -253,3 +269,4 @@ Listen for `RadioXL/SongStateChanged` to drop a song the moment the player switc
 | --- | --- | --- |
 | 1 | 0.6.0 | First release |
 | 2 | 0.8.0 | Sound: the equaliser, its presets and each station's own preset or bands, processing and the volume boost, and `RadioXL/EqChanged`. The mute situations and mix switches. The traffic and random-pick settings (0.7.0) |
+| 3 | 0.11.0 | Shards: list them and their songs, slot and eject, and `RadioXL/ShardSlotted`, `ShardEjected` and `ShardsChanged` |

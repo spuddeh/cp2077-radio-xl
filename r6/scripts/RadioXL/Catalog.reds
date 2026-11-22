@@ -19,7 +19,7 @@
 //              THE TWO MUTES are applied three times: as the resource loads, at session ready,
 //              and the moment the setting changes. Each station's idents and the announcement
 //              graph's nodes are kept aside when cleared, so switching a mute off puts them back.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: psiberx (Codeware)
 // ======================================================================================
 
@@ -103,6 +103,22 @@ public class RadioXLCatalog extends ScriptableService {
   private func Cooked() -> ref<audioCookedMetadataResource> {
     if !IsDefined(this.m_token) || !this.m_token.IsLoaded() { return null; }
     return this.m_token.GetResource() as audioCookedMetadataResource;
+  }
+
+  // The loaded metadata resource, or null before it has loaded. Its station entries are the objects
+  // the engine's stations read, so a write to one reaches the station at once.
+  public func CookedMetadata() -> ref<audioCookedMetadataResource> {
+    return this.Cooked();
+  }
+
+  public func CookedStation(name: CName) -> ref<audioRadioStationMetadata> {
+    let cooked = this.Cooked();
+    if !IsDefined(cooked) { return null; }
+    for entry in cooked.entries {
+      let meta = entry as audioRadioStationMetadata;
+      if IsDefined(meta) && Equals(meta.name, name) { return meta; }
+    }
+    return null;
   }
 
   private func Content() -> ref<questQuestPhaseResource> {

@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: Builds each declared station out of the engine's own radio systems.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // Credits: RED4ext by WopsS. AudioXL by DigitalVixen.
 // ======================================================================================
 
@@ -79,6 +79,8 @@ public native func RadioXL_StationTrackDuration(index: Int32, track: Int32) -> F
 public native func RadioXL_StationKeyHash(index: Int32) -> Uint64;
 public native func RadioXL_StationTrackKeyHash(index: Int32, track: Int32) -> Uint64;
 public native func RadioXL_StationKeyHash64(index: Int32) -> Uint64;
+// The text the game shows for a key from now on, in place of its loaded row; empty text restores the row.
+public native func RadioXL_SetText(key: String, text: String) -> Bool;
 public native func RadioXL_StationTrackKeyHash64(index: Int32, track: Int32) -> Uint64;
 // The station's own schedule, by station and track NAME, vanilla stations included. Remaining is
 // the tracks not yet picked this cycle, empty when the plugin cannot see the station; Consume
@@ -90,6 +92,23 @@ public native func RadioXL_StationRemaining(station: CName) -> array<CName>;
 // catalog reads is a snapshot. Empty when the plugin cannot see the station.
 public native func RadioXL_StationTracks(station: CName) -> array<CName>;
 public native func RadioXL_StationConsume(station: CName, track: CName, countPick: Bool, refill: Bool) -> Int32;
+// Replaces the station's remaining list with these tracks, in order, and zeroes its pick counter; an
+// empty array clears it, so the engine refills from the whole track list on its next pick. The
+// number of entries written, or -1 when the station is not in the manager.
+public native func RadioXL_StationSetRemaining(station: CName, tracks: array<CName>) -> Int32;
+// The shard slot's custom-station index, or -1 when the roster is not patched.
+public native func RadioXL_ShardSlot() -> Int32;
+
+// The shard slot's station name, or None when there is no slot.
+public func RadioXLShardName() -> CName {
+  let slot: Int32 = RadioXL_ShardSlot();
+  return slot < 0 ? n"" : RadioXL_StationName(slot);
+}
+
+public func RadioXLIsShard(station: CName) -> Bool {
+  let shard: CName = RadioXLShardName();
+  return IsNameValid(shard) && Equals(station, shard);
+}
 // A switch in Wwise's mix: 0 combat music, 1 police music, 2 voices, 3 H10's building music, 4 gameplay menus,
 // 5 the pause menu, 6 wheels and popups. `mute`
 // true is the game's own behaviour. False when the plugin could not reach the mix.
@@ -483,18 +502,21 @@ public class RadioXLService extends ScriptableService {
       return;
     }
 
+    let shard: Int32 = RadioXL_ShardSlot();
     let i: Int32 = 0;
     while i < count {
-      this.RegisterStation(cooked, map, titles, i);
+      if i != shard { this.RegisterStation(cooked, map, titles, i); }
       i += 1;
     }
+    // Last, so its songs include every custom station registered above.
+    if shard >= 0 { this.RegisterShard(cooked, map, shard); }
 
     let stations: array<Int32>;
     let streams: array<Int32>;
     i = 0;
     while i < count {
       let name: CName = RadioXL_StationName(i);
-      if IsNameValid(name) && IsDefined(this.Find(cooked, name)) {
+      if i != shard && IsNameValid(name) && IsDefined(this.Find(cooked, name)) {
         ArrayPush(stations, i);
         if this.Streams(i) { ArrayPush(streams, i); }
       }
@@ -561,6 +583,28 @@ public class RadioXLService extends ScriptableService {
     }
 
     RadioXLLog(s"registered \(name) as the metadata loaded: \(ArraySize(station.tracks)) track(s), \(ArraySize(station.blips)) ident(s), map now lists \(ArraySize(map.radioStations))");
+  }
+
+  // The shard slot starts with every song, so it is a playable station from the first frame; the
+  // shard service writes the slotted shard's songs over this list once a session runs. Its songs
+  // keep the title rows their own stations registered.
+  private func RegisterShard(cooked: ref<audioCookedMetadataResource>,
+                             map: ref<audioRadioStationMetadataMap>, index: Int32) -> Void {
+    let name: CName = RadioXL_StationName(index);
+    if !IsNameValid(name) || IsDefined(this.Find(cooked, name)) { return; }
+    let station = new audioRadioStationMetadata();
+    station.name = name;
+    station.speaker = audioRadioSpeakerType.None;
+    station.tracks = RadioXLShardSongs.Every(cooked, false);
+    if ArraySize(station.tracks) == 0 {
+      RadioXLLog(s"\(name): no songs to start with - not registered");
+      return;
+    }
+    ArrayPush(cooked.entries, station);
+    if !ArrayContains(map.radioStations, name) {
+      ArrayPush(map.radioStations, name);
+    }
+    RadioXLLog(s"registered the shard slot \(name) with \(ArraySize(station.tracks)) song(s)");
   }
 
   // The row the dashboard and the radio popup read the song title from. `localizationKey` is a key,

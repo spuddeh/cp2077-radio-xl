@@ -732,12 +732,17 @@ inline void Set(int aSwitch, bool aMute)
     g_pending = true;
 }
 
+// The pause menu's writes of 0 to veh_player_mounted and veh_interior that were dropped, and when the menu closed.
+inline std::atomic<bool> g_heldMount[2] = {false, false};
+inline std::atomic<uint64_t> g_menuClosedAt{0};
+
 inline void SetPauseMenuOpen(bool aOpen)
 {
     if (g_pauseMenuOpen.exchange(aOpen) != aOpen)
     {
         Log(aOpen ? "the pause menu is opening" : "the pause menu has closed");
     }
+    g_menuClosedAt = aOpen ? 0 : GetTickCount64();
     g_pending = true;
     Tick();
 }
@@ -750,6 +755,84 @@ inline void SetBoost(float aDb)
         Log("boost: the player radio at +" + std::to_string(static_cast<int>(std::lround(db))) + " dB");
     }
     g_pending = true;
+}
+
+// The pause menu also tells Wwise that V has left the car: in the same tick as its pause it sets veh_player_mounted
+// and veh_interior to 0 on every game object, and the car radio's interior sound fades to silence with them. Closing
+// the menu sets them back. While the radio plays through the pause menu, those two writes of 0 are dropped, so the
+// car radio keeps its level. A save loaded from the pause menu writes neither again, so a dropped 0 the game has not
+// overwritten 1.5 s after the menu closed is written then. Every RTPC write ends in
+// AK::SoundEngine::_SetRTPCValue(parameter, value, gameObject, playingId, ms, curve, bypass), which returns AKRESULT.
+constexpr uint32_t kHashSetRtpc = 1716460472;
+constexpr uint8_t kSetRtpcPrologue[] = {0x48, 0x89, 0x6C, 0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20, 0x41, 0x56};
+constexpr uint32_t kRtpcPlayerMounted = 2820449795;  // veh_player_mounted
+constexpr uint32_t kRtpcVehicleInterior = 290459857;  // veh_interior
+constexpr uint64_t kEveryObject = ~0ull;
+constexpr int kAkSuccess = 1;
+using SetRtpcFn = int (*)(uint32_t, float, uint64_t, uint32_t, int32_t, int32_t, bool);
+inline SetRtpcFn g_origSetRtpc = nullptr;
+// vo_dialog_active, the game's "someone is speaking", as the hook sees it written on every game object, with its fade.
+constexpr uint32_t kRtpcDialogActive = 724631792;
+inline void (*g_onSpeaking)(bool, int32_t) = nullptr;
+
+inline int SetRtpc(uint32_t aRtpc, float aValue, uint64_t aObject, uint32_t aPlaying, int32_t aMs, int32_t aCurve,
+                   bool aBypass)
+{
+    if (aRtpc == kRtpcDialogActive && aObject == kEveryObject && g_onSpeaking)
+    {
+        g_onSpeaking(aValue > 0.0f, aMs);
+    }
+    const int held = aRtpc == kRtpcPlayerMounted ? 0 : aRtpc == kRtpcVehicleInterior ? 1 : -1;
+    if (held >= 0 && aObject == kEveryObject)
+    {
+        if (aValue == 0.0f && g_pauseMenuOpen.load() && !MenuPauseMutes())
+        {
+            g_heldMount[held] = true;
+            Log(std::string("pause menu: ") + (held == 0 ? "veh_player_mounted" : "veh_interior") +
+                " left as it was, so the car radio plays on");
+            return kAkSuccess;
+        }
+        g_heldMount[held] = false;
+    }
+    return g_origSetRtpc(aRtpc, aValue, aObject, aPlaying, aMs, aCurve, aBypass);
+}
+
+// Writes a held 0 the game has not overwritten since the pause menu closed, as a save loaded from it leaves.
+inline void ReleaseHeldMount()
+{
+    const uint64_t closed = g_menuClosedAt.load();
+    if (!g_origSetRtpc || closed == 0 || g_pauseMenuOpen.load() || GetTickCount64() - closed < 1500)
+    {
+        return;
+    }
+    const uint32_t ids[2] = {kRtpcPlayerMounted, kRtpcVehicleInterior};
+    for (int i = 0; i < 2; ++i)
+    {
+        if (g_heldMount[i].exchange(false))
+        {
+            g_origSetRtpc(ids[i], 0.0f, kEveryObject, 0, 0, 4, false);
+            Log(std::string("pause menu closed without the car: ") + (i == 0 ? "veh_player_mounted" : "veh_interior") + " set to 0");
+        }
+    }
+}
+
+// Without this hook the radio still plays through the pause menu on foot, and a car radio fades out.
+inline void HookSetRtpc(uintptr_t (*aResolve)(uint32_t), const RED4ext::v1::Sdk* aSdk, RED4ext::v1::PluginHandle aHandle)
+{
+    // Another plugin's hook replaces the first five bytes with a jump; the rest of the prologue still has to match.
+    auto* fn = reinterpret_cast<uint8_t*>(aResolve(kHashSetRtpc));
+    const bool hookedBefore = fn && fn[0] == 0xE9 && std::memcmp(fn + 5, kSetRtpcPrologue + 5, sizeof(kSetRtpcPrologue) - 5) == 0;
+    if (!fn || (!hookedBefore && std::memcmp(fn, kSetRtpcPrologue, sizeof(kSetRtpcPrologue)) != 0))
+    {
+        Log("byte check FAILED at _SetRTPCValue: " +
+            (fn ? diag::Mismatch(fn, kSetRtpcPrologue, sizeof(kSetRtpcPrologue)) : std::string("did not resolve")) +
+            " - a car radio fades out in the pause menu");
+        return;
+    }
+    if (!aSdk->hooking->Attach(aHandle, fn, reinterpret_cast<void*>(&SetRtpc), reinterpret_cast<void**>(&g_origSetRtpc)))
+    {
+        Log("could not hook _SetRTPCValue - a car radio fades out in the pause menu");
+    }
 }
 
 // Hooks the radio system's update for the menus switch; without it menus still hold the radio.

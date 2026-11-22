@@ -1,15 +1,15 @@
 // ======================================================================================
 // Mod Name: RadioXL
 // Author: Spuddeh
-// Description: The equaliser panel's open and close, and its rows' hover.
+// Description: The panels' close as the popup closes, and the equaliser rows' hover.
 //
-//              Open and close match the station selection UI as it draws, sampled per frame in
-//              game. The popup plays fadeIn and fadeOut (vehicles_radio_animations.inkanim), and its
-//              picture area grows and shrinks with them, which moves its list. The panel has no
-//              picture area, so its content takes that movement as a slide of its own. A row's hover
+//              Close matches the station selection UI as it draws, sampled per frame in game. The
+//              popup plays fadeOut (vehicles_radio_animations.inkanim), and its picture area shrinks
+//              with it, which moves its list. A panel has no picture area, so its content takes that
+//              movement as a slide of its own. A row's hover
 //              is what the settings menu's row controller does: the label's Hover state and the row's
 //              highlight.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // ======================================================================================
 
 module RadioXL
@@ -57,66 +57,6 @@ public abstract class RadioXLEqAnim {
       RadioXLEqAnim.Fade(def, values[i - 1], values[i], delay + Cast<Float>(i - 1) * step, 0.001);
       i += 1;
     }
-  }
-
-  // A widget starts from its first frame's values, so nothing shows before a delayed interpolator begins.
-  public final static func Play(widget: wref<inkWidget>, def: ref<inkAnimDef>, opacity: Float, y: Float) -> Void {
-    if !IsDefined(widget) { return; }
-    widget.SetOpacity(opacity);
-    widget.SetTranslation(new Vector2(0.0, y));
-    widget.PlayAnimation(def);
-  }
-
-  public final static func Open(root: wref<inkCompoundWidget>) -> Void {
-    if !IsDefined(root) { return; }
-    let setup = root.GetWidget(n"setup") as inkCompoundWidget;
-    if !IsDefined(setup) { return; }
-    let quartic: inkanimInterpolationType = inkanimInterpolationType.Quartic;
-    let out: inkanimInterpolationMode = inkanimInterpolationMode.EasyOut;
-
-    // The title bar: down from 100 above while it fades in.
-    let top = setup.GetWidget(n"top_holder") as inkCompoundWidget;
-    let def = new inkAnimDef();
-    RadioXLEqAnim.Slide(def, -100.0, 0.0, 0.0, 0.333, quartic, out);
-    RadioXLEqAnim.Fade(def, 0.0, 1.0, 0.0, 0.25);
-    RadioXLEqAnim.Play(top, def, 0.0, -100.0);
-    if IsDefined(top) {
-      def = new inkAnimDef();
-      RadioXLEqAnim.Fade(def, 0.0, 1.0, 0.167, 0.25);
-      RadioXLEqAnim.Play(top.GetWidget(n"title"), def, 0.0, 0.0);
-      def = new inkAnimDef();
-      RadioXLEqAnim.Flicker(def, [0.0, 0.3, 0.0, 0.3, 0.0, 0.3], 0.3, 0.067);
-      RadioXLEqAnim.Play(top.GetWidget(n"fluff_name-l"), def, 0.0, 0.0);
-    }
-
-    // The content: the popup's list is pushed down 370 by its growing picture area, and each row rises
-    // 200 on its own.
-    let content = setup.GetWidget(n"content") as inkCompoundWidget;
-    if IsDefined(content) {
-      def = new inkAnimDef();
-      RadioXLEqAnim.Slide(def, -370.0, 0.0, 0.1, 0.333, quartic, out);
-      RadioXLEqAnim.Play(content, def, 1.0, -370.0);
-      let i: Int32 = 0;
-      while i < content.GetNumChildren() {
-        let row: wref<inkWidget> = content.GetWidgetByIndex(i);
-        let name: CName = row.GetName();
-        def = new inkAnimDef();
-        RadioXLEqAnim.Slide(def, 200.0, 0.0, 0.2, 0.367, quartic, out);
-        if Equals(name, n"horizontalLine") {
-          RadioXLEqAnim.Fade(def, 0.0, 0.133, 0.2, 0.1);
-        } else if Equals(name, n"inputHints") {
-          RadioXLEqAnim.Fade(def, 0.0, 1.0, 0.267, 0.167);
-        } else {
-          RadioXLEqAnim.Fade(def, 0.0, 1.0, 0.2, 0.167);
-        }
-        RadioXLEqAnim.Play(row, def, 0.0, 200.0);
-        i += 1;
-      }
-    }
-
-    def = new inkAnimDef();
-    RadioXLEqAnim.Flicker(def, [0.0, 0.217, 0.0, 0.217, 0.0, 0.217], 0.4, 0.067);
-    RadioXLEqAnim.Play(root.GetWidget(n"fluffBottom2"), def, 0.0, 0.0);
   }
 
   // Finishes inside the popup's own 0.5 s fadeOut, which ends by destroying the popup.

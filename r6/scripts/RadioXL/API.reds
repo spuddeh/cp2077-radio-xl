@@ -2,7 +2,7 @@
 // Mod Name: RadioXL
 // Author: Spuddeh
 // Description: The script API: what other mods read from RadioXL, ask it to do, and hear from it.
-// File Version: 0.10.0
+// File Version: 0.11.0
 // ======================================================================================
 //
 // **This class is the promise.** Every other class, function and native in RadioXL is public only
@@ -50,7 +50,7 @@ public enum RadioXLStreamState {
 
 public abstract class RadioXLAPI {
   public final static func Version() -> Int32 {
-    return 2;
+    return 3;
   }
 
   public final static func RegisterStation(name: String) -> Void {
@@ -82,6 +82,7 @@ public abstract class RadioXLAPI {
     let e: Int32 = RadioXLAPI.EnumOf(station);
     if e < 0 { return ""; }
     let slot: Int32 = RadioXLDial.Slot(e);
+    if slot >= 0 && slot == RadioXL_ShardSlot() && IsDefined(RadioXLShards.Get()) { return RadioXLShards.Get().SlotName(); }
     if slot >= 0 { return RadioXL_StationDisplayName(slot); }
     return GetLocalizedTextByKey(StringToName(RadioStationDataProvider.GetChannelName(IntEnum<ERadioStationList>(e))));
   }
@@ -377,6 +378,55 @@ public abstract class RadioXLAPI {
   public final static func RandomStreams() -> Bool {
     let c = RadioXLConfig.Get();
     return IsDefined(c) && c.randomStreams;
+  }
+
+  // --- shards ----------------------------------------------------------------------------------
+  // A shard is one of the player's own song lists, played on the shard slot, one station last on
+  // the dial. "" names All songs, the built-in shard of every song, which the slot holds when no
+  // other shard is slotted. Making and editing shards is the player's, not the API's.
+
+  // The station the shards play on.
+  public final static func ShardStation() -> CName {
+    return RadioXLShardName();
+  }
+
+  // The player's shards by name, in their list order. All songs ("") is not listed.
+  public final static func Shards() -> array<String> {
+    let shards = RadioXLShards.Get();
+    let out: array<String>;
+    if IsDefined(shards) { out = shards.Names(); }
+    return out;
+  }
+
+  // A shard's songs as track events; for "", every song All songs holds now.
+  public final static func ShardSongs(name: String) -> array<CName> {
+    let shards = RadioXLShards.Get();
+    let out: array<CName>;
+    if IsDefined(shards) { out = shards.Songs(name); }
+    return out;
+  }
+
+  public final static func IsShardInOrder(name: String) -> Bool {
+    let shards = RadioXLShards.Get();
+    return IsDefined(shards) && shards.IsOrdered(name);
+  }
+
+  // The slotted shard's name; "" is All songs.
+  public final static func SlottedShard() -> String {
+    let shards = RadioXLShards.Get();
+    return IsDefined(shards) ? shards.Slotted() : "";
+  }
+
+  // Slots the shard, tunes the radio that is playing to the shard slot and starts a song from it.
+  public final static func SlotShard(name: String) -> Bool {
+    let shards = RadioXLShards.Get();
+    return IsDefined(shards) && shards.Slot(name);
+  }
+
+  // Puts All songs back in the slot. False when All songs is already there.
+  public final static func EjectShard() -> Bool {
+    let shards = RadioXLShards.Get();
+    return IsDefined(shards) && shards.Eject();
   }
 
   // --- what is playing ---------------------------------------------------------------------------

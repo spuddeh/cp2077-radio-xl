@@ -1,3 +1,18 @@
+### v0.11.0
+
+- New: Shards, your own playlists made from any installed song. A shard plays on a new station called Shard, last on the dial, on the Radioport, in vehicles and on radios in the world.
+- New: The station selection UI has three tabs, Radioport, Library and Equalizer. LB and RB, or a click, switch between them.
+- New: The Library tab lists All songs and your shards, or every station. Play any song from it. A filter box narrows the list.
+- New: The shard builder, opened from the Library, makes shards, adds and removes songs, sets their order, renames them and deletes them.
+- New: A shard plays in order or shuffled.
+- New: Each shard keeps its own equalizer setting.
+- New: "Impulse's DJ set in All songs" setting.
+- New: for mod authors, the script API is now version 3: shards can be listed, slotted and ejected, with an event for each.
+- Removed: the game 2.31 compatibility file. RadioXL 0.11.0 needs game 2.5. On game 2.31, keep using RadioXL 0.10.0.
+- Removed: the "Show the equalizer" setting. The Equalizer tab is always there.
+- Fix: "The pause menu is open" switch now keeps the radio playing in a vehicle too.
+- Fix: With "Someone is speaking" on, Even out loudness no longer cancels the game's dip while someone speaks.
+
 ### v0.10.0
 
 - New: "The pause menu is open" mute switch, so the radio can keep playing in the pause menu.
